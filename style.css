@@ -75,9 +75,19 @@
 }
 .strk-drawer-actions {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0;
+}
+.strk-drawer-actions .menu_button {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  width: auto;
+}
+.strk-drawer .menu_button {
+  white-space: nowrap;
+  width: auto;
 }
 .strk-drawer .inline-drawer-content textarea {
   width: 100%;

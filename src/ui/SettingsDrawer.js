@@ -61,9 +61,10 @@ export class SettingsDrawer {
   render() {
     const $list = $('#strk-defs-list').empty();
     for (const d of this.engine.listTrackers()) {
-      const $row = $('<div class="strk-def-row"></div>').text(`${d.label} (${d.id})`);
-      $row.append($('<button>edit</button>').on('click', () => this.deps.schemaEditor.open(d.id)));
-      $row.append($('<button>delete</button>').on('click', () => { if (confirm(`Delete tracker ${d.id}?`)) this.engine.deleteTracker(d.id); }));
+      const $row = $('<div class="strk-def-row"></div>');
+      $row.append($('<span></span>').text(`${d.label} (${d.id})`));
+      $row.append($('<button class="menu_button">edit</button>').on('click', () => this.deps.schemaEditor.open(d.id)));
+      $row.append($('<button class="menu_button">delete</button>').on('click', () => { if (confirm(`Delete tracker ${d.id}?`)) this.engine.deleteTracker(d.id); }));
       $list.append($row);
     }
   }
