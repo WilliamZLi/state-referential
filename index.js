@@ -1,4 +1,6 @@
-import { eventSource, event_types, getContext, saveSettingsDebounced, saveChatConditional, setExtensionPrompt } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt } from '../../../../script.js';
+
+const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
 import { MacrosParser } from '../../../macros.js';
 import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
