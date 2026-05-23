@@ -1,0 +1,12 @@
+{
+  "display_name": "State Tracker",
+  "loading_order": 999,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "fresh",
+  "version": "0.1.0",
+  "homePage": "https://example.com/state-referential",
+  "auto_update": true
+}
