@@ -1,0 +1,64 @@
+import { test } from 'node:test';
+import assert from 'node:assert';
+import { DefinitionStore } from '../../src/engine/DefinitionStore.js';
+import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
+
+function mkBus() {
+  const events = [];
+  return { events, emit: (n, p) => events.push([n, p]), on() {}, off() {} };
+}
+
+test('define+get+list', () => {
+  const b = new InMemoryBackend();
+  const bus = mkBus();
+  const store = new DefinitionStore(b, bus);
+  store.define({ id: 'outfit', label: 'Outfit', appliesToRoles: ['protagonist'], fields: [
+    { id: 'topwear', label: 'Topwear', type: 'text', default: '' }
+  ]});
+  assert.strictEqual(store.get('outfit').label, 'Outfit');
+  assert.deepStrictEqual(store.list().map(d => d.id), ['outfit']);
+  assert.deepStrictEqual(bus.events[0], ['tracker:schema-changed', { trackerId: 'outfit' }]);
+});
+
+test('define throws on missing id or duplicate', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  assert.throws(() => store.define({ label: 'x', fields: [] }), /id/);
+  store.define({ id: 'x', label: 'x', fields: [] });
+  assert.throws(() => store.define({ id: 'x', label: 'x', fields: [] }), /exists/);
+});
+
+test('update merges and emits', () => {
+  const bus = mkBus();
+  const store = new DefinitionStore(new InMemoryBackend(), bus);
+  store.define({ id: 'a', label: 'A', fields: [] });
+  store.update('a', { label: 'A!' });
+  assert.strictEqual(store.get('a').label, 'A!');
+});
+
+test('delete drops and emits', () => {
+  const bus = mkBus();
+  const store = new DefinitionStore(new InMemoryBackend(), bus);
+  store.define({ id: 'a', label: 'A', fields: [] });
+  store.delete('a');
+  assert.strictEqual(store.get('a'), undefined);
+  assert.ok(bus.events.find(e => e[0] === 'tracker:schema-changed' && e[1].trackerId === 'a'));
+});
+
+test('appliesToRoles defaults to all roles', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  store.define({ id: 'a', label: 'A', fields: [] });
+  assert.deepStrictEqual(store.get('a').appliesToRoles.sort(), ['faction','location','npc','object','protagonist']);
+});
+
+test('field validation: list/enum require options/default rules', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  assert.throws(() => store.define({ id: 'a', label: 'A', fields: [{ id: 'x', type: 'enum' }] }), /options/);
+  assert.throws(() => store.define({ id: 'b', label: 'B', fields: [{ id: 'x', type: 'number' }] }), /min|max/);
+});
+
+test('persists via backend.saveDefinitions', () => {
+  const b = new InMemoryBackend();
+  const store = new DefinitionStore(b, mkBus());
+  store.define({ id: 'a', label: 'A', fields: [] });
+  assert.strictEqual(b.loadDefinitions()[0].id, 'a');
+});
