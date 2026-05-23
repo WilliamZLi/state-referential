@@ -3,6 +3,7 @@ import { SubjectStore } from './SubjectStore.js';
 import { ValueStore } from './ValueStore.js';
 import { SceneTagStore } from './SceneTagStore.js';
 import { SnapshotStore } from './SnapshotStore.js';
+import { parseCommands } from '../pipeline/CommandParser.js';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 
@@ -172,5 +173,43 @@ export class TrackerEngine {
       else if (c.op === 'remove') lines.push(`REMOVE ${c.subjectName} ${path} "${c.entry}"`);
     }
     return lines.join('\n');
+  }
+
+  applyCommands(text, opts = {}) {
+    const cmds = parseCommands(text, { cap: opts.cap ?? 20 });
+    const errors = [];
+    let applied = 0;
+    for (const c of cmds) {
+      try {
+        if (c.op === 'NEW_SUBJECT') {
+          if (this.subjects.findByName(c.name)) { applied++; continue; } // idempotent
+          this.subjects.add(c.name, { role: c.role, createdBy: opts.source ?? 'auto-update', createdAtMsg: opts.msgId ?? null });
+          applied++;
+          continue;
+        }
+        const subj = this.subjects.resolveAlias(c.subject);
+        if (!subj) { errors.push(`unknown subject: ${c.subject}`); continue; }
+        const field = this.definitions.getField(c.tracker, c.field);
+        if (!field) { errors.push(`unknown field: ${c.tracker}.${c.field}`); continue; }
+        const writeOpts = { source: opts.source ?? 'auto-update', msgId: opts.msgId ?? null };
+        if (c.op === 'SET') this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.value), writeOpts);
+        else if (c.op === 'DELTA') this.values.applyDelta(subj.id, c.tracker, c.field, c.delta, writeOpts);
+        else if (c.op === 'ADD') this.values.addListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        else if (c.op === 'REMOVE') this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        applied++;
+      } catch (e) {
+        errors.push(e.message ?? String(e));
+      }
+    }
+    this.bus.emit('tracker:auto-update-completed', { commandsApplied: applied, errors });
+    return { applied, errors };
+  }
+
+  _coerceForField(field, raw) {
+    if (field.type === 'number') {
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : (field.default ?? 0);
+    }
+    return raw;
   }
 }
