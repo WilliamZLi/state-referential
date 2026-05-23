@@ -1,1 +1,23 @@
-export function register() {}
+export function register(engine, deps) {
+  // deps: { versioning, descProbe, getSettings, panel, injection }
+  deps.versioning.register();
+
+  // Bridge: every value-changed enqueues a description-probe job.
+  engine.on('tracker:value-changed', (e) => {
+    const s = deps.getSettings();
+    if (s.probeDesc === false) return;
+    deps.descProbe.enqueue([{
+      subjectId: e.subject, trackerId: e.tracker, fieldId: e.field, value: e.newValue,
+    }]);
+  });
+
+  // Re-run injection whenever scene tags toggle (so tag-gated fields appear immediately).
+  engine.on('tracker:tag-changed', () => deps.injection.run());
+
+  // First-run: if no subjects and definitions installed, prompt for protagonist.
+  engine.on('tracker:backend-changed', () => {
+    if (!engine.listSubjects().length && engine.listTrackers().length) {
+      deps.panel?.deps?.openSubjectAddModal?.({ forceProtagonist: true });
+    }
+  });
+}
