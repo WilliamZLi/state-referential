@@ -1,1 +1,26 @@
-<!-- placeholder -->
+<div class="strk-subject-modal">
+  <h3 id="strk-subject-modal-title">Add subject</h3>
+  <label>Name: <input type="text" id="strk-subj-name" /></label>
+  <label>Role:
+    <select id="strk-subj-role">
+      <option value="protagonist">protagonist</option>
+      <option value="npc" selected>npc</option>
+      <option value="location">location</option>
+      <option value="faction">faction</option>
+      <option value="object">object</option>
+    </select>
+  </label>
+  <fieldset class="strk-traits">
+    <legend>Traits (optional)</legend>
+    <label>Height <input type="text" id="strk-trait-height" /></label>
+    <label>Build <input type="text" id="strk-trait-build" /></label>
+    <label>Complexion <input type="text" id="strk-trait-complexion" /></label>
+    <label>Hair <input type="text" id="strk-trait-hair" /></label>
+    <label>Eyes <input type="text" id="strk-trait-eyes" /></label>
+    <label>Distinguishing <input type="text" id="strk-trait-distinguishing" /></label>
+  </fieldset>
+  <div class="strk-modal-actions">
+    <button id="strk-subj-save">Save</button>
+    <button id="strk-subj-cancel">Cancel</button>
+  </div>
+</div>

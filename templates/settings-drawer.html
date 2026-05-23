@@ -1,1 +1,29 @@
-<!-- placeholder -->
+<div class="strk-drawer">
+  <h3>State Tracker</h3>
+  <label><input type="checkbox" id="strk-enable" /> Enable plugin</label>
+  <label><input type="checkbox" id="strk-auto-update" checked /> Auto-update master</label>
+  <label><input type="checkbox" id="strk-probe-desc" checked /> Description probe master</label>
+  <label>Active window (turns): <input type="number" id="strk-active-window" min="1" max="50" value="5" /></label>
+  <h4>Tracker definitions</h4>
+  <div id="strk-defs-list"></div>
+  <div>
+    <button id="strk-new-tracker">+ New tracker</button>
+    <button id="strk-import-json">Import JSON</button>
+    <button id="strk-install-presets">Install default presets</button>
+  </div>
+  <h4>Default scene tags</h4>
+  <div id="strk-default-tags"></div>
+  <button id="strk-add-default-tag">+ Add default tag</button>
+  <h4>Storage backend</h4>
+  <select id="strk-backend"><option value="chat-scoped">Chat-scoped (default)</option></select>
+  <h4>Templates</h4>
+  <label>Auto-update prompt template:
+    <textarea id="strk-tpl-autoupdate" rows="6"></textarea>
+  </label>
+  <label>Description probe template:
+    <textarea id="strk-tpl-probe" rows="6"></textarea>
+  </label>
+  <button id="strk-reset-tpls">Reset templates</button>
+  <hr/>
+  <button id="strk-reset-state" class="strk-danger">Reset all state for current chat</button>
+</div>
