@@ -7,28 +7,32 @@
     <label><input type="checkbox" id="strk-enable" /> Enable plugin</label>
     <label><input type="checkbox" id="strk-auto-update" checked /> Auto-update master</label>
     <label><input type="checkbox" id="strk-probe-desc" checked /> Description probe master</label>
-    <label>Active window (turns): <input type="number" id="strk-active-window" min="1" max="50" value="5" /></label>
+    <label>Active window (turns) <input type="number" id="strk-active-window" min="1" max="50" value="5" /></label>
     <h4>Tracker definitions</h4>
     <div id="strk-defs-list"></div>
-    <div>
+    <div class="strk-drawer-actions">
       <button class="menu_button" id="strk-new-tracker">+ New tracker</button>
       <button class="menu_button" id="strk-import-json">Import JSON</button>
       <button class="menu_button" id="strk-install-presets">Install default presets</button>
     </div>
     <h4>Default scene tags</h4>
     <div id="strk-default-tags"></div>
-    <button class="menu_button" id="strk-add-default-tag">+ Add default tag</button>
+    <div class="strk-drawer-actions">
+      <button class="menu_button" id="strk-add-default-tag">+ Add default tag</button>
+    </div>
     <h4>Storage backend</h4>
     <select id="strk-backend"><option value="chat-scoped">Chat-scoped (default)</option></select>
     <h4>Templates</h4>
-    <label>Auto-update prompt template:
-      <textarea id="strk-tpl-autoupdate" rows="6"></textarea>
-    </label>
-    <label>Description probe template:
-      <textarea id="strk-tpl-probe" rows="6"></textarea>
-    </label>
-    <button class="menu_button" id="strk-reset-tpls">Reset templates</button>
+    <label>Auto-update prompt template</label>
+    <textarea id="strk-tpl-autoupdate" rows="6"></textarea>
+    <label>Description probe template</label>
+    <textarea id="strk-tpl-probe" rows="6"></textarea>
+    <div class="strk-drawer-actions">
+      <button class="menu_button" id="strk-reset-tpls">Reset templates</button>
+    </div>
     <hr/>
-    <button class="menu_button" id="strk-reset-state" class="strk-danger">Reset all state for current chat</button>
+    <div class="strk-drawer-actions">
+      <button class="menu_button strk-danger" id="strk-reset-state">Reset all state for current chat</button>
+    </div>
   </div>
 </div>

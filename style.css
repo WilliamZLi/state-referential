@@ -53,3 +53,41 @@
 
 .strk-popup-body { padding: 8px 12px; max-width: 320px; }
 .strk-popup-body h4 { margin: 0 0 4px 0; }
+
+/* Settings drawer layout */
+.strk-drawer .inline-drawer-content { padding: 8px 4px; }
+.strk-drawer .inline-drawer-content > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.strk-drawer .inline-drawer-content > label > input[type="checkbox"] { margin: 0; }
+.strk-drawer .inline-drawer-content > label > input[type="text"],
+.strk-drawer .inline-drawer-content > label > input[type="number"] {
+  margin-left: auto;
+  max-width: 80px;
+}
+.strk-drawer .inline-drawer-content > h4 {
+  margin: 12px 0 6px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #333);
+}
+.strk-drawer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.strk-drawer .inline-drawer-content textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.strk-drawer .inline-drawer-content > select { width: 100%; }
+.strk-def-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.strk-def-row > :first-child { flex: 1; }
