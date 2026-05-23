@@ -1,1 +1,176 @@
-export class TrackerEngine {}
+import { DefinitionStore } from './DefinitionStore.js';
+import { SubjectStore } from './SubjectStore.js';
+import { ValueStore } from './ValueStore.js';
+import { SceneTagStore } from './SceneTagStore.js';
+import { SnapshotStore } from './SnapshotStore.js';
+
+const clone = (x) => JSON.parse(JSON.stringify(x));
+
+function mkBus() {
+  const handlers = new Map();
+  return {
+    on(e, fn) { if (!handlers.has(e)) handlers.set(e, new Set()); handlers.get(e).add(fn); },
+    off(e, fn) { handlers.get(e)?.delete(fn); },
+    emit(e, p) {
+      const s = handlers.get(e);
+      if (s) for (const fn of s) try { fn(p); } catch (err) { console.error('[tracker]', err); }
+    },
+  };
+}
+
+export class TrackerEngine {
+  constructor(backend, opts = {}) {
+    this.bus = mkBus();
+    this.opts = opts;
+    this._attach(backend);
+  }
+  _attach(backend) {
+    this.backend = backend;
+    this.definitions = new DefinitionStore(backend, this.bus);
+    this.subjects = new SubjectStore(backend, this.bus);
+    this.values = new ValueStore(backend, this.bus, this.definitions);
+    this.tags = new SceneTagStore(backend, this.bus);
+    this.snapshots = new SnapshotStore(backend, { cap: this.opts.snapshotCap ?? 20 });
+  }
+  setStorageBackend(backend) { this._attach(backend); this.bus.emit('tracker:backend-changed', {}); }
+  on(e, fn) { this.bus.on(e, fn); }
+  off(e, fn) { this.bus.off(e, fn); }
+
+  // Definitions
+  defineTracker(d) { this.definitions.define(d); }
+  updateTracker(id, d) { this.definitions.update(id, d); }
+  deleteTracker(id) { this.definitions.delete(id); }
+  getTracker(id) { return this.definitions.get(id); }
+  listTrackers() { return this.definitions.list(); }
+
+  // Subjects
+  addSubject(name, opts) { return this.subjects.add(name, opts); }
+  removeSubject(name) { this.subjects.remove(name); }
+  renameSubject(o, n) { this.subjects.rename(o, n); }
+  setProtagonist(name) { this.subjects.setProtagonist(name); }
+  listSubjects() { return this.subjects.list(); }
+  protagonist() { return this.subjects.protagonist(); }
+  resolveSubject(t) { return this.subjects.resolveAlias(t); }
+
+  // Values
+  getField(s, t, f) { return this.values.getField(s, t, f); }
+  setField(s, t, f, v, opts) { this.values.setField(s, t, f, v, opts); }
+  applyDelta(s, t, f, d, opts) { this.values.applyDelta(s, t, f, d, opts); }
+  addListEntry(s, t, f, e, opts) { this.values.addListEntry(s, t, f, e, opts); }
+  removeListEntry(s, t, f, e, opts) { this.values.removeListEntry(s, t, f, e, opts); }
+
+  // Descriptions
+  getDescription(s, t, f, v) { return this.values.getDescription(s, t, f, v); }
+  setDescription(s, t, f, v, p) { this.values.setDescription(s, t, f, v, p); }
+  invalidateDescription(s, t, f, v) { this.values.invalidateDescription(s, t, f, v); }
+
+  // Tags
+  setSceneTag(tag, on) { this.tags.set(tag, on); }
+  toggleSceneTag(tag) { this.tags.toggle(tag); }
+  listActiveTags() { return this.tags.list(); }
+  isTagActive(tag) { return this.tags.isActive(tag); }
+
+  // Snapshots
+  snapshot(takenAtMsg = null) {
+    const ser = this.values.serialize();
+    return {
+      takenAtMsg,
+      subjects: clone({ subjects: this.subjects.list(), protagonistId: this.subjects.protagonistId() }),
+      values: clone(ser.values),
+      descriptions: clone(ser.descriptions),
+      sceneTags: clone(this.tags.list()),
+    };
+  }
+  saveSnapshot(msgId) { this.snapshots.save(msgId, this.snapshot(msgId)); }
+  pinSnapshot(id, reason) { this.snapshots.pin(id, reason); }
+  unpinSnapshot(id) { this.snapshots.unpin(id); }
+  listSnapshots() { return this.snapshots.list(); }
+  loadSnapshot(id) { return this.snapshots.load(id); }
+  dropSnapshots(ids) { this.snapshots.dropSnapshots(ids); }
+  restoreSnapshot(s) {
+    this.backend.saveSubjects(clone(s.subjects));
+    this.backend.saveValues(clone(s.values));
+    this.backend.saveDescriptions(clone(s.descriptions));
+    this.backend.saveSceneTags(clone(s.sceneTags));
+    this._attach(this.backend);
+  }
+
+  diffSnapshots(a, b) {
+    const aSubs = new Map(a.subjects.subjects.map(s => [s.id, s]));
+    const bSubs = new Map(b.subjects.subjects.map(s => [s.id, s]));
+    const subjectsAdded = [...bSubs.values()].filter(s => !aSubs.has(s.id));
+    const subjectsRemoved = [...aSubs.values()].filter(s => !bSubs.has(s.id));
+    const subjectsRenamed = [...bSubs.values()]
+      .filter(s => aSubs.has(s.id) && aSubs.get(s.id).name !== s.name)
+      .map(s => ({ id: s.id, oldName: aSubs.get(s.id).name, newName: s.name }));
+    const protagonistChanged = a.subjects.protagonistId === b.subjects.protagonistId
+      ? null : { from: a.subjects.protagonistId, to: b.subjects.protagonistId };
+
+    const fieldChanges = [];
+    const ids = new Set([...Object.keys(a.values), ...Object.keys(b.values)]);
+    for (const sid of ids) {
+      const av = a.values[sid] ?? {}, bv = b.values[sid] ?? {};
+      const sname = (bSubs.get(sid) ?? aSubs.get(sid))?.name ?? sid;
+      const tids = new Set([...Object.keys(av), ...Object.keys(bv)]);
+      for (const tid of tids) {
+        const at = av[tid] ?? {}, bt = bv[tid] ?? {};
+        const fids = new Set([...Object.keys(at), ...Object.keys(bt)]);
+        for (const fid of fids) {
+          const fdef = this.definitions.getField(tid, fid);
+          if (!fdef) continue;
+          const aV = at[fid]?.v ?? fdef.default, bV = bt[fid]?.v ?? fdef.default;
+          if (JSON.stringify(aV) === JSON.stringify(bV)) continue;
+          const base = { subject: sid, subjectName: sname, trackerId: tid, fieldId: fid };
+          if (fdef.type === 'list') {
+            const aL = aV ?? [], bL = bV ?? [];
+            for (const e of bL.filter(x => !aL.includes(x))) fieldChanges.push({ ...base, op: 'add', entry: e });
+            for (const e of aL.filter(x => !bL.includes(x))) fieldChanges.push({ ...base, op: 'remove', entry: e });
+          } else if (fdef.type === 'number' && typeof aV === 'number' && typeof bV === 'number') {
+            fieldChanges.push({ ...base, op: 'delta', delta: bV - aV });
+          } else {
+            fieldChanges.push({ ...base, op: 'set', oldValue: aV, newValue: bV });
+          }
+        }
+      }
+    }
+
+    const descriptionChanges = [];
+    if (JSON.stringify(a.descriptions) !== JSON.stringify(b.descriptions)) {
+      for (const [key, vmap] of Object.entries(b.descriptions.global ?? {})) {
+        for (const [value, prose] of Object.entries(vmap)) {
+          if (a.descriptions.global?.[key]?.[value] !== prose)
+            descriptionChanges.push({ scope: 'global', subjectId: null, key, value, prose });
+        }
+      }
+      for (const [sid, root] of Object.entries(b.descriptions.perSubject ?? {})) {
+        for (const [key, vmap] of Object.entries(root)) {
+          for (const [value, prose] of Object.entries(vmap)) {
+            if (a.descriptions.perSubject?.[sid]?.[key]?.[value] !== prose)
+              descriptionChanges.push({ scope: 'perSubject', subjectId: sid, key, value, prose });
+          }
+        }
+      }
+    }
+
+    const aTags = new Set(a.sceneTags), bTags = new Set(b.sceneTags);
+    const sceneTagChanges = {
+      added: [...bTags].filter(t => !aTags.has(t)),
+      removed: [...aTags].filter(t => !bTags.has(t)),
+    };
+
+    return { subjectsAdded, subjectsRemoved, subjectsRenamed, protagonistChanged, fieldChanges, descriptionChanges, sceneTagChanges };
+  }
+
+  renderDiffAsCommands(diff) {
+    const lines = [];
+    for (const s of diff.subjectsAdded) lines.push(`NEW_SUBJECT "${s.name}" ${s.role}`);
+    for (const c of diff.fieldChanges) {
+      const path = `${c.trackerId}.${c.fieldId}`;
+      if (c.op === 'set') lines.push(`SET ${c.subjectName} ${path} = "${c.newValue}"`);
+      else if (c.op === 'delta') lines.push(`DELTA ${c.subjectName} ${path} ${c.delta >= 0 ? '+' : ''}${c.delta}`);
+      else if (c.op === 'add') lines.push(`ADD ${c.subjectName} ${path} "${c.entry}"`);
+      else if (c.op === 'remove') lines.push(`REMOVE ${c.subjectName} ${path} "${c.entry}"`);
+    }
+    return lines.join('\n');
+  }
+}
