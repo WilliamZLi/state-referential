@@ -1,1 +1,17 @@
-{}
+{
+  "id": "stats", "label": "Stats", "icon": "fa-heart-pulse",
+  "source": "preset:stats",
+  "appliesToRoles": ["protagonist","npc"],
+  "autoUpdate": true,
+  "fields": [
+    { "id": "health", "label": "Health", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" },
+      "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
+        "template": "**{{subject}} HP:** {{value}}/{{max}}" } },
+    { "id": "stamina", "label": "Stamina", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "arousal", "label": "Arousal", "type": "number", "min": 0, "max": 100, "default": 0, "allowDelta": true, "describable": false, "inclusion": { "rule": "tag", "tags": ["intimate"] },
+      "injection": { "enabled": true, "trigger": "tag", "tags": ["intimate"], "position": "in-prompt", "depth": 2,
+        "template": "**{{subject}} arousal:** {{value}}/{{max}}" } },
+    { "id": "sensitivity_neck", "label": "Sensitivity (neck)", "type": "number", "min": 0, "max": 100, "default": 50, "allowDelta": true, "describable": false, "inclusion": { "rule": "tag", "tags": ["intimate"] } },
+    { "id": "sensitivity_ears", "label": "Sensitivity (ears)", "type": "number", "min": 0, "max": 100, "default": 50, "allowDelta": true, "describable": false, "inclusion": { "rule": "tag", "tags": ["intimate"] } }
+  ]
+}

@@ -1,1 +1,15 @@
-{}
+{
+  "id": "state", "label": "State", "icon": "fa-face-smile",
+  "source": "preset:state",
+  "appliesToRoles": ["protagonist","npc"],
+  "autoUpdate": true,
+  "fields": [
+    { "id": "mood", "label": "Mood", "type": "enum",
+      "options": ["neutral","happy","sad","angry","curious","afraid","aroused","smug","wistful","confident"],
+      "default": "neutral", "describable": true, "descriptionScope": "per-subject", "inclusion": { "rule": "always" },
+      "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
+        "template": "**{{subject}}:** mood {{value}}" } },
+    { "id": "status_effects", "label": "Status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
+      "inclusion": { "rule": "active", "activeWindow": 5 } }
+  ]
+}

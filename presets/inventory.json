@@ -1,1 +1,11 @@
-{}
+{
+  "id": "inventory", "label": "Inventory", "icon": "fa-bag-shopping",
+  "source": "preset:inventory",
+  "appliesToRoles": ["protagonist","npc","location"],
+  "autoUpdate": true,
+  "fields": [
+    { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global", "inclusion": { "rule": "always" },
+      "injection": { "enabled": true, "trigger": "tag", "tags": ["combat","exploration"], "position": "in-prompt", "depth": 3,
+        "template": "**{{subject}} carries:** {{value}}" } }
+  ]
+}

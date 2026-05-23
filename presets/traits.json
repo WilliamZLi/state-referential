@@ -1,1 +1,16 @@
-{}
+{
+  "id": "traits", "label": "Traits", "icon": "fa-id-badge",
+  "source": "preset:traits",
+  "appliesToRoles": ["protagonist","npc"],
+  "autoUpdate": false,
+  "fields": [
+    { "id": "height", "label": "Height", "type": "text", "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "build", "label": "Build", "type": "text", "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "complexion", "label": "Complexion", "type": "text", "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "hair", "label": "Hair", "type": "text", "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "eyes", "label": "Eyes", "type": "text", "describable": false, "inclusion": { "rule": "always" } },
+    { "id": "distinguishing_features", "label": "Distinguishing", "type": "text", "describable": false, "inclusion": { "rule": "always" },
+      "injection": { "enabled": true, "trigger": "always", "position": "before-char-defs", "depth": 1,
+        "template": "**{{subject}}**: {{value}}" } }
+  ]
+}
