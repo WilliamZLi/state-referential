@@ -43,11 +43,35 @@ export class Panel {
       injection: this.deps.injection,
     });
 
+    // Safe re-render: if the user is currently typing in an input inside the
+    // tab body (or focused on any control), defer the render until focus leaves.
+    // Otherwise the panel destroys the live input on every value-changed event
+    // and the user can't type more than one character.
+    this._renderPending = false;
+    const safeRender = () => {
+      const focused = document.activeElement;
+      if (focused && this.$el && this.$el[0].contains(focused) && /INPUT|TEXTAREA|SELECT/.test(focused.tagName)) {
+        this._renderPending = true;
+        return;
+      }
+      this.render();
+    };
+    // When focus leaves any field in the body, flush a pending render.
+    this.$el.on('focusout', '.strk-tab-body input, .strk-tab-body textarea, .strk-tab-body select', () => {
+      // Small delay so a new focus target (e.g. clicking another input) settles first.
+      setTimeout(() => {
+        if (this._renderPending && !this.$el.find(':focus').length) {
+          this._renderPending = false;
+          this.render();
+        }
+      }, 50);
+    });
+
     for (const ev of [
       'tracker:value-changed', 'tracker:subject-added', 'tracker:subject-removed',
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
-    ]) this.engine.on(ev, () => this.render());
+    ]) this.engine.on(ev, safeRender);
 
     this.render();
   }
