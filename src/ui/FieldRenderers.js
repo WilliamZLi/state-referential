@@ -86,35 +86,45 @@ export function makeRenderers(engine, deps) {
     return deps.descProbe?.isProbing?.(subjId, trackerId, fieldId, value) === true;
   }
 
-  function descBtn(field, subj, currentValue) {
+  function descBtn(field, subj, _capturedAtRender) {
     if (!field.describable) return null;
-    const busy = isProbing(subj.id, field._trackerId, field.id, currentValue);
+    // Initial busy-state is captured at render time for display, but the click handler
+    // ALWAYS reads the LIVE value from the engine — so changing the dropdown then
+    // clicking the pencil opens the modal for the current value, not the captured one.
+    const busy = isProbing(subj.id, field._trackerId, field.id, _capturedAtRender);
     const $b = $('<button class="strk-field-icon" title="Edit description">🖉</button>');
     if (busy) {
       $b.prop('disabled', true).attr('title', 'Probe in progress — please wait').css({ opacity: 0.5, cursor: 'wait' });
       return $b;
     }
     return $b.on('click', () => {
-      const prose = engine.getDescription(subj.id, field._trackerId, field.id, currentValue) ?? '';
+      const liveValue = engine.getField(subj.id, field._trackerId, field.id);
+      if (liveValue === undefined || liveValue === '' || liveValue === null) {
+        deps.dialogs?.alert?.('Set a value first, then click the pencil to edit its description.');
+        return;
+      }
+      const prose = engine.getDescription(subj.id, field._trackerId, field.id, liveValue) ?? '';
       deps.openProseModal({
-        title: `${field.label} = ${currentValue}`,
+        title: `${field.label} = ${liveValue}`,
         text: prose,
-        onSave: (newProse) => engine.setDescription(subj.id, field._trackerId, field.id, currentValue, newProse),
-        onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, currentValue),
+        onSave: (newProse) => engine.setDescription(subj.id, field._trackerId, field.id, liveValue, newProse),
+        onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, liveValue),
       });
     });
   }
 
-  function reprobeBtn(field, subj, currentValue) {
+  function reprobeBtn(field, subj, _capturedAtRender) {
     if (!field.describable) return null;
-    const busy = isProbing(subj.id, field._trackerId, field.id, currentValue);
+    const busy = isProbing(subj.id, field._trackerId, field.id, _capturedAtRender);
     if (busy) {
       return $('<button class="strk-field-icon" title="Probe in progress…">⏳</button>')
         .prop('disabled', true).css({ opacity: 0.6, cursor: 'wait' });
     }
     return $('<button class="strk-field-icon" title="Re-probe">⟳</button>').on('click', () => {
-      engine.invalidateDescription(subj.id, field._trackerId, field.id, currentValue);
-      deps.requestProbe(subj.id, field._trackerId, field.id, currentValue);
+      const liveValue = engine.getField(subj.id, field._trackerId, field.id);
+      if (liveValue === undefined || liveValue === '' || liveValue === null) return;
+      engine.invalidateDescription(subj.id, field._trackerId, field.id, liveValue);
+      deps.requestProbe(subj.id, field._trackerId, field.id, liveValue);
     });
   }
 
