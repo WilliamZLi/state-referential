@@ -103,12 +103,29 @@ export function makeRenderers(engine, deps) {
     });
   }
 
+  // Debounced setField to commit text/number edits without waiting for blur.
+  // 250ms gives the user time to finish typing before each network-side persist.
+  function debouncedSetter(subjectId, trackerId, fieldId, coerce = (x) => x) {
+    let timer = null;
+    return function (value) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        engine.setField(subjectId, trackerId, fieldId, coerce(value), { source: 'manual' });
+      }, 250);
+    };
+  }
+
   return {
     text(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? '';
-      const $input = $('<input type="text" class="text_pole" />').val(cur).on('change', e => {
-        engine.setField(subj.id, field._trackerId, field.id, e.target.value, { source: 'manual' });
-      });
+      const commit = debouncedSetter(subj.id, field._trackerId, field.id);
+      const $input = $('<input type="text" class="text_pole" />').val(cur)
+        .on('input', e => commit(e.target.value))
+        .on('change', e => {
+          // Final commit on blur — synchronous, in case a pending debounce hasn't fired.
+          engine.setField(subj.id, field._trackerId, field.id, e.target.value, { source: 'manual' });
+        });
       return row(field, subj, $input, [descBtn(field, subj, cur), reprobeBtn(field, subj, cur)].filter(Boolean));
     },
     number(field, subj) {
@@ -117,7 +134,9 @@ export function makeRenderers(engine, deps) {
       const $input = useSlider
         ? $(`<input type="range" min="${field.min}" max="${field.max}" />`).val(cur)
         : $('<input type="number" class="text_pole" />').val(cur);
-      $input.on('change', e => engine.setField(subj.id, field._trackerId, field.id, Number(e.target.value), { source: 'manual' }));
+      const commit = debouncedSetter(subj.id, field._trackerId, field.id, (v) => Number(v));
+      $input.on('input', e => commit(e.target.value))
+            .on('change', e => engine.setField(subj.id, field._trackerId, field.id, Number(e.target.value), { source: 'manual' }));
       const $minus = $('<button class="strk-field-icon">−</button>').on('click', () =>
         engine.applyDelta(subj.id, field._trackerId, field.id, -(field.step ?? 1), { source: 'manual' }));
       const $plus  = $('<button class="strk-field-icon">+</button>').on('click', () =>
