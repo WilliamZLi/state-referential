@@ -41,7 +41,27 @@ import * as EventHooks from './src/integration/EventHooks.js';
   const popup = makePopup({ callGenericPopup, POPUP_TYPE });
   const dialogs = makeDialogs(callGenericPopup, POPUP_TYPE);
 
+  // Quiet generation for auto-update / standalone probes — uses the full chat context.
   const generateQuietPrompt = async (text) => getContext().generateQuietPrompt(text, false, false);
+
+  // Isolated generation for description probes — tries generateRaw first (bypasses
+  // chat history, world info, character card) and falls back to generateQuietPrompt
+  // if generateRaw isn't available on this ST version.
+  const generateProbePrompt = async (text) => {
+    const ctx = getContext();
+    if (typeof ctx.generateRaw === 'function') {
+      try {
+        return await ctx.generateRaw({
+          prompt: text,
+          systemPrompt: '',
+          responseLength: 200,
+        });
+      } catch (e) {
+        console.warn('[state-referential] generateRaw failed, falling back to generateQuietPrompt:', e?.message);
+      }
+    }
+    return ctx.generateQuietPrompt(text, false, false);
+  };
   const insertSmallSysMessage = (opts) => {
     const chat = getContext().chat;
     chat.push({ name: opts.name, is_user: false, is_system: false, mes: opts.mes, extra: opts.extra });
@@ -68,7 +88,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
     template: _strkSettings().templates?.autoUpdate,
   });
   const descProbe = new DescriptionProbe(engine, {
-    generateQuietPrompt,
+    generateQuietPrompt: generateProbePrompt, // isolated, no chat context
     template: _strkSettings().templates?.probe,
   });
   const proseStore = {};

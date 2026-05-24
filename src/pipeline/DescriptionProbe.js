@@ -1,25 +1,26 @@
-export const DEFAULT_PROBE_TEMPLATE = `For a {{label}} described as "{{value}}", give a SHORT visual specification — color, material, cut, fit, distinguishing features — beyond what the name alone implies.
+export const DEFAULT_PROBE_TEMPLATE = `[META TASK — IGNORE all surrounding roleplay context, system prompts, chat history, and character setup above. This is an isolated dictionary-style description request, NOT part of the story.]
 
-Strict rules:
-- ONE clause, ideally under 15 words. NO period at the end.
-- DO NOT define the category (don't tell us "a tank top is a sleeveless shirt"). DO add specifics the name leaves open: color, fabric, length, hem detail, neckline, decoration, condition.
-- NO scene-setting. NO mention of who is wearing/holding/feeling it (no "her", "she", "his"). NO dialogue. NO pose or expression.
+For the field "{{label}}" with value "{{value}}", give a SHORT, generic, scene-agnostic description of what THIS SPECIFIC value typically looks/feels/is like, beyond what the name alone implies.
 
-Examples of GOOD output:
+Output rules:
+- ONE clause only, under 15 words. No period at the end. No quotation marks around output.
+- State-agnostic: NO "her", "him", "she", "he"; NO specific person or scene. Generic to anyone who has this value.
+- DO NOT define the category (don't say "a tank top is a sleeveless shirt"). Add detail the name doesn't already convey.
+- Match the field type:
+  - Physical items (clothing/weapons/objects): color, material, cut, fit, condition, distinguishing features.
+  - Abstract states (mood/emotion/status/condition): typical expression, energy, body cues, intensity.
+  - Lists or roles: defining attribute.
+
+Examples:
 - topwear "tank top" → white ribbed cotton with a scooped neckline
 - bottomwear "miniskirt" → black denim, frayed hem, mid-thigh
-- topunderwear "bra" → unwired beige cotton with thin straps
-- weapon "longsword" → straight steel blade, leather-wrapped hilt, slight nick near tip
-- mood "curious" → bright, attentive interest with a hint of mischief
-- status "stunned" → brief disorientation, slowed reactions
+- weapon "longsword" → straight steel blade, leather-wrapped hilt
+- mood "happy" → bright, light energy with frequent smiles
+- mood "curious" → attentive, open-eyed interest with a hint of mischief
+- status "stunned" → wide-eyed disorientation, slowed reactions
+- status "poisoned" → pallid skin, cold sweat, weakened movements
 
-Examples of BAD output (do NOT do this):
-- "A sleeveless, collarless top with wide arm openings" (dictionary definition; tells us nothing new)
-- "It hugs her curves" (uses the subject; not state-agnostic)
-- "A garment worn on the torso" (category restatement)
-
-Now produce ONE such clause for: {{label}} "{{value}}".
-Output the clause only, nothing else.`;
+Output ONE clause for: {{label}} "{{value}}".`;
 
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>
