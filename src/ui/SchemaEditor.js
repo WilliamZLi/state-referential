@@ -45,11 +45,11 @@ export class SchemaEditor {
     let _dragSrc = null;
 
     const renderFieldRow = (f) => {
-      const $tr = $('<tr draggable="true"></tr>');
+      const $tr = $('<tr></tr>');
       $tr.data('original', jQuery.extend(true, {}, f));
 
-      // Drag handle cell
-      const $handle = $('<td class="strk-drag-col strk-drag-handle" title="Drag to reorder">≡</td>');
+      // Drag handle cell — only this cell is draggable so text-selection in inputs works
+      const $handle = $('<td class="strk-drag-col strk-drag-handle" draggable="true" title="Drag to reorder">≡</td>');
       $tr.append($handle);
 
       // ID
@@ -129,15 +129,20 @@ export class SchemaEditor {
         .find('button').on('click', () => $tr.remove()).end();
       $tr.append($del);
 
+      // Prevent drag initiation when user clicks inside inputs/selects so text selection works
+      $tr.find('input, select').on('mousedown', (e) => e.stopPropagation());
+
       // ── HTML5 drag-drop handlers ──────────────────────────────────────────
-      $tr[0].addEventListener('dragstart', (e) => {
+      // dragstart fires on the handle cell; we set _dragSrc to the full row
+      $handle[0].addEventListener('dragstart', (e) => {
         _dragSrc = $tr[0];
         $tr.addClass('strk-drag-active');
         e.dataTransfer.effectAllowed = 'move';
         // Firefox requires data to be set
         e.dataTransfer.setData('text/plain', '');
+        e.stopPropagation();
       });
-      $tr[0].addEventListener('dragend', () => {
+      $handle[0].addEventListener('dragend', () => {
         _dragSrc = null;
         $tr.removeClass('strk-drag-active');
         $body.find('tr').removeClass('strk-drag-over');
