@@ -24,9 +24,9 @@ test('enqueue then drain calls probe sequentially with rendered template', async
   probe.enqueue([{ subjectId: p.id, trackerId: 'outfit', fieldId: 'topwear', value: 'red silk dress' }]);
   await probe.drain();
   assert.strictEqual(calls.length, 1);
-  // New default template is state-agnostic — it focuses on the item, NOT subject/traits.
+  // Default template focuses on the item itself, not the subject/traits.
   assert.match(calls[0], /red silk dress/);
-  assert.match(calls[0], /state-agnostic/i);
+  assert.match(calls[0], /generic/i); // stays a sanity-check that we got the real template
   assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'red silk dress'), 'a fitted crimson silk dress');
 });
 
