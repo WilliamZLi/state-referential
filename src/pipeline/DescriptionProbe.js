@@ -1,17 +1,25 @@
-export const DEFAULT_PROBE_TEMPLATE = `Identify the {{label}} "{{value}}" as a SHORT, state-agnostic factual descriptor of the item or concept itself — what it IS in the abstract, NOT how anyone is currently wearing, holding, or embodying it.
+export const DEFAULT_PROBE_TEMPLATE = `For a {{label}} described as "{{value}}", give a SHORT visual specification — color, material, cut, fit, distinguishing features — beyond what the name alone implies.
 
 Strict rules:
-- ONE clause, ideally under 15 words.
-- NO scene-setting, NO character pose or expression, NO who's wearing/holding it, NO dialogue, NO period at the end.
-- Describe ONLY intrinsic properties: shape, material, color, build, kind, purpose.
+- ONE clause, ideally under 15 words. NO period at the end.
+- DO NOT define the category (don't tell us "a tank top is a sleeveless shirt"). DO add specifics the name leaves open: color, fabric, length, hem detail, neckline, decoration, condition.
+- NO scene-setting. NO mention of who is wearing/holding/feeling it (no "her", "she", "his"). NO dialogue. NO pose or expression.
 
-Examples:
-- topwear "red silk dress" → a fitted crimson silk dress with thin straps
-- weapon "longsword" → a one-handed steel blade with a worn leather grip
-- mood "curious" → an attentive, open-eyed interest
-- status "stunned" → a brief disorientation that disrupts focus
+Examples of GOOD output:
+- topwear "tank top" → white ribbed cotton with a scooped neckline
+- bottomwear "miniskirt" → black denim, frayed hem, mid-thigh
+- topunderwear "bra" → unwired beige cotton with thin straps
+- weapon "longsword" → straight steel blade, leather-wrapped hilt, slight nick near tip
+- mood "curious" → bright, attentive interest with a hint of mischief
+- status "stunned" → brief disorientation, slowed reactions
 
-Now identify: {{label}} "{{value}}" — output the clause only.`;
+Examples of BAD output (do NOT do this):
+- "A sleeveless, collarless top with wide arm openings" (dictionary definition; tells us nothing new)
+- "It hugs her curves" (uses the subject; not state-agnostic)
+- "A garment worn on the torso" (category restatement)
+
+Now produce ONE such clause for: {{label}} "{{value}}".
+Output the clause only, nothing else.`;
 
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>
