@@ -168,6 +168,57 @@
   box-sizing: border-box;
   resize: vertical;
 }
+
+/* Subject add modal */
+.strk-subject-modal { padding: 8px 12px; min-width: 360px; max-width: 520px; }
+.strk-subject-modal > h3 { margin: 0 0 12px 0; font-size: 16px; }
+.strk-subj-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.strk-subj-meta > label,
+.strk-traits > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.strk-traits {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 12px;
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 0 12px 0;
+}
+.strk-traits > legend { padding: 0 6px; font-size: 12px; font-weight: bold; }
+.strk-traits > label > input.text_pole,
+.strk-subj-meta > label > input.text_pole,
+.strk-subj-meta > label > select.text_pole {
+  width: 100%;
+  box-sizing: border-box;
+}
+.strk-modal-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.strk-modal-actions .menu_button {
+  white-space: nowrap;
+  width: auto;
+}
+
+/* Prose edit modal */
+.strk-prose-modal { padding: 8px 12px; min-width: 400px; }
+.strk-prose-modal > h3 { margin: 0 0 8px 0; font-size: 14px; }
+.strk-prose-modal > textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
 .strk-fields-table {
   width: 100%;
   border-collapse: collapse;

@@ -1,23 +1,25 @@
 <div class="strk-subject-modal">
   <h3 id="strk-subject-modal-title">Add subject</h3>
-  <label>Name: <input type="text" id="strk-subj-name" /></label>
-  <label>Role:
-    <select id="strk-subj-role">
-      <option value="protagonist">protagonist</option>
-      <option value="npc" selected>npc</option>
-      <option value="location">location</option>
-      <option value="faction">faction</option>
-      <option value="object">object</option>
-    </select>
-  </label>
+  <div class="strk-subj-meta">
+    <label>Name <input type="text" class="text_pole" id="strk-subj-name" /></label>
+    <label>Role
+      <select class="text_pole" id="strk-subj-role">
+        <option value="protagonist">protagonist</option>
+        <option value="npc" selected>npc</option>
+        <option value="location">location</option>
+        <option value="faction">faction</option>
+        <option value="object">object</option>
+      </select>
+    </label>
+  </div>
   <fieldset class="strk-traits">
     <legend>Traits (optional)</legend>
-    <label>Height <input type="text" id="strk-trait-height" /></label>
-    <label>Build <input type="text" id="strk-trait-build" /></label>
-    <label>Complexion <input type="text" id="strk-trait-complexion" /></label>
-    <label>Hair <input type="text" id="strk-trait-hair" /></label>
-    <label>Eyes <input type="text" id="strk-trait-eyes" /></label>
-    <label>Distinguishing <input type="text" id="strk-trait-distinguishing" /></label>
+    <label>Height <input type="text" class="text_pole" id="strk-trait-height" /></label>
+    <label>Build <input type="text" class="text_pole" id="strk-trait-build" /></label>
+    <label>Complexion <input type="text" class="text_pole" id="strk-trait-complexion" /></label>
+    <label>Hair <input type="text" class="text_pole" id="strk-trait-hair" /></label>
+    <label>Eyes <input type="text" class="text_pole" id="strk-trait-eyes" /></label>
+    <label>Distinguishing <input type="text" class="text_pole" id="strk-trait-distinguishing" /></label>
   </fieldset>
   <div class="strk-modal-actions">
     <button class="menu_button" id="strk-subj-save">Save</button>
