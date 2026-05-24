@@ -23,9 +23,11 @@ function truncateDesc(text) {
 
 /**
  * Build the auto-rendered {{fields}} block.
- * One line per included field with a non-empty value:
- *   "Label: value (short-desc)"   — desc shown if cached and non-empty
- *   "Label: value"                — if no description cached
+ * One line per included field with a non-empty value.
+ *
+ * Scalar field: "Label: value (short-desc)" — desc shown if cached and non-empty.
+ * List field:   "Label:" header followed by indented per-entry lines, each with its own cached desc.
+ *
  * Descriptions are length-capped to keep the injection compact.
  */
 function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
@@ -33,8 +35,19 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
   for (const f of tracker.fields) {
     if (f.injection?.enabled === false) continue;
     const raw = fieldValues[f.id];
+    if (raw === undefined || raw === null) continue;
+    if (f.type === 'list') {
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      lines.push(`${f.label}:`);
+      for (const entry of raw) {
+        if (!entry) continue;
+        const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, entry));
+        lines.push(desc ? `  - ${entry} (${desc})` : `  - ${entry}`);
+      }
+      continue;
+    }
     const formatted = formatValue(raw, f.type);
-    if (!formatted) continue;                      // skip empty values
+    if (!formatted) continue;
     const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, raw));
     lines.push(desc ? `${f.label}: ${formatted} (${desc})` : `${f.label}: ${formatted}`);
   }
