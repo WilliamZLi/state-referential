@@ -139,6 +139,35 @@
   cursor: pointer;
   font-size: 12px;
 }
+.strk-injection-fieldset {
+  border: 1px solid var(--SmartThemeBorderColor, #444);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 0 12px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.strk-injection-fieldset > legend { padding: 0 6px; font-size: 12px; font-weight: bold; }
+.strk-injection-fieldset > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.strk-injection-fieldset > label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.strk-injection-fieldset > .strk-inj-template-row {
+  grid-column: 1 / -1;
+}
+.strk-injection-fieldset textarea.text_pole {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
 .strk-fields-table {
   width: 100%;
   border-collapse: collapse;
