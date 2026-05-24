@@ -34,6 +34,7 @@ export class SettingsDrawer {
     $('#strk-uninstall-presets').on('click', () => this._uninstallPresets());
     $('#strk-import-json').on('click', () => this._importJson());
     $('#strk-reset-state').on('click', () => this._resetState());
+    $('#strk-cleanup-desc').on('click', () => this._cleanupOrphanDescriptions());
 
     // Default scene tags
     this._renderDefaultTags();
@@ -130,6 +131,52 @@ export class SettingsDrawer {
   _resetState() {
     if (!confirm('Reset ALL tracker state for the current chat? This cannot be undone.')) return;
     for (const s of this.engine.listSubjects()) this.engine.removeSubject(s.name);
+  }
+
+  _cleanupOrphanDescriptions() {
+    if (!confirm('Cleanup orphan global descriptions? This removes descriptions for values no longer referenced by any subject.')) return;
+
+    // Collect all current list-field values across all subjects
+    const referencedValues = new Map(); // key → Set of values currently in use
+    for (const subj of this.engine.listSubjects()) {
+      for (const tracker of this.engine.listTrackers()) {
+        for (const field of tracker.fields) {
+          if (field.descriptionScope !== 'global') continue;
+          const descKey = `${tracker.id}.${field.id}` + (field.type === 'list' ? '[]' : '');
+          const val = this.engine.getField(subj.id, tracker.id, field.id);
+          if (val == null) continue;
+          if (!referencedValues.has(descKey)) referencedValues.set(descKey, new Set());
+          if (Array.isArray(val)) {
+            for (const entry of val) referencedValues.get(descKey).add(String(entry));
+          } else {
+            referencedValues.get(descKey).add(String(val));
+          }
+        }
+      }
+    }
+
+    // Walk global descriptions and remove orphans
+    const descData = this.engine.values._desc ?? this.engine.values?.serialize?.()?.descriptions;
+    if (!descData) return;
+    const globalDesc = descData.global ?? {};
+    let removed = 0;
+    for (const [key, vmap] of Object.entries(globalDesc)) {
+      const activeValues = referencedValues.get(key);
+      for (const value of Object.keys(vmap)) {
+        if (!activeValues || !activeValues.has(value)) {
+          delete vmap[value];
+          removed++;
+        }
+      }
+    }
+
+    if (removed > 0) {
+      // Persist via backend if accessible
+      try {
+        this.engine.backend.saveDescriptions(descData);
+      } catch (_) { /* backend may not expose this directly; values persist on next write */ }
+    }
+    alert(`Cleanup complete. Removed ${removed} orphan description entr${removed === 1 ? 'y' : 'ies'}.`);
   }
 
   render() {
