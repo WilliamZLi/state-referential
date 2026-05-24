@@ -43,7 +43,7 @@ export class Panel {
     for (const ev of [
       'tracker:value-changed', 'tracker:subject-added', 'tracker:subject-removed',
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
-      'tracker:probe-completed', 'tracker:backend-changed',
+      'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
     ]) this.engine.on(ev, () => this.render());
 
     this.render();

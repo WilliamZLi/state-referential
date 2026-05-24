@@ -33,11 +33,12 @@ export class Versioning {
     this._busy = true;
     const msgId = ensureTrackerMsgId(msg);
     let snapshotBefore;
+    const changedTrackerIds = new Set();
+    const _valueChangedHandler = (e) => changedTrackerIds.add(e.tracker);
+    this.engine.on('tracker:value-changed', _valueChangedHandler);
     try {
       snapshotBefore = this.engine.snapshot(msgId);
       this.engine.snapshots.save(msgId, snapshotBefore);
-      const changedTrackerIds = new Set();
-      const off = this.engine.bus.on('tracker:value-changed', (e) => changedTrackerIds.add(e.tracker));
       const result = await this.deps.autoUpdate.run({ lastNarratorReply: msg.mes ?? '', msgId });
       // descProbe queue is filled by AutoUpdate via tracker:value-changed listener wired in Phase 8;
       // for now, fire drain regardless — implementation can be a no-op if queue empty.
@@ -49,6 +50,7 @@ export class Versioning {
       console.error('[state-referential] pipeline error', e);
       if (snapshotBefore) this.engine.restoreSnapshot(snapshotBefore);
     } finally {
+      this.engine.off('tracker:value-changed', _valueChangedHandler);
       this._busy = false;
     }
   }
@@ -94,6 +96,8 @@ export class Versioning {
 
   _onChatChanged() {
     this._busy = false;
+    this.engine.backend.invalidate?.();
+    this.engine.setStorageBackend(this.engine.backend);
     this.deps.injection?.run?.();
   }
 }

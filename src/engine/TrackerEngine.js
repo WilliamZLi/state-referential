@@ -39,14 +39,28 @@ export class TrackerEngine {
 
   // Definitions
   defineTracker(d) { this.definitions.define(d); }
-  updateTracker(id, d) { this.definitions.update(id, d); }
-  deleteTracker(id) { this.definitions.delete(id); }
+  updateTracker(id, d) {
+    const oldDef = this.definitions.get(id);
+    this.definitions.update(id, d);
+    const newDef = this.definitions.get(id);
+    if (oldDef && newDef) this._migrateFieldTypes(id, oldDef, newDef);
+  }
+  deleteTracker(id) {
+    this.definitions.delete(id);
+    // Cascade: drop values + descriptions for this tracker
+    this.values.purgeTracker(id, this.subjects.list());
+  }
   getTracker(id) { return this.definitions.get(id); }
   listTrackers() { return this.definitions.list(); }
 
   // Subjects
   addSubject(name, opts) { return this.subjects.add(name, opts); }
-  removeSubject(name) { this.subjects.remove(name); }
+  removeSubject(name) {
+    const subj = this.subjects.resolveAlias(name) ?? this.subjects.findByName(name);
+    if (!subj) return;
+    this.values.clearSubject(subj.id);
+    this.subjects.remove(name);
+  }
   renameSubject(o, n) { this.subjects.rename(o, n); }
   setProtagonist(name) { this.subjects.setProtagonist(name); }
   listSubjects() { return this.subjects.list(); }
@@ -94,6 +108,7 @@ export class TrackerEngine {
     this.backend.saveDescriptions(clone(s.descriptions));
     this.backend.saveSceneTags(clone(s.sceneTags));
     this._attach(this.backend);
+    this.bus.emit('tracker:state-restored', {});
   }
 
   diffSnapshots(a, b) {
@@ -211,5 +226,64 @@ export class TrackerEngine {
       return Number.isFinite(n) ? n : (field.default ?? 0);
     }
     return raw;
+  }
+
+  _migrateFieldTypes(trackerId, oldDef, newDef) {
+    const oldFields = new Map(oldDef.fields.map(f => [f.id, f]));
+    const newFields = new Map(newDef.fields.map(f => [f.id, f]));
+    const subjects = this.subjects.list();
+
+    for (const [fieldId, newField] of newFields) {
+      const oldField = oldFields.get(fieldId);
+      if (!oldField || oldField.type === newField.type) continue;
+
+      for (const subj of subjects) {
+        const raw = this.values.getField(subj.id, trackerId, fieldId);
+        if (raw === undefined || raw === null) continue;
+
+        let coerced;
+        const oldType = oldField.type;
+        const newType = newField.type;
+
+        if (oldType === 'list' && newType !== 'list') {
+          // list → scalar: take first entry or empty/default
+          const first = Array.isArray(raw) && raw.length > 0 ? raw[0] : '';
+          if (newType === 'number') {
+            const n = Number(first);
+            coerced = Number.isFinite(n) ? n : (newField.default ?? 0);
+          } else {
+            coerced = first !== '' ? first : (newField.default ?? '');
+          }
+        } else if (oldType !== 'list' && newType === 'list') {
+          // scalar → list: wrap in array if non-empty
+          const s = String(raw);
+          coerced = s !== '' ? [s] : [];
+        } else if (newType === 'number') {
+          // text/enum/prose → number
+          const n = Number(raw);
+          coerced = Number.isFinite(n) ? n : (newField.default ?? 0);
+        } else if (oldType === 'number') {
+          // number → text/enum/prose
+          coerced = String(raw);
+        } else {
+          // text/enum/prose ↔ text/enum/prose
+          coerced = String(raw);
+        }
+
+        // For enum: if coerced value not in options, reset to default
+        if (newType === 'enum' && !newField.options.includes(coerced)) {
+          coerced = newField.default ?? newField.options[0] ?? '';
+        }
+
+        try {
+          this.values.setField(subj.id, trackerId, fieldId, coerced, { source: 'migration' });
+        } catch (_) {
+          // If coercion still fails (e.g. enum options changed), use field default
+          try {
+            this.values.setField(subj.id, trackerId, fieldId, newField.default, { source: 'migration' });
+          } catch (__) { /* ignore */ }
+        }
+      }
+    }
   }
 }
