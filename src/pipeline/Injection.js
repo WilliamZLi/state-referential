@@ -26,6 +26,18 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
 }
 
 /**
+ * Sanitize a substituted value so it cannot be re-interpreted as a template
+ * placeholder or inject newlines that break prompt formatting.
+ *   {{ → { {    }} → } }    \n → (space)
+ */
+function sanitizeValue(str) {
+  return String(str ?? '')
+    .replace(/\{\{/g, '{ {')
+    .replace(/\}\}/g, '} }')
+    .replace(/\n/g, ' ');
+}
+
+/**
  * Expand a tracker-level template.
  *
  * Supported placeholders:
@@ -49,7 +61,7 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
   const template = tpl || '{{fields}}';
 
   return template.replace(/\{\{([\w.]+)\}\}/g, (match, path) => {
-    if (path === 'subject') return subjectName;
+    if (path === 'subject') return sanitizeValue(subjectName);
     if (path === 'fields') return getFieldsBlock();
 
     const dotIdx = path.indexOf('.');
@@ -60,16 +72,16 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
       if (!f) return '';
       if (prop === 'desc') {
         const raw = fieldValues[fieldId];
-        return engine.getDescription(subjectId, tracker.id, fieldId, raw) ?? '';
+        return sanitizeValue(engine.getDescription(subjectId, tracker.id, fieldId, raw) ?? '');
       }
-      if (prop === 'label') return f.label ?? fieldId;
+      if (prop === 'label') return sanitizeValue(f.label ?? fieldId);
       return '';
     }
 
     // Plain {{fieldId}}
     const f = fieldMap.get(path);
     if (!f) return '';
-    return formatValue(fieldValues[path], f.type);
+    return sanitizeValue(formatValue(fieldValues[path], f.type));
   });
 }
 
