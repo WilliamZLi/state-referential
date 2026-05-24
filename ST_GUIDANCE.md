@@ -200,8 +200,28 @@ setExtensionPrompt(key, text, position, depth);
 ```
 
 - `key` — unique per injection slot. Calling with same key replaces; calling with empty `text` clears.
-- `position` — `'system'`, `'in-prompt'`, `'author-note'`, `'before-char-defs'` (use the constants from ST if you can find them; the strings work).
-- `depth` — for `'in-prompt'`, how many messages above the latest to insert. `0` = right at the bottom; higher = further up.
+- `position` — **NUMERIC** value from ST's `extension_prompt_types`. Passing strings silently fails (ST drops the injection entirely, no error logged). Values:
+  - `0` — NONE (disabled)
+  - `1` — IN_PROMPT (main prompt body, before chat history)
+  - `2` — IN_CHAT (at a depth within chat history; uses the `depth` arg)
+  - `3` — BEFORE_PROMPT
+  - `4` — AFTER_SCENARIO
+- `depth` — only meaningful for IN_CHAT (position=2). `0` = right at the bottom; higher = further up.
+
+If you store positions as readable strings in user-facing config, map them to numbers before calling:
+
+```js
+const POSITION_MAP = {
+  'system':           1,
+  'in-prompt':        2,
+  'author-note':      2,
+  'before-char-defs': 3,
+};
+const resolvePosition = (p) => typeof p === 'number' ? p : (POSITION_MAP[p] ?? 2);
+setExtensionPrompt(key, text, resolvePosition(positionString), depth);
+```
+
+This was a major bug for us — we passed string positions for weeks and wondered why the AI never saw our injections. The prompt inspector shows ST's `Extensions: N tokens` line still incrementing (counting our string-positioned injections in some token budget but not actually inserting the text). Always pass numbers.
 
 Run your injection logic on `GENERATE_BEFORE_COMBINE_PROMPTS` so the injection always
 reflects current state when ST is about to generate.
