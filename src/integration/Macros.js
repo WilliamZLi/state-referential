@@ -5,6 +5,108 @@ function parsePath(path) {
   return { subject: parts[0], tracker: parts[1], field: parts[2], suffix: parts.slice(3).join('.') };
 }
 
+/**
+ * Render a single tracker block for a subject.
+ * Uses tracker.injection.template if non-empty, otherwise auto-renders
+ * "**Label:** value" lines for each field with a non-empty value.
+ */
+function renderTrackerBlock(engine, subj, tracker) {
+  const tpl = (tracker.injection?.template ?? '').trim();
+  const fieldValues = {};
+  for (const f of tracker.fields) {
+    fieldValues[f.id] = engine.getField(subj.id, tracker.id, f.id) ?? f.default;
+  }
+
+  if (tpl) {
+    // Expand template placeholders: {{subject}}, {{fields}}, {{fieldId}}, {{fieldId.desc}}, {{fieldId.label}}
+    const fieldMap = new Map(tracker.fields.map(f => [f.id, f]));
+    const fieldsBlock = tracker.fields
+      .filter(f => {
+        const v = fieldValues[f.id];
+        return v !== null && v !== undefined && String(v) !== '';
+      })
+      .map(f => {
+        const v = fieldValues[f.id];
+        const formatted = Array.isArray(v) ? v.join(', ') : String(v ?? '');
+        return `**${f.label}:** ${formatted}`;
+      })
+      .join('\n');
+
+    return tpl.replace(/\{\{([\w.]+)\}\}/g, (match, key) => {
+      if (key === 'subject') return subj.name;
+      if (key === 'fields') return fieldsBlock;
+      const dotIdx = key.indexOf('.');
+      if (dotIdx !== -1) {
+        const fid = key.slice(0, dotIdx);
+        const prop = key.slice(dotIdx + 1);
+        const f = fieldMap.get(fid);
+        if (!f) return '';
+        if (prop === 'desc') return engine.getDescription(subj.id, tracker.id, fid, fieldValues[fid]) ?? '';
+        if (prop === 'label') return f.label ?? fid;
+        return '';
+      }
+      const f = fieldMap.get(key);
+      if (!f) return '';
+      const v = fieldValues[key];
+      return Array.isArray(v) ? v.join(', ') : String(v ?? '');
+    });
+  }
+
+  // Auto-block: "**Label:** value" lines
+  const lines = tracker.fields
+    .filter(f => {
+      const v = fieldValues[f.id];
+      return v !== null && v !== undefined && String(v) !== '' && !(Array.isArray(v) && v.length === 0);
+    })
+    .map(f => {
+      const v = fieldValues[f.id];
+      const formatted = Array.isArray(v) ? v.join(', ') : String(v ?? '');
+      return `**${f.label}:** ${formatted}`;
+    });
+  return lines.join('\n');
+}
+
+/**
+ * Resolve {{tracker::<subject>.<tracker>}} — whole tracker block.
+ */
+export function resolveTrackerBlock(engine, path) {
+  const parts = String(path).split('.');
+  if (parts.length !== 2) return null; // not a 2-part path — caller tries other forms
+  const [subjectAlias, trackerId] = parts;
+  const subj = engine.resolveSubject(subjectAlias);
+  if (!subj) return '';
+  const tracker = engine.getTracker(trackerId);
+  if (!tracker) return '';
+  return renderTrackerBlock(engine, subj, tracker);
+}
+
+/**
+ * Resolve {{tracker::<subject>}} — all trackers for subject, concatenated.
+ */
+export function resolveAllTrackers(engine, subjectAlias) {
+  const subj = engine.resolveSubject(subjectAlias);
+  if (!subj) return '';
+  const trackers = engine.definitions.forRole(subj.role);
+  const blocks = trackers.map(t => renderTrackerBlock(engine, subj, t)).filter(b => b.trim());
+  return blocks.join('\n\n');
+}
+
+/**
+ * Resolve {{tracker::<subject>.<tracker>._probe}} — standalone probe output.
+ * proseStore shape: { [trackerId]: { [subjectId|'_']: string } }
+ */
+export function resolveProbe(engine, path, proseStore) {
+  const parts = String(path).split('.');
+  // must be exactly 3 parts ending in _probe
+  if (parts.length !== 3 || parts[2] !== '_probe') return null;
+  const [subjectAlias, trackerId] = parts;
+  const subj = engine.resolveSubject(subjectAlias);
+  if (!subj) return '';
+  const stored = proseStore?.[trackerId];
+  if (!stored) return '';
+  return stored[subj.id] ?? stored['_'] ?? '';
+}
+
 export function resolveMacro(engine, path) {
   const p = parsePath(path);
   if (!p) return '';
@@ -48,8 +150,29 @@ export function resolveTagMacro(engine, arg) {
 
 export function register(engine, deps) {
   if (!deps?.MacrosParser?.registerMacro) return;
+  const proseStore = deps.proseStore ?? {};
   deps.MacrosParser.registerMacro('tracker', (env, ...args) => {
     const inner = args.join('::');
+    const parts = String(inner).split('.');
+
+    // 3-part with ._probe suffix: <subject>.<tracker>._probe
+    if (parts.length === 3 && parts[2] === '_probe') {
+      const result = resolveProbe(engine, inner, proseStore);
+      return result ?? '';
+    }
+
+    // 2-part: <subject>.<tracker> — whole tracker block
+    if (parts.length === 2) {
+      const result = resolveTrackerBlock(engine, inner);
+      return result ?? '';
+    }
+
+    // 1-part: <subject> — all trackers for subject
+    if (parts.length === 1) {
+      return resolveAllTrackers(engine, inner);
+    }
+
+    // 3+ parts (field-level): delegate to existing resolveMacro
     return resolveMacro(engine, inner);
   });
   deps.MacrosParser.registerMacro('tracker-list', (env, ...args) => resolveListMacro(engine, args.join('::')));

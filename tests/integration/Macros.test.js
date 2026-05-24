@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { TrackerEngine } from '../../src/engine/TrackerEngine.js';
 import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
-import { resolveMacro, resolveListMacro, resolveTagMacro } from '../../src/integration/Macros.js';
+import { resolveMacro, resolveListMacro, resolveTagMacro, resolveTrackerBlock, resolveAllTrackers, resolveProbe } from '../../src/integration/Macros.js';
 
 function mkEngine() {
   const eng = new TrackerEngine(new InMemoryBackend());
@@ -55,4 +55,31 @@ test('missing subject/tracker/field returns empty string', () => {
   const eng = mkEngine();
   assert.strictEqual(resolveMacro(eng, 'Ghost.outfit.topwear'), '');
   assert.strictEqual(resolveMacro(eng, 'Lyra.nothing.field'), '');
+});
+
+test('whole-tracker macro returns rendered block including all enabled fields', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red dress');
+  eng.addListEntry(p.id, 'outfit', 'items', 'sword');
+  const result = resolveTrackerBlock(eng, 'Lyra.outfit');
+  assert.ok(result.includes('Topwear'), 'should include field label');
+  assert.ok(result.includes('red dress'), 'should include field value');
+  assert.ok(result.includes('sword'), 'should include list entry');
+});
+
+test('._probe macro returns stored probe text for subject+tracker, empty when not stored', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  const proseStore = {};
+
+  // Not stored yet — should return empty string
+  assert.strictEqual(resolveProbe(eng, 'Lyra.outfit._probe', proseStore), '');
+
+  // Store some prose
+  proseStore['outfit'] = { [p.id]: 'She wears a flowing red gown.' };
+  assert.strictEqual(resolveProbe(eng, 'Lyra.outfit._probe', proseStore), 'She wears a flowing red gown.');
+
+  // Unknown subject should still return empty
+  assert.strictEqual(resolveProbe(eng, 'Ghost.outfit._probe', proseStore), '');
 });
