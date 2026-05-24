@@ -38,8 +38,10 @@ export class SettingsDrawer {
 
     // Default scene tags
     this._renderDefaultTags();
-    $('#strk-add-default-tag').on('click', () => {
-      const tag = prompt('New default tag name:');
+    $('#strk-add-default-tag').on('click', async () => {
+      const tag = this.deps.dialogs
+        ? await this.deps.dialogs.prompt('New default tag name:')
+        : prompt('New default tag name:');
       if (!tag || !tag.trim()) return;
       const trimmed = tag.trim();
       s.defaultTags ??= [];
@@ -69,8 +71,11 @@ export class SettingsDrawer {
         this.deps.saveSettingsDebounced();
         this.deps.descProbe?.setTemplate(e.target.value);
       });
-    $('#strk-reset-tpls').on('click', () => {
-      if (!confirm('Reset both templates to default?')) return;
+    $('#strk-reset-tpls').on('click', async () => {
+      const ok = this.deps.dialogs
+        ? await this.deps.dialogs.confirm('Reset both templates to default?')
+        : confirm('Reset both templates to default?');
+      if (!ok) return;
       s.templates = {};
       $('#strk-tpl-autoupdate').val('');
       $('#strk-tpl-probe').val('');
@@ -100,7 +105,10 @@ export class SettingsDrawer {
   }
 
   async _installPresets() {
-    if (!confirm('Install default presets? This adds the six built-in trackers (or updates them if already installed).')) return;
+    const ok = this.deps.dialogs
+      ? await this.deps.dialogs.confirm('Install default presets? This adds the six built-in trackers (or updates them if already installed).')
+      : confirm('Install default presets? This adds the six built-in trackers (or updates them if already installed).');
+    if (!ok) return;
     for (const name of PRESETS) {
       try {
         const def = await loadPreset(name);
@@ -110,8 +118,11 @@ export class SettingsDrawer {
     }
   }
 
-  _uninstallPresets() {
-    if (!confirm('Uninstall all preset trackers? This removes their definitions but does not delete already-stored values.')) return;
+  async _uninstallPresets() {
+    const ok = this.deps.dialogs
+      ? await this.deps.dialogs.confirm('Uninstall all preset trackers? This removes their definitions but does not delete already-stored values.')
+      : confirm('Uninstall all preset trackers? This removes their definitions but does not delete already-stored values.');
+    if (!ok) return;
     for (const name of PRESETS) {
       try {
         if (this.engine.getTracker(name)) this.engine.deleteTracker(name);
@@ -120,21 +131,32 @@ export class SettingsDrawer {
   }
 
   async _importJson() {
-    const json = prompt('Paste tracker JSON:');
+    const json = this.deps.dialogs
+      ? await this.deps.dialogs.prompt('Paste tracker JSON:')
+      : prompt('Paste tracker JSON:');
     if (!json) return;
     try {
       const d = JSON.parse(json);
       if (this.engine.getTracker(d.id)) this.engine.updateTracker(d.id, d); else this.engine.defineTracker(d);
-    } catch (e) { alert('Invalid JSON: ' + e.message); }
+    } catch (e) {
+      if (this.deps.dialogs) await this.deps.dialogs.alert('Invalid JSON: ' + e.message);
+      else alert('Invalid JSON: ' + e.message);
+    }
   }
 
-  _resetState() {
-    if (!confirm('Reset ALL tracker state for the current chat? This cannot be undone.')) return;
+  async _resetState() {
+    const ok = this.deps.dialogs
+      ? await this.deps.dialogs.confirm('Reset ALL tracker state for the current chat? This cannot be undone.')
+      : confirm('Reset ALL tracker state for the current chat? This cannot be undone.');
+    if (!ok) return;
     for (const s of this.engine.listSubjects()) this.engine.removeSubject(s.name);
   }
 
-  _cleanupOrphanDescriptions() {
-    if (!confirm('Cleanup orphan global descriptions? This removes descriptions for values no longer referenced by any subject.')) return;
+  async _cleanupOrphanDescriptions() {
+    const ok = this.deps.dialogs
+      ? await this.deps.dialogs.confirm('Cleanup orphan global descriptions? This removes descriptions for values no longer referenced by any subject.')
+      : confirm('Cleanup orphan global descriptions? This removes descriptions for values no longer referenced by any subject.');
+    if (!ok) return;
 
     // Collect all current list-field values across all subjects
     const referencedValues = new Map(); // key → Set of values currently in use
@@ -176,7 +198,8 @@ export class SettingsDrawer {
         this.engine.backend.saveDescriptions(descData);
       } catch (_) { /* backend may not expose this directly; values persist on next write */ }
     }
-    alert(`Cleanup complete. Removed ${removed} orphan description entr${removed === 1 ? 'y' : 'ies'}.`);
+    if (this.deps.dialogs) await this.deps.dialogs.alert(`Cleanup complete. Removed ${removed} orphan description entr${removed === 1 ? 'y' : 'ies'}.`);
+    else alert(`Cleanup complete. Removed ${removed} orphan description entr${removed === 1 ? 'y' : 'ies'}.`);
   }
 
   render() {
@@ -185,7 +208,12 @@ export class SettingsDrawer {
       const $row = $('<div class="strk-def-row"></div>');
       $row.append($('<span></span>').text(`${d.label} (${d.id})`));
       $row.append($('<button class="menu_button">edit</button>').on('click', () => this.deps.schemaEditor.open(d.id)));
-      $row.append($('<button class="menu_button">delete</button>').on('click', () => { if (confirm(`Delete tracker ${d.id}?`)) this.engine.deleteTracker(d.id); }));
+      $row.append($('<button class="menu_button">delete</button>').on('click', async () => {
+        const ok = this.deps.dialogs
+          ? await this.deps.dialogs.confirm(`Delete tracker ${d.id}?`)
+          : confirm(`Delete tracker ${d.id}?`);
+        if (ok) this.engine.deleteTracker(d.id);
+      }));
       $list.append($row);
     }
   }

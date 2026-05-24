@@ -121,8 +121,10 @@ export function register(engine, deps) {
     return d ? JSON.stringify(d, null, 2) : '';
   });
 
-  reg('tracker-import', () => {
-    const j = prompt('Paste tracker JSON:');
+  reg('tracker-import', async () => {
+    const j = deps.dialogs
+      ? await deps.dialogs.prompt('Paste tracker JSON:')
+      : prompt('Paste tracker JSON:');
     if (!j) return '';
     try {
       const d = JSON.parse(j);

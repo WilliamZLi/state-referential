@@ -147,8 +147,10 @@ export function makeRenderers(engine, deps) {
         });
         $cluster.append($chip);
       }
-      const $add = $('<button class="strk-field-icon">+</button>').on('click', () => {
-        const v = prompt(`Add entry to ${field.label}:`);
+      const $add = $('<button class="strk-field-icon">+</button>').on('click', async () => {
+        const v = deps.dialogs
+          ? await deps.dialogs.prompt(`Add entry to ${field.label}:`)
+          : prompt(`Add entry to ${field.label}:`);
         if (v) engine.addListEntry(subj.id, field._trackerId, field.id, v, { source: 'manual' });
       });
       $cluster.append($add);

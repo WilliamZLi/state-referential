@@ -22,20 +22,21 @@ export class Panel {
     $('#strk-panel-close, .strk-panel-close', this.$el).on('click', () => this.hide());
     // Pass default tags from settings; rebuild if settings change.
     const getDefaults = this.deps.getDefaultTags ?? (() => []);
-    const sceneTagsUI = new SceneTagsUI(this.engine, $('#strk-scene-tags'), { defaults: getDefaults() });
+    const sceneTagsUI = new SceneTagsUI(this.engine, $('#strk-scene-tags'), { defaults: getDefaults(), dialogs: this.deps.dialogs });
     this.engine.on('tracker:default-tags-changed', (e) => {
       sceneTagsUI.defaults = e?.tags ?? getDefaults();
       sceneTagsUI.render();
     });
 
     $('#strk-add-subject').on('click', () => this.deps.openSubjectAddModal());
-    $('#strk-rename-subject').on('click', () => this._renameCurrentSubject());
-    $('#strk-remove-subject').on('click', () => this._removeCurrentSubject());
+    $('#strk-rename-subject').on('click', async () => this._renameCurrentSubject());
+    $('#strk-remove-subject').on('click', async () => this._removeCurrentSubject());
     $('#strk-probe-btn').on('click', () => this._currentTrackerId && this.deps.runManualProbe(this._currentTrackerId, this._currentSubject()));
-    $('#strk-reset-btn').on('click', () => this._resetSubject());
+    $('#strk-reset-btn').on('click', async () => this._resetSubject());
 
     this.renderers = makeRenderers(this.engine, {
       popup: this.deps.popup,
+      dialogs: this.deps.dialogs,
       openProseModal: this.deps.openProseModal,
       requestProbe: this.deps.requestProbe,
       autoUpdate: this.deps.autoUpdate,
@@ -61,33 +62,33 @@ export class Panel {
       : this.engine.protagonist();
   }
 
-  _resetSubject() {
+  async _resetSubject() {
     const subj = this._currentSubject();
     if (!subj) return;
-    if (!confirm(`Reset all tracker values for ${subj.name}?`)) return;
+    if (!await this.deps.dialogs.confirm(`Reset all tracker values for ${subj.name}?`)) return;
     this.engine.values.clearSubject(subj.id);
     this.render();
   }
 
-  _removeCurrentSubject() {
+  async _removeCurrentSubject() {
     const subj = this._currentSubject();
     if (!subj) return;
-    if (!confirm(`Remove subject "${subj.name}" entirely? This also deletes all their tracker values and descriptions. Cannot be undone.`)) return;
+    if (!await this.deps.dialogs.confirm(`Remove subject "${subj.name}" entirely? This also deletes all their tracker values and descriptions. Cannot be undone.`)) return;
     this.engine.removeSubject(subj.name);
     this._currentSubjectId = null;
     this._currentTrackerId = null;
     this.render();
   }
 
-  _renameCurrentSubject() {
+  async _renameCurrentSubject() {
     const subj = this._currentSubject();
     if (!subj) return;
-    const next = prompt(`Rename "${subj.name}" to:`, subj.name);
+    const next = await this.deps.dialogs.prompt(`Rename "${subj.name}" to:`, subj.name);
     if (!next || next.trim() === '' || next.trim() === subj.name) return;
     try {
       this.engine.renameSubject(subj.name, next.trim());
     } catch (e) {
-      alert(`Could not rename: ${e.message}`);
+      await this.deps.dialogs.alert(`Could not rename: ${e.message}`);
     }
   }
 

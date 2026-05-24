@@ -3,6 +3,7 @@ export class SceneTagsUI {
     this.engine = engine;
     this.$el = $container;
     this.defaults = opts.defaults ?? ['intimate','combat','social','exploration'];
+    this._dialogs = opts.dialogs ?? null;
     this.engine.on('tracker:tag-changed', () => this.render());
     this.render();
   }
@@ -15,8 +16,10 @@ export class SceneTagsUI {
       $chip.on('click', () => this.engine.toggleSceneTag(tag));
       this.$el.append($chip);
     }
-    const $add = $('<span class="strk-tag strk-add-tag" title="Add tag">+</span>').on('click', () => {
-      const t = prompt('New scene tag:');
+    const $add = $('<span class="strk-tag strk-add-tag" title="Add tag">+</span>').on('click', async () => {
+      const t = this._dialogs
+        ? await this._dialogs.prompt('New scene tag:')
+        : prompt('New scene tag:');
       if (t) this.engine.setSceneTag(t.trim(), true);
     });
     this.$el.append($add);

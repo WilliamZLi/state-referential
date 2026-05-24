@@ -18,6 +18,7 @@ import { Panel } from './src/ui/Panel.js';
 import { SchemaEditor } from './src/ui/SchemaEditor.js';
 import { SettingsDrawer } from './src/ui/SettingsDrawer.js';
 import { makePopup } from './src/ui/Popup.js';
+import { makeDialogs } from './src/ui/dialogs.js';
 import { loadTemplate } from './src/ui/shared.js';
 import { readTrackerMsgId } from './src/util/id.js';
 
@@ -38,6 +39,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
   const engine = new TrackerEngine(backend);
 
   const popup = makePopup({ callGenericPopup, POPUP_TYPE });
+  const dialogs = makeDialogs(callGenericPopup, POPUP_TYPE);
 
   const generateQuietPrompt = async (text) => getContext().generateQuietPrompt(text, false, false);
   const insertSmallSysMessage = (opts) => {
@@ -83,9 +85,10 @@ import * as EventHooks from './src/integration/EventHooks.js';
   eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => injection.run());
 
   // UI
-  const schemaEditor = new SchemaEditor(engine, { callGenericPopup, POPUP_TYPE, close: () => {} });
+  const schemaEditor = new SchemaEditor(engine, { callGenericPopup, POPUP_TYPE, dialogs, close: () => {} });
   const settingsDrawer = new SettingsDrawer(engine, {
     schemaEditor,
+    dialogs,
     getExtensionSettings: () => extension_settings,
     saveSettingsDebounced,
     autoUpdate,
@@ -133,7 +136,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
     const html = await loadTemplate('subject-add-modal');
     const $f = $(html);
     if (opts.forceProtagonist) { $('#strk-subj-role', $f).val('protagonist').prop('disabled', true); $('#strk-subject-modal-title', $f).text('Create protagonist'); }
-    $('#strk-subj-save', $f).on('click', () => {
+    $('#strk-subj-save', $f).on('click', async () => {
       const name = $('#strk-subj-name', $f).val().trim();
       // For forceProtagonist, the role select is disabled which means jQuery .val() may
       // return undefined depending on how the popup re-mounted; fall back to 'protagonist'.
@@ -146,12 +149,12 @@ import * as EventHooks from './src/integration/EventHooks.js';
         eyes: $('#strk-trait-eyes', $f).val(),
         distinguishing_features: $('#strk-trait-distinguishing', $f).val(),
       };
-      if (!name) { alert('Name is required.'); return; }
+      if (!name) { await dialogs.alert('Name is required.'); return; }
       let subj;
       try {
         subj = engine.addSubject(name, { role, traits });
       } catch (e) {
-        alert(`Could not add subject: ${e.message}`);
+        await dialogs.alert(`Could not add subject: ${e.message}`);
         return;
       }
       // Mirror into the Traits tracker if installed so the panel reflects them.
@@ -180,6 +183,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
 
   const panel = new Panel(engine, {
     popup,
+    dialogs,
     openProseModal,
     openSubjectAddModal,
     requestProbe: (subjId, trackerId, fieldId, value) => descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]).then(()=>descProbe.drain()),
@@ -216,7 +220,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
 
   // Integration
   Macros.register(engine, { MacrosParser, proseStore });
-  SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
+  SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
   EventHooks.register(engine, {
     versioning,
     descProbe,

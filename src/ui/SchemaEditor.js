@@ -7,6 +7,7 @@ export class SchemaEditor {
   }
 
   async open(trackerId) {
+    const deps = this.deps;
     const html = await loadTemplate('schema-editor');
     const $form = $(html);
     const def = trackerId
@@ -64,16 +65,21 @@ export class SchemaEditor {
         $sel.append($('<option></option>').val(t).text(t));
       }
       $sel.val(f.type ?? 'text');
-      $sel.on('change', function () {
+      $sel.on('change', async function () {
         const orig = $tr.data('original');
         const origType = orig.type ?? 'text';
         const newType = $(this).val();
         if (origType !== newType) {
-          const ok = confirm(
-            `Changing type from "${origType}" to "${newType}" will reset default/options/min/max. Continue?`
-          );
+          const self = this;
+          const ok = deps.dialogs
+            ? await deps.dialogs.confirm(
+                `Changing type from "${origType}" to "${newType}" will reset default/options/min/max. Continue?`
+              )
+            : confirm(
+                `Changing type from "${origType}" to "${newType}" will reset default/options/min/max. Continue?`
+              );
           if (!ok) {
-            $(this).val(origType);
+            $(self).val(origType);
           } else {
             // Reset type-specific fields in original so details modal starts fresh
             const updated = $tr.data('original');
@@ -237,19 +243,21 @@ export class SchemaEditor {
     $('#strk-schema-reset', $form).on('click', async () => {
       const source = def.source ?? '';
       if (!source.startsWith('preset:')) {
-        alert('Not a preset tracker — nothing to reset to.');
+        if (deps.dialogs) await deps.dialogs.alert('Not a preset tracker — nothing to reset to.');
+        else alert('Not a preset tracker — nothing to reset to.');
         return;
       }
       const presetName = source.split(':')[1];
-      const ok = confirm(
-        'Reset this tracker to its preset default? All your customizations will be lost.'
-      );
+      const ok = deps.dialogs
+        ? await deps.dialogs.confirm('Reset this tracker to its preset default? All your customizations will be lost.')
+        : confirm('Reset this tracker to its preset default? All your customizations will be lost.');
       if (!ok) return;
       let preset;
       try {
         preset = await loadPreset(presetName);
       } catch (err) {
-        alert(`Could not load preset "${presetName}": ${err.message}`);
+        if (deps.dialogs) await deps.dialogs.alert(`Could not load preset "${presetName}": ${err.message}`);
+        else alert(`Could not load preset "${presetName}": ${err.message}`);
         return;
       }
       // Re-render the form with preset data
