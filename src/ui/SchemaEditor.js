@@ -13,7 +13,7 @@ export class SchemaEditor {
     $('#strk-schema-id', $form).val(def.id).prop('disabled', !!trackerId);
     $('#strk-schema-label', $form).val(def.label);
     $('#strk-schema-autoupdate', $form).prop('checked', def.autoUpdate !== false);
-    $('#strk-schema-roles option', $form).each((_, opt) => $(opt).prop('selected', def.appliesToRoles.includes(opt.value)));
+    $('.strk-role-cb', $form).each((_, cb) => $(cb).prop('checked', def.appliesToRoles.includes(cb.value)));
 
     const $body = $('#strk-fields-body', $form);
     const renderFieldRow = (f) => {
@@ -60,7 +60,7 @@ export class SchemaEditor {
         id: $('#strk-schema-id', $form).val(),
         label: $('#strk-schema-label', $form).val(),
         autoUpdate: $('#strk-schema-autoupdate', $form).is(':checked'),
-        appliesToRoles: $('#strk-schema-roles option:selected', $form).map((_, o) => o.value).get(),
+        appliesToRoles: $('.strk-role-cb:checked', $form).map((_, cb) => cb.value).get(),
         fields,
       };
       if (trackerId) this.engine.updateTracker(trackerId, next);
