@@ -116,7 +116,11 @@
   gap: 4px;
   font-size: 12px;
 }
-.strk-schema-meta > label > input[type="checkbox"] { align-self: flex-start; }
+.strk-schema-meta > label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
 .strk-roles-fieldset {
   grid-column: 1 / -1;
   border: 1px solid var(--SmartThemeBorderColor, #444);
