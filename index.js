@@ -116,7 +116,17 @@ import * as EventHooks from './src/integration/EventHooks.js';
         eyes: $('#strk-trait-eyes', $f).val(),
         distinguishing_features: $('#strk-trait-distinguishing', $f).val(),
       };
-      if (name) engine.addSubject(name, { role, traits });
+      if (!name) return;
+      const subj = engine.addSubject(name, { role, traits });
+      // Mirror into the Traits tracker if installed so the panel reflects them.
+      if (engine.getTracker('traits')) {
+        for (const [fieldId, value] of Object.entries(traits)) {
+          if (value && value.trim()) {
+            try { engine.setField(subj.id, 'traits', fieldId, value, { source: 'manual' }); }
+            catch (e) { /* field may not exist in user-modified Traits schema; skip */ }
+          }
+        }
+      }
     });
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
   };
