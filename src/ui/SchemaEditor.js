@@ -18,6 +18,27 @@ export class SchemaEditor {
     $('#strk-schema-autoupdate', $form).prop('checked', def.autoUpdate !== false);
     $('.strk-role-cb', $form).each((_, cb) => $(cb).prop('checked', def.appliesToRoles.includes(cb.value)));
 
+    // ── Tracker-level injection ───────────────────────────────────────────────
+    const defInj = def.injection ?? {};
+    $('#strk-inj-enabled', $form).prop('checked', defInj.enabled === true);
+    $('#strk-inj-trigger', $form).val(defInj.trigger ?? 'always');
+    $('#strk-inj-tags', $form).val(Array.isArray(defInj.tags) ? defInj.tags.join(', ') : (defInj.tags ?? ''));
+    $('#strk-inj-position', $form).val(defInj.position ?? 'in-prompt');
+    $('#strk-inj-depth', $form).val(defInj.depth ?? 4);
+    $('#strk-inj-template', $form).val(defInj.template ?? '');
+
+    // Show/hide tags row based on trigger
+    const updateTagRowVisibility = () => {
+      const trigger = $('#strk-inj-trigger', $form).val();
+      if (trigger === 'tag') {
+        $('.strk-inj-tag-row', $form).removeClass('strk-hidden');
+      } else {
+        $('.strk-inj-tag-row', $form).addClass('strk-hidden');
+      }
+    };
+    updateTagRowVisibility();
+    $('#strk-inj-trigger', $form).on('change', updateTagRowVisibility);
+
     const $body = $('#strk-fields-body', $form);
 
     // ── drag-reorder state ────────────────────────────────────────────────────
@@ -90,14 +111,14 @@ export class SchemaEditor {
       $incl.val(f.inclusion?.rule ?? 'always');
       $tr.append($('<td></td>').append($incl));
 
-      // Injection enabled
+      // Inject enabled (include this field in the tracker's injection block)
       $tr.append(
         $('<td style="text-align:center"><input type="checkbox" class="f-inj" /></td>')
-          .find('input').prop('checked', f.injection?.enabled === true).end()
+          .find('input').prop('checked', f.injection?.enabled !== false).end()
       );
 
       // ⚙ edit button cell
-      const $editBtn = $('<button class="menu_button strk-field-edit-btn" title="Edit full field config (default, options, number bounds, inclusion/injection details)">⚙</button>');
+      const $editBtn = $('<button class="menu_button strk-field-edit-btn" title="Edit full field config (default, options, number bounds, inclusion details)">⚙</button>');
       $editBtn.on('click', async () => {
         await this._openFieldDetails($tr, $form);
       });
@@ -166,14 +187,30 @@ export class SchemaEditor {
           describable: $('.f-describable', $tr).is(':checked'),
           descriptionScope: $('.f-scope', $tr).val(),
           inclusion: { ...(original.inclusion ?? {}), rule: inclusionRule },
-          injection: { ...(original.injection ?? {}), enabled: $('.f-inj', $tr).is(':checked') },
+          // Per-field injection: only { enabled } — no other keys
+          injection: { enabled: $('.f-inj', $tr).is(':checked') },
         });
       });
+
+      // Tracker-level injection block
+      const injTagsRaw = $('#strk-inj-tags', $form).val().trim();
+      const injTags = injTagsRaw ? injTagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const injDepth = parseInt($('#strk-inj-depth', $form).val(), 10);
+      const injection = {
+        enabled: $('#strk-inj-enabled', $form).is(':checked'),
+        trigger: $('#strk-inj-trigger', $form).val() || 'always',
+        tags: injTags,
+        position: $('#strk-inj-position', $form).val() || 'in-prompt',
+        depth: isNaN(injDepth) ? 4 : injDepth,
+        template: $('#strk-inj-template', $form).val(),
+      };
+
       const next = {
         id: $('#strk-schema-id', $form).val(),
         label: $('#strk-schema-label', $form).val(),
         autoUpdate: $('#strk-schema-autoupdate', $form).is(':checked'),
         appliesToRoles: $('.strk-role-cb:checked', $form).map((_, cb) => cb.value).get(),
+        injection,
         fields,
       };
       if (def.source) next.source = def.source;
@@ -218,6 +255,15 @@ export class SchemaEditor {
       $('.strk-role-cb', $form).each((_, cb) =>
         $(cb).prop('checked', (preset.appliesToRoles ?? ['protagonist', 'npc']).includes(cb.value))
       );
+      // Re-populate tracker-level injection from preset
+      const presetInj = preset.injection ?? {};
+      $('#strk-inj-enabled', $form).prop('checked', presetInj.enabled === true);
+      $('#strk-inj-trigger', $form).val(presetInj.trigger ?? 'always');
+      $('#strk-inj-tags', $form).val(Array.isArray(presetInj.tags) ? presetInj.tags.join(', ') : (presetInj.tags ?? ''));
+      $('#strk-inj-position', $form).val(presetInj.position ?? 'in-prompt');
+      $('#strk-inj-depth', $form).val(presetInj.depth ?? 4);
+      $('#strk-inj-template', $form).val(presetInj.template ?? '');
+      updateTagRowVisibility();
       for (const f of (preset.fields ?? [])) renderFieldRow(f);
       // Update local def reference so subsequent reset attempts work
       Object.assign(def, preset);
@@ -264,31 +310,14 @@ export class SchemaEditor {
     $('.strk-fdet-incl-tags', $d).val(Array.isArray(orig.inclusion?.tags) ? orig.inclusion.tags.join(', ') : (orig.inclusion?.tags ?? ''));
     $('.strk-fdet-incl-active-window', $d).val(orig.inclusion?.activeWindow ?? 5);
 
-    // Injection
-    const injEnabled = $('.f-inj', $tr).is(':checked');
-    $('.strk-fdet-inj-enabled', $d).prop('checked', injEnabled);
-    $('.strk-fdet-inj-trigger', $d).val(orig.injection?.trigger ?? 'always');
-    $('.strk-fdet-inj-tags', $d).val(Array.isArray(orig.injection?.tags) ? orig.injection.tags.join(', ') : (orig.injection?.tags ?? ''));
-    $('.strk-fdet-inj-position', $d).val(orig.injection?.position ?? 'in-prompt');
-    $('.strk-fdet-inj-depth', $d).val(orig.injection?.depth ?? 4);
-    $('.strk-fdet-inj-template', $d).val(orig.injection?.template ?? "**{{subject}}'s {{label}}:** {{value.desc}}");
-
     // Apply visibility for current type
-    this._applyFieldDetailsVisibility($d, fieldType, inclRule, orig.injection?.trigger ?? 'always');
+    this._applyFieldDetailsVisibility($d, fieldType, inclRule);
 
     // Live visibility updates
     $('.strk-fdet-incl-rule', $d).on('change', () => {
       this._applyFieldDetailsVisibility(
         $d, fieldType,
-        $('.strk-fdet-incl-rule', $d).val(),
-        $('.strk-fdet-inj-trigger', $d).val()
-      );
-    });
-    $('.strk-fdet-inj-trigger', $d).on('change', () => {
-      this._applyFieldDetailsVisibility(
-        $d, fieldType,
-        $('.strk-fdet-incl-rule', $d).val(),
-        $('.strk-fdet-inj-trigger', $d).val()
+        $('.strk-fdet-incl-rule', $d).val()
       );
     });
 
@@ -339,24 +368,6 @@ export class SchemaEditor {
       // Sync main-table inclusion select
       $('.f-inclusion', $tr).val(newInclRule);
 
-      // injection
-      const injEnabledNew = $('.strk-fdet-inj-enabled', $d).is(':checked');
-      const injTrigger = $('.strk-fdet-inj-trigger', $d).val();
-      const injTagsRaw = $('.strk-fdet-inj-tags', $d).val().trim();
-      const injTags = injTagsRaw ? injTagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-      const injDepth = parseInt($('.strk-fdet-inj-depth', $d).val(), 10);
-      updatedOrig.injection = {
-        ...(updatedOrig.injection ?? {}),
-        enabled: injEnabledNew,
-        trigger: injTrigger,
-        tags: injTags,
-        position: $('.strk-fdet-inj-position', $d).val(),
-        depth: isNaN(injDepth) ? 4 : injDepth,
-        template: $('.strk-fdet-inj-template', $d).val(),
-      };
-      // Sync main-table injection checkbox
-      $('.f-inj', $tr).prop('checked', injEnabledNew);
-
       $tr.data('original', updatedOrig);
       detailsPopupClose?.();
     });
@@ -365,22 +376,12 @@ export class SchemaEditor {
       detailsPopupClose?.();
     });
 
-    // callGenericPopup resolves when the popup closes, but we also need a way
-    // to close it programmatically from Save/Cancel buttons. We synthesise a
-    // click on SillyTavern's own popup close button, or dispatch Escape.
     const detailsPopupClose = () => {
-      // Attempt to close by clicking SillyTavern's own close/ok button on the
-      // outermost popup layer, but only the one wrapping our details modal —
-      // not the parent SchemaEditor modal. We look for a close button in the
-      // immediate popup ancestor.
-      // Strategy: set a flag, then click the hidden button which triggers our
-      // MutationObserver-based close, or fall back to pressing Escape.
       const popup = document.querySelector('.popup:last-of-type');
       if (popup) {
         const closeBtn = popup.querySelector('.popup-button-ok, .popup-button-close, [data-i18n="Close"]');
         if (closeBtn) { closeBtn.click(); return; }
       }
-      // Fallback: dispatch Escape on the document
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     };
 
@@ -390,7 +391,7 @@ export class SchemaEditor {
     });
   }
 
-  _applyFieldDetailsVisibility($d, fieldType, inclRule, injTrigger) {
+  _applyFieldDetailsVisibility($d, fieldType, inclRule) {
     // Show/hide enum-only rows
     if (fieldType === 'enum') {
       $('.strk-fdet-enum-only', $d).removeClass('strk-hidden');
@@ -419,13 +420,6 @@ export class SchemaEditor {
       $('.strk-fdet-incl-active-only', $d).removeClass('strk-hidden');
     } else {
       $('.strk-fdet-incl-active-only', $d).addClass('strk-hidden');
-    }
-
-    // Injection conditional rows
-    if (injTrigger === 'tag') {
-      $('.strk-fdet-inj-tag-only', $d).removeClass('strk-hidden');
-    } else {
-      $('.strk-fdet-inj-tag-only', $d).addClass('strk-hidden');
     }
   }
 }
