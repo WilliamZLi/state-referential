@@ -1,4 +1,4 @@
-const DEFAULT_TEMPLATE = `Describe {{label}} = "{{value}}" for {{subjectName}}.
+export const DEFAULT_PROBE_TEMPLATE = `Describe {{label}} = "{{value}}" for {{subjectName}}.
 1-2 sentences, sensory and concrete. No dialogue.
 {{#if subjectHasTraits}}
 {{subjectName}}'s traits:
@@ -23,9 +23,14 @@ export class DescriptionProbe {
   constructor(engine, deps) {
     this.engine = engine;
     this.deps = deps;
-    this.template = deps.template ?? DEFAULT_TEMPLATE;
+    this.template = (deps.template ?? '').trim() || DEFAULT_PROBE_TEMPLATE;
     this._queue = [];
     this._running = false;
+  }
+
+  /** Replace the active template at runtime. Pass empty/null to revert to default. */
+  setTemplate(tpl) {
+    this.template = (tpl ?? '').trim() || DEFAULT_PROBE_TEMPLATE;
   }
 
   enqueue(items) {

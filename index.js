@@ -46,6 +46,11 @@ import * as EventHooks from './src/integration/EventHooks.js';
     eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1);
   };
 
+  const _strkSettings = () => {
+    extension_settings['state-referential'] ??= {};
+    return extension_settings['state-referential'];
+  };
+
   const autoUpdate = new AutoUpdate(engine, {
     generateQuietPrompt,
     getCurrentMsgId: () => {
@@ -57,8 +62,12 @@ import * as EventHooks from './src/integration/EventHooks.js';
       const i = chat.findIndex(m => m?.extra?.trackerMsgId === id);
       return i < 0 ? null : i;
     },
+    template: _strkSettings().templates?.autoUpdate,
   });
-  const descProbe = new DescriptionProbe(engine, { generateQuietPrompt });
+  const descProbe = new DescriptionProbe(engine, {
+    generateQuietPrompt,
+    template: _strkSettings().templates?.probe,
+  });
   const standalone = new StandaloneProbe(engine, { generateQuietPrompt, insertSmallSysMessage, proseStore: {} });
   const injection = new Injection(engine, { setExtensionPrompt });
   const versioning = new Versioning(engine, {
@@ -77,6 +86,8 @@ import * as EventHooks from './src/integration/EventHooks.js';
     schemaEditor,
     getExtensionSettings: () => extension_settings,
     saveSettingsDebounced,
+    autoUpdate,
+    descProbe,
   });
   await settingsDrawer.mount();
 

@@ -1,11 +1,13 @@
 import { loadTemplate, loadPreset } from './shared.js';
+import { DEFAULT_AUTOUPDATE_TEMPLATE } from '../pipeline/AutoUpdate.js';
+import { DEFAULT_PROBE_TEMPLATE } from '../pipeline/DescriptionProbe.js';
 
 const PRESETS = ['traits','outfit','stats','state','inventory','relationships'];
 
 export class SettingsDrawer {
   constructor(engine, deps) {
     this.engine = engine;
-    this.deps = deps; // { schemaEditor, getExtensionSettings, saveSettingsDebounced }
+    this.deps = deps; // { schemaEditor, getExtensionSettings, saveSettingsDebounced, autoUpdate, descProbe }
   }
 
   async mount() {
@@ -32,6 +34,35 @@ export class SettingsDrawer {
     $('#strk-uninstall-presets').on('click', () => this._uninstallPresets());
     $('#strk-import-json').on('click', () => this._importJson());
     $('#strk-reset-state').on('click', () => this._resetState());
+
+    // Template textareas
+    s.templates ??= {};
+    $('#strk-tpl-autoupdate')
+      .attr('placeholder', DEFAULT_AUTOUPDATE_TEMPLATE)
+      .val(s.templates.autoUpdate ?? '')
+      .on('change', e => {
+        s.templates.autoUpdate = e.target.value;
+        this.deps.saveSettingsDebounced();
+        this.deps.autoUpdate?.setTemplate(e.target.value);
+      });
+    $('#strk-tpl-probe')
+      .attr('placeholder', DEFAULT_PROBE_TEMPLATE)
+      .val(s.templates.probe ?? '')
+      .on('change', e => {
+        s.templates.probe = e.target.value;
+        this.deps.saveSettingsDebounced();
+        this.deps.descProbe?.setTemplate(e.target.value);
+      });
+    $('#strk-reset-tpls').on('click', () => {
+      if (!confirm('Reset both templates to default?')) return;
+      s.templates = {};
+      $('#strk-tpl-autoupdate').val('');
+      $('#strk-tpl-probe').val('');
+      this.deps.saveSettingsDebounced();
+      this.deps.autoUpdate?.setTemplate('');
+      this.deps.descProbe?.setTemplate('');
+    });
+
     this.engine.on('tracker:schema-changed', () => this.render());
   }
 

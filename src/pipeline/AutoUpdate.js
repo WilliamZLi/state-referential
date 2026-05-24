@@ -1,5 +1,34 @@
 const DEFAULT_ACTIVE_WINDOW = 5;
 
+export const DEFAULT_AUTOUPDATE_TEMPLATE = [
+  'You are a state tracker. Based on the LAST narrator reply only, identify any',
+  'changes to the tracked entities below. Emit one command per line. If nothing',
+  'changed, reply exactly: NONE',
+  '',
+  '# Tracked entities',
+  '',
+  '{{tracked_entities}}',
+  '',
+  '# Commands',
+  '',
+  '{{commands_help}}',
+  '',
+  '# Last narrator reply',
+  '',
+  '{{last_reply}}',
+].join('\n');
+
+const COMMANDS_HELP = [
+  'SET <subject> <tracker>.<field> = "<value>"',
+  'DELTA <subject> <tracker>.<field> <±N>',
+  'ADD <subject> <tracker>.<field> "<entry>"',
+  'REMOVE <subject> <tracker>.<field> "<entry>"',
+  'NEW_SUBJECT <name> <role>',
+  'NONE',
+  '',
+  'Use ONLY commands shown. Subject names must match exactly. Output nothing else.',
+].join('\n');
+
 function formatValue(field, value) {
   if (value === undefined || value === null) return field.type === 'list' ? '[]' : (field.type === 'number' ? '0' : '""');
   if (field.type === 'list') return JSON.stringify(value);
@@ -16,12 +45,18 @@ function fieldTypeAnnotation(field) {
 export class AutoUpdate {
   /**
    * @param {TrackerEngine} engine
-   * @param {object} deps - { generateQuietPrompt(text)->Promise<string>, getCurrentMsgId()->string|null, getMsgIndex(id)->number|null }
+   * @param {object} deps - { generateQuietPrompt(text)->Promise<string>, getCurrentMsgId()->string|null, getMsgIndex(id)->number|null, template?:string }
    */
   constructor(engine, deps) {
     this.engine = engine;
     this.deps = deps;
     this._oneShot = new Set(); // "subjId|tracker|field" tokens
+    this._template = (deps.template ?? '').trim() || null;
+  }
+
+  /** Replace the active template at runtime. Pass empty/null to revert to default. */
+  setTemplate(tpl) {
+    this._template = (tpl ?? '').trim() || null;
   }
 
   includeOnce(subjectId, trackerId, fieldId) {
@@ -68,30 +103,20 @@ export class AutoUpdate {
     // consume one-shots
     this._oneShot.clear();
 
-    return [
-      'You are a state tracker. Based on the LAST narrator reply only, identify any',
-      'changes to the tracked entities below. Emit one command per line. If nothing',
-      'changed, reply exactly: NONE',
-      '',
-      '# Tracked entities',
-      '',
-      blocks.join('\n\n'),
-      '',
-      '# Commands',
-      '',
-      'SET <subject> <tracker>.<field> = "<value>"',
-      'DELTA <subject> <tracker>.<field> <±N>',
-      'ADD <subject> <tracker>.<field> "<entry>"',
-      'REMOVE <subject> <tracker>.<field> "<entry>"',
-      'NEW_SUBJECT <name> <role>',
-      'NONE',
-      '',
-      'Use ONLY commands shown. Subject names must match exactly. Output nothing else.',
-      '',
-      '# Last narrator reply',
-      '',
-      lastNarratorReply ?? '',
-    ].join('\n');
+    const trackedEntities = blocks.join('\n\n');
+    const reply = lastNarratorReply ?? '';
+
+    // Use custom template if set, otherwise use the default template
+    const tpl = this._template ?? DEFAULT_AUTOUPDATE_TEMPLATE;
+
+    // If template lacks {{last_reply}}, append it automatically
+    const haslastReply = tpl.includes('{{last_reply}}');
+    const effectiveTpl = haslastReply ? tpl : tpl + '\n\n{{last_reply}}';
+
+    return effectiveTpl
+      .replace(/\{\{tracked_entities\}\}/g, trackedEntities)
+      .replace(/\{\{commands_help\}\}/g, COMMANDS_HELP)
+      .replace(/\{\{last_reply\}\}/g, reply);
   }
 
   async run({ lastNarratorReply, msgId }) {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { TrackerEngine } from '../../src/engine/TrackerEngine.js';
 import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
-import { AutoUpdate } from '../../src/pipeline/AutoUpdate.js';
+import { AutoUpdate, DEFAULT_AUTOUPDATE_TEMPLATE } from '../../src/pipeline/AutoUpdate.js';
 
 function mkEngine() {
   const eng = new TrackerEngine(new InMemoryBackend());
@@ -96,4 +96,45 @@ test('respects autoUpdate=false on tracker', () => {
   const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
   assert.doesNotMatch(prompt, /manual\.note/);
+});
+
+test('buildPrompt uses custom template when provided', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red dress');
+  const au = new AutoUpdate(eng, {
+    generateQuietPrompt: async () => '',
+    template: 'CUSTOM_PREAMBLE\n{{tracked_entities}}\n{{last_reply}}',
+  });
+  const prompt = au.buildPrompt({ lastNarratorReply: 'She entered the hall.' });
+  assert.match(prompt, /CUSTOM_PREAMBLE/);
+  assert.match(prompt, /outfit\.topwear/);
+  assert.match(prompt, /She entered the hall\./);
+});
+
+test('buildPrompt appends {{last_reply}} if missing from template', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, {
+    generateQuietPrompt: async () => '',
+    template: 'PREAMBLE_NO_REPLY\n{{tracked_entities}}',
+  });
+  const prompt = au.buildPrompt({ lastNarratorReply: 'The door slammed shut.' });
+  assert.match(prompt, /PREAMBLE_NO_REPLY/);
+  assert.match(prompt, /The door slammed shut\./);
+});
+
+test('setTemplate switches the in-use template', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  // Without template, default is used
+  const defaultPrompt = au.buildPrompt({ lastNarratorReply: 'default reply' });
+  assert.match(defaultPrompt, /You are a state tracker/);
+  // Switch to custom template
+  au.setTemplate('CUSTOM\n{{last_reply}}');
+  const customPrompt = au.buildPrompt({ lastNarratorReply: 'custom reply' });
+  assert.match(customPrompt, /CUSTOM/);
+  assert.match(customPrompt, /custom reply/);
+  assert.doesNotMatch(customPrompt, /You are a state tracker/);
 });
