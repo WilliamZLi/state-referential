@@ -8,9 +8,21 @@ function validateField(f) {
   if (f.type === 'number' && (f.min == null || f.max == null)) throw new Error('number field requires min and max');
 }
 
+const DEFAULT_TRACKER_INJECTION = { enabled: false, trigger: 'always', tags: [], position: 'in-prompt', depth: 4, template: '' };
+
 function normalizeDef(def) {
   if (!def.id) throw new Error('definition.id required');
   if (!def.label) throw new Error('definition.label required');
+  // Normalize tracker-level injection block — merge over defaults so unknown keys are dropped
+  const rawInj = def.injection ?? {};
+  const injection = {
+    enabled: rawInj.enabled ?? DEFAULT_TRACKER_INJECTION.enabled,
+    trigger: rawInj.trigger ?? DEFAULT_TRACKER_INJECTION.trigger,
+    tags: Array.isArray(rawInj.tags) ? [...rawInj.tags] : [...DEFAULT_TRACKER_INJECTION.tags],
+    position: rawInj.position ?? DEFAULT_TRACKER_INJECTION.position,
+    depth: rawInj.depth ?? DEFAULT_TRACKER_INJECTION.depth,
+    template: rawInj.template ?? DEFAULT_TRACKER_INJECTION.template,
+  };
   const out = {
     id: def.id,
     label: def.label,
@@ -19,6 +31,7 @@ function normalizeDef(def) {
     appliesToRoles: Array.isArray(def.appliesToRoles) && def.appliesToRoles.length ? [...def.appliesToRoles] : [...ALL_ROLES],
     autoUpdate: def.autoUpdate ?? true,
     probe: def.probe ?? { enabled: false },
+    injection,
     fields: (def.fields ?? []).map(f => ({
       id: f.id,
       label: f.label ?? f.id,
@@ -27,7 +40,8 @@ function normalizeDef(def) {
       describable: f.describable ?? (f.type !== 'number'),
       descriptionScope: f.descriptionScope ?? 'per-subject',
       inclusion: f.inclusion ?? { rule: 'always' },
-      injection: f.injection ?? { enabled: false },
+      // Per-field injection: ONLY { enabled } — all other keys stripped
+      injection: { enabled: (f.injection?.enabled !== false) },
       ...(f.options ? { options: [...f.options] } : {}),
       ...(f.min != null ? { min: f.min } : {}),
       ...(f.max != null ? { max: f.max } : {}),

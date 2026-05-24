@@ -62,3 +62,26 @@ test('persists via backend.saveDefinitions', () => {
   store.define({ id: 'a', label: 'A', fields: [] });
   assert.strictEqual(b.loadDefinitions()[0].id, 'a');
 });
+
+test('normalizeDef: tracker-level injection block; field injection strips to enabled only', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  store.define({
+    id: 'tk', label: 'TK',
+    injection: { enabled: true, trigger: 'tag', tags: ['combat'], position: 'system', depth: 1, template: '{{fields}}' },
+    fields: [
+      { id: 'hp', label: 'HP', type: 'number', min: 0, max: 100,
+        injection: { enabled: true, trigger: 'tag', tags: ['x'], position: 'system', depth: 9, template: 'IGNORE' } },
+      { id: 'name', label: 'Name', type: 'text' },
+    ],
+  });
+  const d = store.get('tk');
+  // tracker-level injection
+  assert.deepStrictEqual(d.injection, {
+    enabled: true, trigger: 'tag', tags: ['combat'],
+    position: 'system', depth: 1, template: '{{fields}}',
+  });
+  // field-level injection: only enabled key, extra keys stripped
+  assert.deepStrictEqual(d.fields.find(f => f.id === 'hp').injection, { enabled: true });
+  // field with no injection: defaults to enabled:true
+  assert.deepStrictEqual(d.fields.find(f => f.id === 'name').injection, { enabled: true });
+});
