@@ -12,6 +12,18 @@ export function newId() { return uuid4(); }
 
 export function ensureTrackerMsgId(message) {
   if (!message.extra) message.extra = {};
-  if (!message.extra.trackerMsgId) message.extra.trackerMsgId = uuid4();
-  return message.extra.trackerMsgId;
+  // Migration: if the legacy key exists but the new key doesn't, promote it.
+  if (!message.extra.state_referential_msgId && message.extra.trackerMsgId) {
+    message.extra.state_referential_msgId = message.extra.trackerMsgId;
+  }
+  if (!message.extra.state_referential_msgId) message.extra.state_referential_msgId = uuid4();
+  return message.extra.state_referential_msgId;
+}
+
+/**
+ * Read the tracker message-id from a message, accepting both the current
+ * namespaced key and the legacy key for backward compatibility.
+ */
+export function readTrackerMsgId(message) {
+  return message?.extra?.state_referential_msgId ?? message?.extra?.trackerMsgId ?? null;
 }

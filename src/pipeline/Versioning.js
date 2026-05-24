@@ -1,4 +1,4 @@
-import { ensureTrackerMsgId } from '../util/id.js';
+import { ensureTrackerMsgId, readTrackerMsgId } from '../util/id.js';
 
 export class Versioning {
   /**
@@ -59,7 +59,7 @@ export class Versioning {
     const chat = this.deps.getChat();
     const msg = chat[index];
     if (!msg) return;
-    const msgId = msg.extra?.trackerMsgId;
+    const msgId = readTrackerMsgId(msg);
     if (msgId) {
       const snap = this.engine.loadSnapshot(msgId);
       if (snap) this.engine.restoreSnapshot(snap);
@@ -75,21 +75,28 @@ export class Versioning {
   }
 
   _onDeleted(index) {
+    // MESSAGE_DELETED fires after ST has removed the message at `index` from chat.
+    // We:
+    //   1. Drop snapshots for any msgIds no longer present in chat.
+    //   2. Restore engine state from the snapshot of chat[index - 1] (the message
+    //      immediately before the deleted one). If index === 0, no restore happens
+    //      (nothing was before it).
     const chat = this.deps.getChat();
     const fromIdx = Math.max(0, index);
     const dropIds = [];
-    for (let i = fromIdx; i < chat.length + 1; i++) {
-      const m = chat[i];
-      if (m?.extra?.trackerMsgId) dropIds.push(m.extra.trackerMsgId);
+    for (let i = fromIdx; i < chat.length; i++) {
+      const id = readTrackerMsgId(chat[i]);
+      if (id) dropIds.push(id);
     }
     // Also drop snapshots whose msgId no longer exists in chat.
-    const liveIds = new Set(chat.filter(m => m?.extra?.trackerMsgId).map(m => m.extra.trackerMsgId));
+    const liveIds = new Set(chat.map(m => readTrackerMsgId(m)).filter(Boolean));
     for (const snap of this.engine.listSnapshots()) {
       if (!liveIds.has(snap.msgId)) dropIds.push(snap.msgId);
     }
     this.engine.dropSnapshots(dropIds);
-    if (chat[fromIdx - 1]?.extra?.trackerMsgId) {
-      const snap = this.engine.loadSnapshot(chat[fromIdx - 1].extra.trackerMsgId);
+    const prevId = readTrackerMsgId(chat[fromIdx - 1]);
+    if (prevId) {
+      const snap = this.engine.loadSnapshot(prevId);
       if (snap) this.engine.restoreSnapshot(snap);
     }
   }
