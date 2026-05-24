@@ -66,7 +66,21 @@ export class DescriptionProbe {
   }
 
   enqueue(items) {
-    for (const it of items) this._queue.push(it);
+    for (const it of items) {
+      // Dedup: skip if an identical job is already queued or in-flight.
+      // Prevents queue bloat when value-changed events fire repeatedly for the same field+value
+      // (e.g. user edits → AI auto-update sets same → user edits → ...).
+      const token = DescriptionProbe._token(it.subjectId, it.trackerId, it.fieldId, it.value);
+      if (this._inFlight.has(token)) continue;
+      const dup = this._queue.some(j =>
+        j.subjectId === it.subjectId &&
+        j.trackerId === it.trackerId &&
+        j.fieldId === it.fieldId &&
+        j.value === it.value
+      );
+      if (dup) continue;
+      this._queue.push(it);
+    }
   }
 
   async drain() {
