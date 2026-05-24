@@ -12,6 +12,43 @@
     </fieldset>
     <label title="Whether the AI should automatically check for changes to this tracker's fields after each assistant message. Turn off for trackers that only change via manual edits or slash commands (e.g. traits)."><input type="checkbox" id="strk-schema-autoupdate" /> Auto-update</label>
   </div>
+
+  <fieldset class="strk-injection-fieldset">
+    <legend>Injection (tracker-level)</legend>
+    <label title="When enabled, this tracker's rendered block is injected into the AI prompt each generation.">
+      <input type="checkbox" id="strk-inj-enabled" /> Enabled
+    </label>
+    <label title="When to inject. always = every generation. tag = only when a scene tag matches. manual = only via /tracker-include.">
+      Trigger
+      <select class="text_pole" id="strk-inj-trigger">
+        <option value="always">always</option>
+        <option value="tag">tag</option>
+        <option value="manual">manual</option>
+      </select>
+    </label>
+    <label class="strk-inj-tag-row" title="Comma-separated scene tags. Tracker injects only when at least one tag is active.">
+      Tags <input type="text" class="text_pole" id="strk-inj-tags" placeholder="e.g. combat, intimate" />
+    </label>
+    <label title="Where in the prompt to inject. in-prompt = depth below latest message. system = system prompt. author-note = author note. before-char-defs = before character card.">
+      Position
+      <select class="text_pole" id="strk-inj-position">
+        <option value="system">system</option>
+        <option value="in-prompt">in-prompt</option>
+        <option value="author-note">author-note</option>
+        <option value="before-char-defs">before-char-defs</option>
+      </select>
+    </label>
+    <label title="Depth (messages from bottom) when position is in-prompt. Default: 4.">
+      Depth <input type="number" class="text_pole" id="strk-inj-depth" min="0" value="4" />
+    </label>
+    <label class="strk-inj-template-row"
+      title="Template for the injected text. Placeholders: {{subject}} = subject name, {{fields}} = auto-rendered list of enabled fields as 'Label: value (desc)' lines, {{fieldId}} = a field's value, {{fieldId.desc}} = field's cached description, {{fieldId.label}} = field's label. Leave blank to use {{fields}} auto-render.">
+      Template
+      <textarea class="text_pole" id="strk-inj-template" rows="3"
+        placeholder="Leave blank for auto-render, or e.g. **{{subject}} outfit:** {{topwear}} ({{topwear.desc}})"></textarea>
+    </label>
+  </fieldset>
+
   <h4>Fields</h4>
   <table class="strk-fields-table">
     <thead><tr>
@@ -22,8 +59,8 @@
       <th title="Whether the AI should generate a prose description of the value (for visual consistency when re-encountered). Recommended for outfit slots, moods, items, etc.; not for numbers.">Describable</th>
       <th title="Where the cached description lives. per-subject: each subject gets their own prose (Lyra's 'red dress' looks different from Maya's). global: one prose for everyone (a sword looks the same to anyone).">Scope</th>
       <th title="When this field is included in the AI auto-update prompt. always = every turn. active = only if touched in last N turns (saves tokens, lets temporary effects fade). tag = only when a scene tag is active. manual = never auto, only via /tracker-include once.">Inclusion</th>
-      <th title="Whether this field's value is injected into the AI's generation prompt (so the AI 'sees' the current state when writing the next reply).">Injection</th>
-      <th title="Open full field config (default, options, number bounds, inclusion tags/window, injection template/position/depth/trigger/tags)">⚙</th>
+      <th title="Whether this field is included in the tracker's injection block. The tracker-level injection settings above control when and how the whole block is injected.">Inject</th>
+      <th title="Open full field config (default, options, number bounds, inclusion tags/window)">⚙</th>
       <th></th>
     </tr></thead>
     <tbody id="strk-fields-body"></tbody>
