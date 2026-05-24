@@ -29,18 +29,29 @@ export class SettingsDrawer {
     $('#strk-active-window').val(s.activeWindow ?? 5).on('change', e => { s.activeWindow = Number(e.target.value); this.deps.saveSettingsDebounced(); });
     $('#strk-new-tracker').on('click', () => this.deps.schemaEditor.open(null));
     $('#strk-install-presets').on('click', () => this._installPresets());
+    $('#strk-uninstall-presets').on('click', () => this._uninstallPresets());
     $('#strk-import-json').on('click', () => this._importJson());
     $('#strk-reset-state').on('click', () => this._resetState());
     this.engine.on('tracker:schema-changed', () => this.render());
   }
 
   async _installPresets() {
-    if (!confirm('Install default presets? This adds the six built-in trackers.')) return;
+    if (!confirm('Install default presets? This adds the six built-in trackers (or updates them if already installed).')) return;
     for (const name of PRESETS) {
       try {
         const def = await loadPreset(name);
-        if (!this.engine.getTracker(def.id)) this.engine.defineTracker(def);
+        if (this.engine.getTracker(def.id)) this.engine.updateTracker(def.id, def);
+        else this.engine.defineTracker(def);
       } catch (e) { console.error('preset install failed', name, e); }
+    }
+  }
+
+  _uninstallPresets() {
+    if (!confirm('Uninstall all preset trackers? This removes their definitions but does not delete already-stored values.')) return;
+    for (const name of PRESETS) {
+      try {
+        if (this.engine.getTracker(name)) this.engine.deleteTracker(name);
+      } catch (e) { console.error('preset uninstall failed', name, e); }
     }
   }
 
