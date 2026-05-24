@@ -19,6 +19,7 @@ export class SubjectStore {
   }
 
   add(name, opts = {}) {
+    if (!/^[^.\{\}|]+$/.test(name)) throw new Error(`subject name contains forbidden chars (.,{,},|): ${name}`);
     if (this.findByName(name)) throw new Error(`subject name exists: ${name}`);
     const role = opts.role ?? 'npc';
     if (!ROLES.has(role)) throw new Error(`invalid role: ${role}`);
@@ -50,6 +51,7 @@ export class SubjectStore {
   }
 
   rename(oldName, newName) {
+    if (!/^[^.\{\}|]+$/.test(newName)) throw new Error(`subject name contains forbidden chars (.,{,},|): ${newName}`);
     const subj = this.findByName(oldName);
     if (!subj) throw new Error(`subject not found: ${oldName}`);
     if (this.findByName(newName)) throw new Error(`subject name exists: ${newName}`);

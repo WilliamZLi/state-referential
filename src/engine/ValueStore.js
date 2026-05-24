@@ -108,6 +108,27 @@ export class ValueStore {
     delete this._desc.perSubject?.[s];
     this._persist();
   }
+  purgeTracker(trackerId, subjects = []) {
+    // Drop values for every subject that has an entry for this tracker
+    for (const subj of subjects) {
+      if (this._values[subj.id]) delete this._values[subj.id][trackerId];
+    }
+    // Also sweep any remaining subject value buckets that reference this tracker
+    for (const subjId of Object.keys(this._values)) {
+      if (this._values[subjId]) delete this._values[subjId][trackerId];
+    }
+    // Drop global descriptions whose key starts with "<trackerId>."
+    for (const key of Object.keys(this._desc.global ?? {})) {
+      if (key.startsWith(`${trackerId}.`)) delete this._desc.global[key];
+    }
+    // Drop per-subject descriptions whose key starts with "<trackerId>."
+    for (const subjId of Object.keys(this._desc.perSubject ?? {})) {
+      for (const key of Object.keys(this._desc.perSubject[subjId] ?? {})) {
+        if (key.startsWith(`${trackerId}.`)) delete this._desc.perSubject[subjId][key];
+      }
+    }
+    this._persist();
+  }
   serialize() { return { values: this._values, descriptions: this._desc }; }
   hydrate({ values, descriptions }) {
     this._values = values ?? {};
