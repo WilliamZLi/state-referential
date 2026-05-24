@@ -39,6 +39,7 @@ export class Panel {
       dialogs: this.deps.dialogs,
       openProseModal: this.deps.openProseModal,
       requestProbe: this.deps.requestProbe,
+      descProbe: this.deps.descProbe,
       autoUpdate: this.deps.autoUpdate,
       injection: this.deps.injection,
     });
@@ -70,7 +71,7 @@ export class Panel {
     for (const ev of [
       'tracker:value-changed', 'tracker:subject-added', 'tracker:subject-removed',
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
-      'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
+      'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
     ]) this.engine.on(ev, safeRender);
 
     this.render();

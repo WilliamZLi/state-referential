@@ -6,11 +6,12 @@
   "injection": {
     "enabled": true,
     "trigger": "always",
-    "position": "before-char-defs",
-    "depth": 1,
-    "template": "**{{subject}} traits:**\n{{fields}}"
+    "position": "system",
+    "depth": 0,
+    "template": "**{{subject}} traits (authoritative — these are intrinsic; do not invent unlisted traits):**\n{{fields}}"
   },
   "fields": [
+    { "id": "age", "label": "Age", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "height", "label": "Height", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "build", "label": "Build", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "complexion", "label": "Complexion", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },

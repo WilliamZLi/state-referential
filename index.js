@@ -142,6 +142,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
       // return undefined depending on how the popup re-mounted; fall back to 'protagonist'.
       const role = $('#strk-subj-role', $f).val() || (opts.forceProtagonist ? 'protagonist' : 'npc');
       const traits = {
+        age: $('#strk-trait-age', $f).val(),
         height: $('#strk-trait-height', $f).val(),
         build: $('#strk-trait-build', $f).val(),
         complexion: $('#strk-trait-complexion', $f).val(),
@@ -191,6 +192,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
       return descProbe.drain();
     },
     runManualProbe: (trackerId, subject) => standalone.runOne(trackerId, subject),
+    descProbe,
     getDefaultTags: () => _strkSettings().defaultTags ?? [],
     autoUpdate,
     injection,

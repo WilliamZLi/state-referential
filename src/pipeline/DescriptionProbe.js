@@ -39,6 +39,24 @@ export class DescriptionProbe {
     this.template = (deps.template ?? '').trim() || DEFAULT_PROBE_TEMPLATE;
     this._queue = [];
     this._running = false;
+    this._inFlight = new Set(); // tokens like "subjId|trackerId|fieldId|value"
+  }
+
+  static _token(subjectId, trackerId, fieldId, value) {
+    return `${subjectId}|${trackerId}|${fieldId}|${value}`;
+  }
+
+  /** True if a probe is enqueued or actively running for this field+value. */
+  isProbing(subjectId, trackerId, fieldId, value) {
+    const token = DescriptionProbe._token(subjectId, trackerId, fieldId, value);
+    if (this._inFlight.has(token)) return true;
+    // Also count queued (not yet started) jobs as in-progress
+    return this._queue.some(j =>
+      j.subjectId === subjectId &&
+      j.trackerId === trackerId &&
+      j.fieldId === fieldId &&
+      j.value === value
+    );
   }
 
   /** Replace the active template at runtime. Pass empty/null to revert to default. */
@@ -76,6 +94,10 @@ export class DescriptionProbe {
     if (existing != null && existing !== '') return;
     const subj = this.engine.subjects.get(subjectId);
     if (!subj) return;
+
+    const token = DescriptionProbe._token(subjectId, trackerId, fieldId, value);
+    this._inFlight.add(token);
+    this.engine.bus.emit('tracker:probe-started', { subject: subjectId, tracker: trackerId, field: fieldId, value });
     const traits = subj.traits ?? {};
     const ctx = {
       label: field.label,
@@ -85,8 +107,15 @@ export class DescriptionProbe {
       traits,
     };
     const prompt = renderTemplate(this.template, ctx);
-    const prose = await this.deps.generateQuietPrompt(prompt);
-    const text = (prose ?? '').trim();
+    let text;
+    try {
+      const prose = await this.deps.generateQuietPrompt(prompt);
+      text = (prose ?? '').trim();
+    } finally {
+      // Always clear the in-flight marker, even if generation threw.
+      this._inFlight.delete(token);
+      this.engine.bus.emit('tracker:probe-completed', { subject: subjectId, tracker: trackerId, field: fieldId, prose: text ?? '' });
+    }
     if (!text) return;
     // Re-check the cache before writing — a user edit (via the pencil modal)
     // could have populated the description while our generateQuietPrompt was awaiting.
@@ -94,6 +123,5 @@ export class DescriptionProbe {
     const writtenDuring = this.engine.getDescription(subjectId, trackerId, fieldId, value);
     if (writtenDuring != null && writtenDuring !== '') return;
     this.engine.setDescription(subjectId, trackerId, fieldId, value, text);
-    this.engine.bus.emit('tracker:probe-completed', { subject: subjectId, tracker: trackerId, field: fieldId, prose: text });
   }
 }

@@ -82,9 +82,19 @@ export function makeRenderers(engine, deps) {
     return $row;
   }
 
+  function isProbing(subjId, trackerId, fieldId, value) {
+    return deps.descProbe?.isProbing?.(subjId, trackerId, fieldId, value) === true;
+  }
+
   function descBtn(field, subj, currentValue) {
     if (!field.describable) return null;
-    return $('<button class="strk-field-icon" title="Edit description">🖉</button>').on('click', () => {
+    const busy = isProbing(subj.id, field._trackerId, field.id, currentValue);
+    const $b = $('<button class="strk-field-icon" title="Edit description">🖉</button>');
+    if (busy) {
+      $b.prop('disabled', true).attr('title', 'Probe in progress — please wait').css({ opacity: 0.5, cursor: 'wait' });
+      return $b;
+    }
+    return $b.on('click', () => {
       const prose = engine.getDescription(subj.id, field._trackerId, field.id, currentValue) ?? '';
       deps.openProseModal({
         title: `${field.label} = ${currentValue}`,
@@ -97,6 +107,11 @@ export function makeRenderers(engine, deps) {
 
   function reprobeBtn(field, subj, currentValue) {
     if (!field.describable) return null;
+    const busy = isProbing(subj.id, field._trackerId, field.id, currentValue);
+    if (busy) {
+      return $('<button class="strk-field-icon" title="Probe in progress…">⏳</button>')
+        .prop('disabled', true).css({ opacity: 0.6, cursor: 'wait' });
+    }
     return $('<button class="strk-field-icon" title="Re-probe">⟳</button>').on('click', () => {
       engine.invalidateDescription(subj.id, field._trackerId, field.id, currentValue);
       deps.requestProbe(subj.id, field._trackerId, field.id, currentValue);
@@ -104,7 +119,9 @@ export function makeRenderers(engine, deps) {
   }
 
   // Debounced setField to commit text/number edits without waiting for blur.
-  // 250ms gives the user time to finish typing before each network-side persist.
+  // 50ms is short enough that even rapid-click-Send committed mid-typing.
+  // The persist to chat metadata is itself debounced inside the backend, so this
+  // doesn't actually save to disk per keystroke.
   function debouncedSetter(subjectId, trackerId, fieldId, coerce = (x) => x) {
     let timer = null;
     return function (value) {
@@ -112,7 +129,7 @@ export function makeRenderers(engine, deps) {
       timer = setTimeout(() => {
         timer = null;
         engine.setField(subjectId, trackerId, fieldId, coerce(value), { source: 'manual' });
-      }, 250);
+      }, 50);
     };
   }
 
