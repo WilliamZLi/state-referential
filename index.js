@@ -19,6 +19,7 @@ import { SchemaEditor } from './src/ui/SchemaEditor.js';
 import { SettingsDrawer } from './src/ui/SettingsDrawer.js';
 import { makePopup } from './src/ui/Popup.js';
 import { loadTemplate } from './src/ui/shared.js';
+import { readTrackerMsgId } from './src/util/id.js';
 
 import * as Macros from './src/integration/Macros.js';
 import * as SlashCommands from './src/integration/SlashCommands.js';
@@ -55,11 +56,11 @@ import * as EventHooks from './src/integration/EventHooks.js';
     generateQuietPrompt,
     getCurrentMsgId: () => {
       const chat = getContext().chat;
-      return chat[chat.length - 1]?.extra?.trackerMsgId ?? null;
+      return readTrackerMsgId(chat[chat.length - 1]) ?? null;
     },
     getMsgIndex: (id) => {
       const chat = getContext().chat;
-      const i = chat.findIndex(m => m?.extra?.trackerMsgId === id);
+      const i = chat.findIndex(m => readTrackerMsgId(m) === id);
       return i < 0 ? null : i;
     },
     template: _strkSettings().templates?.autoUpdate,
@@ -189,6 +190,8 @@ import * as EventHooks from './src/integration/EventHooks.js';
     renameSubject: (a, b) => engine.renameSubject(a, b),
     setProtagonist: (n) => engine.setProtagonist(n),
     listSubjects: () => engine.listSubjects(),
+    protagonist: () => engine.protagonist(),
+    resolveSubject: (token) => engine.resolveSubject(token),
 
     getField: (...a) => engine.getField(...a),
     setField: (...a) => engine.setField(...a),
@@ -204,8 +207,10 @@ import * as EventHooks from './src/integration/EventHooks.js';
     setSceneTag: (t, on) => engine.setSceneTag(t, on),
     toggleSceneTag: (t) => engine.toggleSceneTag(t),
     listActiveTags: () => engine.listActiveTags(),
+    isTagActive: (tag) => engine.isTagActive(tag),
 
     snapshot: () => engine.snapshot(),
+    loadSnapshot: (msgId) => engine.loadSnapshot(msgId),
     restoreSnapshot: (s) => engine.restoreSnapshot(s),
     diffSnapshots: (a, b) => engine.diffSnapshots(a, b),
     renderDiffAsCommands: (d) => engine.renderDiffAsCommands(d),
@@ -218,6 +223,9 @@ import * as EventHooks from './src/integration/EventHooks.js';
 
     on: (e, fn) => engine.on(e, fn),
     off: (e, fn) => engine.off(e, fn),
+
+    // Unstable: direct engine reference for debugging only — not part of public spec.
+    _engine: engine,
   };
 
   console.log('[state-referential] ready');
