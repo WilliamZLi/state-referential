@@ -152,11 +152,10 @@ test('{{fields}} placeholder expands to auto-formatted enabled fields', () => {
   inj.run();
   const call = calls.find(c => c.k === `tracker:${p.id}:gear`);
   assert.ok(call, 'expected injection call for gear tracker');
-  // Auto-format: "Sword: Excalibur" — descriptions are intentionally NOT included in {{fields}}
-  // (they balloon prompts; use explicit {{<field>.desc}} in a custom template if needed).
+  // Auto-format: "Sword: Excalibur (A gleaming legendary blade.)"
   assert.match(call.t, /Sword.*Excalibur/);
-  assert.ok(!call.t.includes('A gleaming legendary blade'), '{{fields}} auto-block must omit descriptions');
-  // Shield appears
+  assert.match(call.t, /A gleaming legendary blade/);
+  // Shield appears (no desc → no parenthetical)
   assert.match(call.t, /Shield.*Round shield/);
   // Potion is injection.enabled=false → must not appear
   assert.ok(!call.t.includes('Health potion'), 'disabled field must not appear in {{fields}} expansion');

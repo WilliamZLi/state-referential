@@ -1,12 +1,17 @@
-export const DEFAULT_PROBE_TEMPLATE = `Describe {{label}} = "{{value}}" for {{subjectName}}.
-1-2 sentences, sensory and concrete. No dialogue.
-{{#if subjectHasTraits}}
-{{subjectName}}'s traits:
-  height: {{traits.height}}
-  build:  {{traits.build}}
-  hair:   {{traits.hair}}
-  eyes:   {{traits.eyes}}
-{{/if}}`;
+export const DEFAULT_PROBE_TEMPLATE = `Identify the {{label}} "{{value}}" as a SHORT, state-agnostic factual descriptor of the item or concept itself — what it IS in the abstract, NOT how anyone is currently wearing, holding, or embodying it.
+
+Strict rules:
+- ONE clause, ideally under 15 words.
+- NO scene-setting, NO character pose or expression, NO who's wearing/holding it, NO dialogue, NO period at the end.
+- Describe ONLY intrinsic properties: shape, material, color, build, kind, purpose.
+
+Examples:
+- topwear "red silk dress" → a fitted crimson silk dress with thin straps
+- weapon "longsword" → a one-handed steel blade with a worn leather grip
+- mood "curious" → an attentive, open-eyed interest
+- status "stunned" → a brief disorientation that disrupts focus
+
+Now identify: {{label}} "{{value}}" — output the clause only.`;
 
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>

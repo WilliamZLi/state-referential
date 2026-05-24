@@ -20,14 +20,14 @@ test('enqueue then drain calls probe sequentially with rendered template', async
   const p = eng.addSubject('Lyra', { role: 'protagonist', traits: { height: 'tall', hair: 'red' } });
   eng.setField(p.id, 'outfit', 'topwear', 'red silk dress');
   const calls = [];
-  const probe = new DescriptionProbe(eng, { generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'A fitted crimson silk dress.'; } });
+  const probe = new DescriptionProbe(eng, { generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'a fitted crimson silk dress'; } });
   probe.enqueue([{ subjectId: p.id, trackerId: 'outfit', fieldId: 'topwear', value: 'red silk dress' }]);
   await probe.drain();
   assert.strictEqual(calls.length, 1);
-  assert.match(calls[0], /Lyra/);
+  // New default template is state-agnostic — it focuses on the item, NOT subject/traits.
   assert.match(calls[0], /red silk dress/);
-  assert.match(calls[0], /tall/);
-  assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'red silk dress'), 'A fitted crimson silk dress.');
+  assert.match(calls[0], /state-agnostic/i);
+  assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'red silk dress'), 'a fitted crimson silk dress');
 });
 
 test('skips non-describable and empty values', async () => {

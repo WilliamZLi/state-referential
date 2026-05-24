@@ -7,11 +7,26 @@ function formatValue(value, fieldType) {
 }
 
 /**
+ * Maximum length of a cached description when rendered into the {{fields}}
+ * auto-block. Probe output is supposed to be a short identifier clause
+ * (~15 words), but if a misbehaving template produces paragraphs we truncate
+ * to keep the prompt sane.
+ */
+const DESC_RENDER_CAP = 120;
+
+function truncateDesc(text) {
+  if (!text) return '';
+  const trimmed = String(text).trim();
+  if (trimmed.length <= DESC_RENDER_CAP) return trimmed;
+  return trimmed.slice(0, DESC_RENDER_CAP - 1).trimEnd() + '…';
+}
+
+/**
  * Build the auto-rendered {{fields}} block.
- * One line per included field with a non-empty value: "Label: value".
- * Descriptions are NOT included by default (they're often paragraph-length probe
- * output, which balloons the prompt). Users who want descriptions can author a
- * custom template with explicit {{<fieldId>.desc}} placeholders.
+ * One line per included field with a non-empty value:
+ *   "Label: value (short-desc)"   — desc shown if cached and non-empty
+ *   "Label: value"                — if no description cached
+ * Descriptions are length-capped to keep the injection compact.
  */
 function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
   const lines = [];
@@ -20,7 +35,8 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
     const raw = fieldValues[f.id];
     const formatted = formatValue(raw, f.type);
     if (!formatted) continue;                      // skip empty values
-    lines.push(`${f.label}: ${formatted}`);
+    const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, raw));
+    lines.push(desc ? `${f.label}: ${formatted} (${desc})` : `${f.label}: ${formatted}`);
   }
   return lines.join('\n');
 }
