@@ -200,24 +200,23 @@ setExtensionPrompt(key, text, position, depth);
 ```
 
 - `key` — unique per injection slot. Calling with same key replaces; calling with empty `text` clears.
-- `position` — **NUMERIC** value from ST's `extension_prompt_types`. Passing strings silently fails (ST drops the injection entirely, no error logged). Values:
-  - `0` — NONE (disabled)
-  - `1` — IN_PROMPT (main prompt body, before chat history)
-  - `2` — IN_CHAT (at a depth within chat history; uses the `depth` arg)
-  - `3` — BEFORE_PROMPT
-  - `4` — AFTER_SCENARIO
-- `depth` — only meaningful for IN_CHAT (position=2). `0` = right at the bottom; higher = further up.
+- `position` — **NUMERIC** value from ST's `extension_prompt_types` (defined in `public.js`). Passing strings silently fails (ST drops the injection entirely, no error logged). Values:
+  - `-1` — NONE (disabled)
+  - `0` — IN_PROMPT (main prompt body, after system, before chat history)
+  - `1` — IN_CHAT (at a depth within chat history; uses the `depth` arg)
+  - `2` — BEFORE_PROMPT (before the entire main prompt)
+- `depth` — only meaningful for IN_CHAT (position=1). `0` = right at the bottom (closest to the AI's reply slot); higher = further up in the history.
 
 If you store positions as readable strings in user-facing config, map them to numbers before calling:
 
 ```js
 const POSITION_MAP = {
-  'system':           1,
-  'in-prompt':        2,
-  'author-note':      2,
-  'before-char-defs': 3,
+  'system':           0, // IN_PROMPT
+  'in-prompt':        1, // IN_CHAT
+  'author-note':      1, // IN_CHAT
+  'before-char-defs': 2, // BEFORE_PROMPT
 };
-const resolvePosition = (p) => typeof p === 'number' ? p : (POSITION_MAP[p] ?? 2);
+const resolvePosition = (p) => typeof p === 'number' ? p : (POSITION_MAP[p] ?? 1);
 setExtensionPrompt(key, text, resolvePosition(positionString), depth);
 ```
 
