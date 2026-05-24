@@ -4,10 +4,10 @@
     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
   </div>
   <div class="inline-drawer-content">
-    <label><input type="checkbox" id="strk-enable" /> Enable plugin</label>
-    <label><input type="checkbox" id="strk-auto-update" checked /> Auto-update master</label>
-    <label><input type="checkbox" id="strk-probe-desc" checked /> Description probe master</label>
-    <label>Active window (turns) <input type="number" class="text_pole" id="strk-active-window" min="1" max="50" value="5" /></label>
+    <label title="Master on/off for the entire extension. Disables auto-update, probes, injection, and macros if off."><input type="checkbox" id="strk-enable" /> Enable plugin</label>
+    <label title="Master toggle for AI auto-update after each assistant message. Individual trackers can also have their own auto-update flag in the schema editor."><input type="checkbox" id="strk-auto-update" checked /> Auto-update master</label>
+    <label title="Master toggle for description probes (the AI generating prose blurbs for new field values). Cache hits never re-probe regardless."><input type="checkbox" id="strk-probe-desc" checked /> Description probe master</label>
+    <label title="Default value for fields with inclusion rule 'active'. Larger = more verbose prompts. Smaller = stale fields drop off the auto-update prompt sooner.">Active window (turns) <input type="number" class="text_pole" id="strk-active-window" min="1" max="50" value="5" /></label>
     <h4>Tracker definitions</h4>
     <div id="strk-defs-list"></div>
     <div class="strk-drawer-actions">
