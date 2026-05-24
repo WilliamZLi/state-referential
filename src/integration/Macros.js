@@ -148,44 +148,77 @@ export function resolveTagMacro(engine, arg) {
   return active ? '1' : '';
 }
 
+/**
+ * Register tracker macros with ST's macro system.
+ *
+ * Tries the new MacroRegistry API first (scripts/macros/macro-system.js) which
+ * supports `::`-separated arguments. Falls back to the legacy MacrosParser API
+ * for older ST versions — but note legacy doesn't support args, so the fallback
+ * is only useful for argless built-ins (and our macros all take args).
+ *
+ * @param {TrackerEngine} engine
+ * @param {{ macros?: object, MacrosParser?: object, proseStore?: object }} deps
+ */
 export function register(engine, deps) {
-  if (!deps?.MacrosParser?.registerMacro) return;
-  const proseStore = deps.proseStore ?? {};
+  const proseStore = deps?.proseStore ?? {};
 
-  // ST's MacrosParser.registerMacro passes the captured `::`-separated args
-  // as positional string args directly (NO leading env/context object in modern
-  // ST versions). For {{tracker::Lyra}}, the fn is called as fn("Lyra").
-  // For {{tracker::Lyra.outfit.topwear}}, fn("Lyra.outfit.topwear").
-  // Older ST versions sometimes did pass an env first; we handle both shapes.
-  const extractArgs = (rawArgs) => {
-    // If first arg is a non-string object, assume legacy env-first signature.
-    if (rawArgs.length > 0 && typeof rawArgs[0] !== 'string') return rawArgs.slice(1);
-    return rawArgs;
+  // Build the tracker handler — receives a single string argument (everything
+  // after `::`, before any further `::` separators which become additional args).
+  const trackerHandler = (innerArg) => {
+    const inner = String(innerArg ?? '');
+    if (!inner) return '';
+    const parts = inner.split('.');
+    if (parts.length === 3 && parts[2] === '_probe') return resolveProbe(engine, inner, proseStore) ?? '';
+    if (parts.length === 2) return resolveTrackerBlock(engine, inner) ?? '';
+    if (parts.length === 1) return resolveAllTrackers(engine, inner);
+    return resolveMacro(engine, inner); // field-level (3+ parts)
   };
 
-  deps.MacrosParser.registerMacro('tracker', (...rawArgs) => {
-    const args = extractArgs(rawArgs);
-    const inner = args.join('::');
-    const parts = String(inner).split('.');
+  const tagHandler = (tag, mode, text) => {
+    const t = String(tag ?? '');
+    if (!t) return '';
+    const m = String(mode ?? '');
+    const x = String(text ?? '');
+    const arg = m ? (x ? `${t}::${m}::${x}` : `${t}::${m}`) : t;
+    return resolveTagMacro(engine, arg);
+  };
 
-    // 3-part with ._probe suffix: <subject>.<tracker>._probe
-    if (parts.length === 3 && parts[2] === '_probe') {
-      return resolveProbe(engine, inner, proseStore) ?? '';
+  // ── Try new MacroRegistry API (ST 1.13+) ──────────────────────────────────
+  const registry = deps?.macros?.registry;
+  if (registry?.registerMacro) {
+    try {
+      registry.registerMacro('tracker', {
+        category: 'extras',
+        unnamedArgs: [{ name: 'path', optional: false, type: 'string', description: '<subject>[.<tracker>[.<field>[.desc|raw|label|_probe]]]' }],
+        description: 'State tracker: resolves a subject, tracker, or field path. {{tracker::Lyra}} = all trackers, {{tracker::Lyra.outfit}} = whole outfit block, {{tracker::Lyra.outfit.topwear}} = single value.',
+        handler: (ctx) => trackerHandler(ctx.unnamedArgs[0]),
+      });
+      registry.registerMacro('tracker-list', {
+        category: 'extras',
+        unnamedArgs: [{ name: 'path', optional: false, type: 'string', description: '<subject>.<tracker>.<field>[.desc]' }],
+        description: 'State tracker list rendering: bullet-list of a list-field, optionally with cached descriptions.',
+        handler: (ctx) => resolveListMacro(engine, ctx.unnamedArgs[0]),
+      });
+      registry.registerMacro('tracker-tag', {
+        category: 'extras',
+        unnamedArgs: [
+          { name: 'tag', optional: false, type: 'string' },
+          { name: 'mode', optional: true, type: 'string', description: 'on|off — gate the text by tag state' },
+          { name: 'text', optional: true, type: 'string', description: 'text to emit when mode condition matches' },
+        ],
+        description: 'Scene tag state: {{tracker-tag::intimate}} = "1"/"". {{tracker-tag::intimate::on::TEXT}} = TEXT if active.',
+        handler: (ctx) => tagHandler(ctx.unnamedArgs[0], ctx.unnamedArgs[1], ctx.unnamedArgs[2]),
+      });
+      return;
+    } catch (e) {
+      console.warn('[state-referential] new MacroRegistry registration failed, falling back to legacy:', e?.message);
     }
+  }
 
-    // 2-part: <subject>.<tracker> — whole tracker block
-    if (parts.length === 2) {
-      return resolveTrackerBlock(engine, inner) ?? '';
-    }
-
-    // 1-part: <subject> — all trackers for subject
-    if (parts.length === 1 && inner) {
-      return resolveAllTrackers(engine, inner);
-    }
-
-    // 3+ parts (field-level): delegate to existing resolveMacro
-    return resolveMacro(engine, inner);
-  });
-  deps.MacrosParser.registerMacro('tracker-list', (...rawArgs) => resolveListMacro(engine, extractArgs(rawArgs).join('::')));
-  deps.MacrosParser.registerMacro('tracker-tag', (...rawArgs) => resolveTagMacro(engine, extractArgs(rawArgs).join('::')));
+  // ── Fallback: legacy MacrosParser (no arg support, but harmless to register)
+  if (deps?.MacrosParser?.registerMacro) {
+    deps.MacrosParser.registerMacro('tracker', (...rawArgs) => trackerHandler(rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
+    deps.MacrosParser.registerMacro('tracker-list', (...rawArgs) => resolveListMacro(engine, rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
+    deps.MacrosParser.registerMacro('tracker-tag', (...rawArgs) => resolveTagMacro(engine, rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
+  }
 }

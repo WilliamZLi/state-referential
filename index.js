@@ -244,7 +244,16 @@ import * as EventHooks from './src/integration/EventHooks.js';
   $('#extensionsMenu').append($btn);
 
   // Integration
-  Macros.register(engine, { MacrosParser, proseStore });
+  // Register macros using the new MacroRegistry API (ST 1.13+) which supports
+  // `::`-separated arguments. Falls back to legacy MacrosParser if unavailable
+  // (older ST versions — won't support args but registers the names).
+  let macros = null;
+  try {
+    ({ macros } = await import('../../../macros/macro-system.js'));
+  } catch (e) {
+    console.warn('[state-referential] new macro-system.js not available, falling back to legacy MacrosParser:', e?.message);
+  }
+  Macros.register(engine, { macros, MacrosParser, proseStore });
   SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
   EventHooks.register(engine, {
     versioning,
