@@ -151,30 +151,41 @@ export function resolveTagMacro(engine, arg) {
 export function register(engine, deps) {
   if (!deps?.MacrosParser?.registerMacro) return;
   const proseStore = deps.proseStore ?? {};
-  deps.MacrosParser.registerMacro('tracker', (env, ...args) => {
+
+  // ST's MacrosParser.registerMacro passes the captured `::`-separated args
+  // as positional string args directly (NO leading env/context object in modern
+  // ST versions). For {{tracker::Lyra}}, the fn is called as fn("Lyra").
+  // For {{tracker::Lyra.outfit.topwear}}, fn("Lyra.outfit.topwear").
+  // Older ST versions sometimes did pass an env first; we handle both shapes.
+  const extractArgs = (rawArgs) => {
+    // If first arg is a non-string object, assume legacy env-first signature.
+    if (rawArgs.length > 0 && typeof rawArgs[0] !== 'string') return rawArgs.slice(1);
+    return rawArgs;
+  };
+
+  deps.MacrosParser.registerMacro('tracker', (...rawArgs) => {
+    const args = extractArgs(rawArgs);
     const inner = args.join('::');
     const parts = String(inner).split('.');
 
     // 3-part with ._probe suffix: <subject>.<tracker>._probe
     if (parts.length === 3 && parts[2] === '_probe') {
-      const result = resolveProbe(engine, inner, proseStore);
-      return result ?? '';
+      return resolveProbe(engine, inner, proseStore) ?? '';
     }
 
     // 2-part: <subject>.<tracker> — whole tracker block
     if (parts.length === 2) {
-      const result = resolveTrackerBlock(engine, inner);
-      return result ?? '';
+      return resolveTrackerBlock(engine, inner) ?? '';
     }
 
     // 1-part: <subject> — all trackers for subject
-    if (parts.length === 1) {
+    if (parts.length === 1 && inner) {
       return resolveAllTrackers(engine, inner);
     }
 
     // 3+ parts (field-level): delegate to existing resolveMacro
     return resolveMacro(engine, inner);
   });
-  deps.MacrosParser.registerMacro('tracker-list', (env, ...args) => resolveListMacro(engine, args.join('::')));
-  deps.MacrosParser.registerMacro('tracker-tag', (env, ...args) => resolveTagMacro(engine, args.join('::')));
+  deps.MacrosParser.registerMacro('tracker-list', (...rawArgs) => resolveListMacro(engine, extractArgs(rawArgs).join('::')));
+  deps.MacrosParser.registerMacro('tracker-tag', (...rawArgs) => resolveTagMacro(engine, extractArgs(rawArgs).join('::')));
 }
