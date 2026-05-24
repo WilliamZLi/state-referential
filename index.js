@@ -118,7 +118,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
       };
       if (name) engine.addSubject(name, { role, traits });
     });
-    await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', { wide: true });
+    await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
   };
 
   const panel = new Panel(engine, {
