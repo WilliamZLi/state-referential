@@ -8,12 +8,12 @@
     "trigger": "always",
     "position": "before-char-defs",
     "depth": 1,
-    "template": "**{{subject}}:** {{height}}, {{build}}, {{hair}}, {{eyes}}{{distinguishing_features}}"
+    "template": "**{{subject}} traits:**\n{{fields}}"
   },
   "fields": [
     { "id": "height", "label": "Height", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "build", "label": "Build", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
-    { "id": "complexion", "label": "Complexion", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": false } },
+    { "id": "complexion", "label": "Complexion", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "hair", "label": "Hair", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "eyes", "label": "Eyes", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "distinguishing_features", "label": "Distinguishing", "type": "text", "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } }
