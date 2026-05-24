@@ -2,10 +2,14 @@ export function register(engine, deps) {
   // deps: { versioning, descProbe, getSettings, panel, injection }
   deps.versioning.register();
 
-  // Bridge: every value-changed enqueues a description-probe job.
+  // Bridge: value-changed events that came from the AI (or slash commands)
+  // enqueue a description probe. Manual UI edits do NOT auto-probe — clicking
+  // through dropdown options to browse them shouldn't waste a generate call per
+  // option. Users can press ⟳ to explicitly probe a manual value.
   engine.on('tracker:value-changed', (e) => {
     const s = deps.getSettings();
     if (s.probeDesc === false) return;
+    if (e.source === 'manual') return;
     deps.descProbe.enqueue([{
       subjectId: e.subject, trackerId: e.tracker, fieldId: e.field, value: e.newValue,
     }]);
