@@ -114,7 +114,9 @@ import * as EventHooks from './src/integration/EventHooks.js';
     if (opts.forceProtagonist) { $('#strk-subj-role', $f).val('protagonist').prop('disabled', true); $('#strk-subject-modal-title', $f).text('Create protagonist'); }
     $('#strk-subj-save', $f).on('click', () => {
       const name = $('#strk-subj-name', $f).val().trim();
-      const role = $('#strk-subj-role', $f).val();
+      // For forceProtagonist, the role select is disabled which means jQuery .val() may
+      // return undefined depending on how the popup re-mounted; fall back to 'protagonist'.
+      const role = $('#strk-subj-role', $f).val() || (opts.forceProtagonist ? 'protagonist' : 'npc');
       const traits = {
         height: $('#strk-trait-height', $f).val(),
         build: $('#strk-trait-build', $f).val(),
@@ -123,8 +125,14 @@ import * as EventHooks from './src/integration/EventHooks.js';
         eyes: $('#strk-trait-eyes', $f).val(),
         distinguishing_features: $('#strk-trait-distinguishing', $f).val(),
       };
-      if (!name) return;
-      const subj = engine.addSubject(name, { role, traits });
+      if (!name) { alert('Name is required.'); return; }
+      let subj;
+      try {
+        subj = engine.addSubject(name, { role, traits });
+      } catch (e) {
+        alert(`Could not add subject: ${e.message}`);
+        return;
+      }
       // Mirror into the Traits tracker if installed so the panel reflects them.
       if (engine.getTracker('traits')) {
         for (const [fieldId, value] of Object.entries(traits)) {
@@ -134,9 +142,18 @@ import * as EventHooks from './src/integration/EventHooks.js';
           }
         }
       }
+      // Mark first-run complete so we don't keep popping the modal on every load.
+      _strkSettings().firstRunComplete = true;
+      saveSettingsDebounced();
+      // Close the popup
+      const $popup = $f.closest('.popup');
+      $popup.find('.popup_cross').first().trigger('click');
     });
-    // Cancel: close the popup via its cross button
+    // Cancel: close the popup via its cross button + mark first-run dismissed so
+    // we don't auto-pop on every load.
     $('#strk-subj-cancel', $f).on('click', () => {
+      _strkSettings().firstRunComplete = true;
+      saveSettingsDebounced();
       const $popup = $f.closest('.popup');
       $popup.find('.popup_cross').first().trigger('click');
     });
@@ -155,10 +172,14 @@ import * as EventHooks from './src/integration/EventHooks.js';
   });
   await panel.mount();
 
-  // First-run: if trackers are defined but no subjects exist yet, prompt for protagonist.
-  // This covers the case where the user installs presets before the tracker:backend-changed
-  // event fires (e.g. settings loaded from a prior session).
-  if (engine.listTrackers().length > 0 && engine.listSubjects().length === 0) {
+  // First-run: prompt for protagonist on truly first install only.
+  // Once the user saves OR cancels the modal, firstRunComplete is set and we
+  // never auto-pop again. They can still use "+ subject" manually from the panel.
+  if (
+    !_strkSettings().firstRunComplete &&
+    engine.listTrackers().length > 0 &&
+    engine.listSubjects().length === 0
+  ) {
     openSubjectAddModal({ forceProtagonist: true });
   }
 
