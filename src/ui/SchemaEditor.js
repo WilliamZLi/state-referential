@@ -227,7 +227,7 @@ export class SchemaEditor {
       if (def.source) next.source = def.source;
       if (trackerId) this.engine.updateTracker(trackerId, next);
       else this.engine.defineTracker(next);
-      this.deps.close?.();
+      this.deps.close?.($form);
     });
 
     // ── Export ───────────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ export class SchemaEditor {
     });
 
     // ── Cancel ───────────────────────────────────────────────────────────────
-    $('#strk-schema-cancel', $form).on('click', () => this.deps.close?.());
+    $('#strk-schema-cancel', $form).on('click', () => this.deps.close?.($form));
 
     // ── Reset to preset ──────────────────────────────────────────────────────
     $('#strk-schema-reset', $form).on('click', async () => {

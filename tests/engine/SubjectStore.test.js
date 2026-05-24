@@ -61,3 +61,10 @@ test('protagonist alias resolves', () => {
   assert.strictEqual(s.resolveAlias('char').name, 'Hero');
   assert.strictEqual(s.resolveAlias('Maya').name, 'Maya');
 });
+
+test('user and self aliases return null (v1 documented limitation)', () => {
+  const s = new SubjectStore(new InMemoryBackend(), mkBus());
+  s.add('Hero', { role: 'protagonist' });
+  assert.strictEqual(s.resolveAlias('user'), null);
+  assert.strictEqual(s.resolveAlias('self'), null);
+});

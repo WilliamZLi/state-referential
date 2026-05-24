@@ -87,6 +87,7 @@ export class SubjectStore {
 
   resolveAlias(token) {
     if (token === 'protagonist' || token === 'char') return this.protagonist();
+    if (token === 'user' || token === 'self') return null; // documented v1 limitation — no user persona tracked
     return this.findByName(token) ?? this.get(token);
   }
 

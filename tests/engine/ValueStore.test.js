@@ -102,3 +102,26 @@ test('round-trip via backend', () => {
   assert.strictEqual(vs2.getField('p1', 'outfit', 'topwear'), 'red');
   assert.strictEqual(vs2.getDescription('p1', 'outfit', 'topwear', 'red'), 'd');
 });
+
+test('purgeField removes values and per-subject descriptions for that field only', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setField('p1', 'outfit', 'topwear', 'red');
+  vs.setField('p1', 'outfit', 'items', ['sword']);
+  vs.setDescription('p1', 'outfit', 'topwear', 'red', 'a red top');
+  // purge topwear only
+  vs.purgeField('outfit', 'topwear');
+  assert.strictEqual(vs.getField('p1', 'outfit', 'topwear'), undefined);
+  assert.strictEqual(vs.getDescription('p1', 'outfit', 'topwear', 'red'), null);
+  // items should be untouched
+  assert.deepStrictEqual(vs.getField('p1', 'outfit', 'items'), ['sword']);
+});
+
+test('purgeField removes global descriptions for that field only', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setDescription(null, 'outfit', 'items', 'sword', 'an old blade');
+  vs.setDescription(null, 'outfit', 'items', 'potion', 'a healing potion');
+  vs.purgeField('outfit', 'items');
+  assert.strictEqual(vs.getDescription('p1', 'outfit', 'items', 'sword'), null);
+  assert.strictEqual(vs.getDescription('p1', 'outfit', 'items', 'potion'), null);
+});
+

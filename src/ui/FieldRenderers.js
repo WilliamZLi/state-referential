@@ -64,9 +64,13 @@ export function makeRenderers(engine, deps) {
       // "[Include once]" button for stale rows
       if (deps.autoUpdate || deps.injection) {
         const $once = $('<button class="strk-field-icon strk-include-once" title="Include once in next update">↺</button>')
-          .on('click', () => {
+          .on('click', function () {
             deps.autoUpdate?.includeOnce(subj.id, field._trackerId, field.id);
             deps.injection?.includeOnce(subj.id, field._trackerId, field.id);
+            const $btn = $(this);
+            const orig = $btn.text();
+            $btn.text('✓').css('color', '#4af');
+            setTimeout(() => { $btn.text(orig).css('color', ''); }, 1200);
           });
         extras = [...extras, $once];
       }

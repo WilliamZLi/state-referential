@@ -103,3 +103,24 @@ test('updateTracker migrates number→text by stringifying', () => {
   // After migration, value should be a string
   assert.strictEqual(eng.getField(p.id, 'stats', 'hp'), '75');
 });
+
+test('updateTracker field-delete cascade clears values and descriptions for removed field', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'outfit', label: 'Outfit', fields: [
+    { id: 'topwear', label: 'Topwear', type: 'text', default: '', describable: true, descriptionScope: 'per-subject' },
+    { id: 'bottomwear', label: 'Bottomwear', type: 'text', default: '' },
+  ]});
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red shirt');
+  eng.setField(p.id, 'outfit', 'bottomwear', 'jeans');
+  eng.setDescription(p.id, 'outfit', 'topwear', 'red shirt', 'a red cotton top');
+  // Remove topwear from definition
+  eng.updateTracker('outfit', { id: 'outfit', label: 'Outfit', fields: [
+    { id: 'bottomwear', label: 'Bottomwear', type: 'text', default: '' },
+  ]});
+  // topwear values+descriptions should be purged
+  assert.strictEqual(eng.values._values[p.id]?.['outfit']?.['topwear'], undefined);
+  assert.ok(!Object.keys(eng.values._desc.perSubject?.[p.id] ?? {}).some(k => k === 'outfit.topwear'));
+  // bottomwear should remain
+  assert.strictEqual(eng.getField(p.id, 'outfit', 'bottomwear'), 'jeans');
+});

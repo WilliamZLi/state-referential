@@ -85,7 +85,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
   eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => injection.run());
 
   // UI
-  const schemaEditor = new SchemaEditor(engine, { callGenericPopup, POPUP_TYPE, dialogs, close: () => {} });
+  const schemaEditor = new SchemaEditor(engine, { callGenericPopup, POPUP_TYPE, dialogs, close: ($form) => _closePopup($form) });
   const settingsDrawer = new SettingsDrawer(engine, {
     schemaEditor,
     dialogs,
@@ -125,7 +125,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
     const $f = $(html);
     $('#strk-prose-title', $f).text(title);
     $('#strk-prose-text', $f).val(text);
-    $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); });
+    $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); _closePopup($f); });
     $('#strk-prose-refresh', $f).on('click', () => { onRefresh?.(); });
     // Cancel: close via the robust helper
     $('#strk-prose-cancel', $f).on('click', () => _closePopup($f));

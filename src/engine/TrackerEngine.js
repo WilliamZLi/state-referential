@@ -43,7 +43,16 @@ export class TrackerEngine {
     const oldDef = this.definitions.get(id);
     this.definitions.update(id, d);
     const newDef = this.definitions.get(id);
-    if (oldDef && newDef) this._migrateFieldTypes(id, oldDef, newDef);
+    if (oldDef && newDef) {
+      this._migrateFieldTypes(id, oldDef, newDef);
+      // Bug 4: cascade field deletion — purge values+descriptions for removed fields
+      const newFieldIds = new Set(newDef.fields.map(f => f.id));
+      for (const oldField of oldDef.fields) {
+        if (!newFieldIds.has(oldField.id)) {
+          this.values.purgeField(id, oldField.id);
+        }
+      }
+    }
   }
   deleteTracker(id) {
     this.definitions.delete(id);
@@ -69,7 +78,19 @@ export class TrackerEngine {
 
   // Values
   getField(s, t, f) { return this.values.getField(s, t, f); }
-  setField(s, t, f, v, opts) { this.values.setField(s, t, f, v, opts); }
+  setField(s, t, f, v, opts) {
+    this.values.setField(s, t, f, v, opts);
+    // Bug 3: mirror traits tracker edits back to subject.traits so DescriptionProbe
+    // {{traits.X}} macros stay current when fields are edited after subject creation.
+    if (t === 'traits') {
+      const subj = this.subjects.get(s);
+      if (subj) {
+        if (!subj.traits) subj.traits = {};
+        subj.traits[f] = v;
+        this.subjects._persist();
+      }
+    }
+  }
   applyDelta(s, t, f, d, opts) { this.values.applyDelta(s, t, f, d, opts); }
   addListEntry(s, t, f, e, opts) { this.values.addListEntry(s, t, f, e, opts); }
   removeListEntry(s, t, f, e, opts) { this.values.removeListEntry(s, t, f, e, opts); }

@@ -108,6 +108,29 @@ export class ValueStore {
     delete this._desc.perSubject?.[s];
     this._persist();
   }
+  purgeField(trackerId, fieldId) {
+    // Drop values for this specific field across all subjects
+    for (const subjId of Object.keys(this._values)) {
+      if (this._values[subjId]?.[trackerId]) {
+        delete this._values[subjId][trackerId][fieldId];
+      }
+    }
+    // Drop global descriptions whose key matches "<trackerId>.<fieldId>" or "<trackerId>.<fieldId>[]"
+    for (const key of Object.keys(this._desc.global ?? {})) {
+      if (key === `${trackerId}.${fieldId}` || key === `${trackerId}.${fieldId}[]`) {
+        delete this._desc.global[key];
+      }
+    }
+    // Drop per-subject descriptions for this field
+    for (const subjId of Object.keys(this._desc.perSubject ?? {})) {
+      for (const key of Object.keys(this._desc.perSubject[subjId] ?? {})) {
+        if (key === `${trackerId}.${fieldId}` || key === `${trackerId}.${fieldId}[]`) {
+          delete this._desc.perSubject[subjId][key];
+        }
+      }
+    }
+    this._persist();
+  }
   purgeTracker(trackerId, subjects = []) {
     // Drop values for every subject that has an entry for this tracker
     for (const subj of subjects) {
