@@ -68,7 +68,8 @@ import * as EventHooks from './src/integration/EventHooks.js';
     generateQuietPrompt,
     template: _strkSettings().templates?.probe,
   });
-  const standalone = new StandaloneProbe(engine, { generateQuietPrompt, insertSmallSysMessage, proseStore: {} });
+  const proseStore = {};
+  const standalone = new StandaloneProbe(engine, { generateQuietPrompt, insertSmallSysMessage, proseStore });
   const injection = new Injection(engine, { setExtensionPrompt });
   const versioning = new Versioning(engine, {
     eventSource, event_types,
@@ -98,6 +99,11 @@ import * as EventHooks from './src/integration/EventHooks.js';
     $('#strk-prose-text', $f).val(text);
     $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); });
     $('#strk-prose-refresh', $f).on('click', () => { onRefresh?.(); });
+    // Cancel: close the popup via its cross button or dialog element
+    $('#strk-prose-cancel', $f).on('click', () => {
+      const $popup = $f.closest('.popup');
+      $popup.find('.popup_cross').first().trigger('click');
+    });
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', { wide: true });
   };
 
@@ -128,6 +134,11 @@ import * as EventHooks from './src/integration/EventHooks.js';
         }
       }
     });
+    // Cancel: close the popup via its cross button
+    $('#strk-subj-cancel', $f).on('click', () => {
+      const $popup = $f.closest('.popup');
+      $popup.find('.popup_cross').first().trigger('click');
+    });
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
   };
 
@@ -137,8 +148,18 @@ import * as EventHooks from './src/integration/EventHooks.js';
     openSubjectAddModal,
     requestProbe: (subjId, trackerId, fieldId, value) => descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]).then(()=>descProbe.drain()),
     runManualProbe: (trackerId, subject) => standalone.runOne(trackerId, subject),
+    getDefaultTags: () => _strkSettings().defaultTags ?? [],
+    autoUpdate,
+    injection,
   });
   await panel.mount();
+
+  // First-run: if trackers are defined but no subjects exist yet, prompt for protagonist.
+  // This covers the case where the user installs presets before the tracker:backend-changed
+  // event fires (e.g. settings loaded from a prior session).
+  if (engine.listTrackers().length > 0 && engine.listSubjects().length === 0) {
+    openSubjectAddModal({ forceProtagonist: true });
+  }
 
   // Chat-toolbar toggle button (matches ST extension-menu entry markup)
   const $btn = $(`
@@ -151,7 +172,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
   $('#extensionsMenu').append($btn);
 
   // Integration
-  Macros.register(engine, { MacrosParser });
+  Macros.register(engine, { MacrosParser, proseStore });
   SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, autoUpdate, injection, standalone });
   EventHooks.register(engine, { versioning, descProbe, getSettings: () => extension_settings['state-referential'], panel, injection });
 

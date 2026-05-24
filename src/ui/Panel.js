@@ -20,7 +20,13 @@ export class Panel {
     this.$el = $('#strk-panel');
     makeDraggable(this.$el, $('#strk-panel-drag-handle'), 'strk:panel-pos');
     $('#strk-panel-close, .strk-panel-close', this.$el).on('click', () => this.hide());
-    new SceneTagsUI(this.engine, $('#strk-scene-tags'));
+    // Pass default tags from settings; rebuild if settings change.
+    const getDefaults = this.deps.getDefaultTags ?? (() => []);
+    const sceneTagsUI = new SceneTagsUI(this.engine, $('#strk-scene-tags'), { defaults: getDefaults() });
+    this.engine.on('tracker:default-tags-changed', (e) => {
+      sceneTagsUI.defaults = e?.tags ?? getDefaults();
+      sceneTagsUI.render();
+    });
 
     $('#strk-add-subject').on('click', () => this.deps.openSubjectAddModal());
     $('#strk-probe-btn').on('click', () => this._currentTrackerId && this.deps.runManualProbe(this._currentTrackerId, this._currentSubject()));
@@ -30,6 +36,8 @@ export class Panel {
       popup: this.deps.popup,
       openProseModal: this.deps.openProseModal,
       requestProbe: this.deps.requestProbe,
+      autoUpdate: this.deps.autoUpdate,
+      injection: this.deps.injection,
     });
 
     for (const ev of [

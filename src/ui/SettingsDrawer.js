@@ -35,6 +35,21 @@ export class SettingsDrawer {
     $('#strk-import-json').on('click', () => this._importJson());
     $('#strk-reset-state').on('click', () => this._resetState());
 
+    // Default scene tags
+    this._renderDefaultTags();
+    $('#strk-add-default-tag').on('click', () => {
+      const tag = prompt('New default tag name:');
+      if (!tag || !tag.trim()) return;
+      const trimmed = tag.trim();
+      s.defaultTags ??= [];
+      if (!s.defaultTags.includes(trimmed)) {
+        s.defaultTags.push(trimmed);
+        this.deps.saveSettingsDebounced();
+        this._renderDefaultTags();
+        this.engine.bus.emit('tracker:default-tags-changed', { tags: s.defaultTags });
+      }
+    });
+
     // Template textareas
     s.templates ??= {};
     $('#strk-tpl-autoupdate')
@@ -64,6 +79,23 @@ export class SettingsDrawer {
     });
 
     this.engine.on('tracker:schema-changed', () => this.render());
+  }
+
+  _renderDefaultTags() {
+    const s = this._settings();
+    const $container = $('#strk-default-tags').empty();
+    for (const tag of (s.defaultTags ?? [])) {
+      const $row = $('<div class="strk-def-row"></div>');
+      $row.append($('<span></span>').text(tag));
+      const $rm = $('<button class="menu_button">×</button>').on('click', () => {
+        s.defaultTags = s.defaultTags.filter(t => t !== tag);
+        this.deps.saveSettingsDebounced();
+        this._renderDefaultTags();
+        this.engine.bus.emit('tracker:default-tags-changed', { tags: s.defaultTags });
+      });
+      $row.append($rm);
+      $container.append($row);
+    }
   }
 
   async _installPresets() {
