@@ -15,13 +15,15 @@
   <h4>Fields</h4>
   <table class="strk-fields-table">
     <thead><tr>
+      <th class="strk-drag-col" title="Drag to reorder fields"></th>
       <th title="Stable machine ID for this field (used in macros, slash commands, and stored data). Lowercase, no spaces. Example: topwear">ID</th>
       <th title="Human-readable name shown in the panel UI. Example: Topwear">Label</th>
       <th title="Data type. text/number/enum/list/prose. Number needs min+max; enum needs options.">Type</th>
       <th title="Whether the AI should generate a prose description of the value (for visual consistency when re-encountered). Recommended for outfit slots, moods, items, etc.; not for numbers.">Describable</th>
       <th title="Where the cached description lives. per-subject: each subject gets their own prose (Lyra's 'red dress' looks different from Maya's). global: one prose for everyone (a sword looks the same to anyone).">Scope</th>
       <th title="When this field is included in the AI auto-update prompt. always = every turn. active = only if touched in last N turns (saves tokens, lets temporary effects fade). tag = only when a scene tag is active. manual = never auto, only via /tracker-include once.">Inclusion</th>
-      <th title="Whether this field's value is injected into the AI's generation prompt (so the AI 'sees' the current state when writing the next reply). Only an on/off toggle is editable here in v1; full config (template, position, depth, trigger, tags) currently requires editing via Export JSON / Import JSON.">Injection</th>
+      <th title="Whether this field's value is injected into the AI's generation prompt (so the AI 'sees' the current state when writing the next reply).">Injection</th>
+      <th title="Open full field config (default, options, number bounds, inclusion tags/window, injection template/position/depth/trigger/tags)">⚙</th>
       <th></th>
     </tr></thead>
     <tbody id="strk-fields-body"></tbody>

@@ -169,3 +169,107 @@
   white-space: nowrap;
   width: auto;
 }
+
+/* Drag-handle column in schema fields table */
+.strk-drag-col {
+  width: 22px;
+  text-align: center;
+  padding: 2px 4px !important;
+}
+.strk-drag-handle {
+  cursor: grab;
+  opacity: 0.5;
+  user-select: none;
+  font-size: 14px;
+}
+.strk-drag-handle:hover { opacity: 1; }
+.strk-fields-table tr.strk-drag-active { opacity: 0.4; }
+.strk-fields-table tr.strk-drag-over {
+  outline: 2px solid var(--SmartThemeQuoteColor, #4af);
+  outline-offset: -2px;
+}
+
+/* ⚙ edit button in fields table */
+.strk-field-edit-btn {
+  font-size: 13px;
+  padding: 2px 6px !important;
+  min-width: unset !important;
+  white-space: nowrap;
+  width: auto;
+}
+
+/* Field details modal */
+.strk-field-details {
+  padding: 8px 12px;
+  min-width: 320px;
+  max-width: 480px;
+}
+.strk-field-details h4.strk-field-details-title {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #444);
+  padding-bottom: 6px;
+}
+.strk-fdet-section {
+  margin-bottom: 12px;
+}
+.strk-fdet-section h5 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--SmartThemeQuoteColor, #4af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.strk-fdet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.strk-fdet-row > span {
+  flex: 0 0 110px;
+  font-size: 12px;
+}
+.strk-fdet-row > input.text_pole,
+.strk-fdet-row > select.text_pole {
+  flex: 1;
+  min-width: 0;
+}
+.strk-fdet-row > textarea.text_pole {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+}
+.strk-fdet-row:has(input[type="checkbox"]) {
+  gap: 6px;
+}
+.strk-fdet-row:has(input[type="checkbox"]) > input[type="checkbox"] {
+  flex: 0 0 auto;
+}
+/* Column layout for template label+textarea */
+.strk-fdet-row--col {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.strk-fdet-row--col > span {
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+}
+.strk-fdet-row--col > textarea.text_pole {
+  width: 100%;
+  box-sizing: border-box;
+}
+.strk-fdet-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  border-top: 1px solid var(--SmartThemeBorderColor, #444);
+  padding-top: 8px;
+}
+.strk-fdet-actions .menu_button {
+  white-space: nowrap;
+  width: auto;
+}
