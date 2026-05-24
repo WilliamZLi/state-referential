@@ -46,7 +46,7 @@ test('always-trigger tracker calls setExtensionPrompt once per tracker with rend
   assert.strictEqual(outfitCalls.length, 1);
   assert.match(outfitCalls[0].t, /Lyra/);
   assert.match(outfitCalls[0].t, /red silk dress/);
-  assert.strictEqual(outfitCalls[0].pos, 'in-prompt');
+  assert.strictEqual(outfitCalls[0].pos, 2); // IN_CHAT (numeric mapping of 'in-prompt')
   assert.strictEqual(outfitCalls[0].d, 4);
 });
 

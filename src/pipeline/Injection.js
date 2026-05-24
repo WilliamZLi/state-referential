@@ -85,6 +85,30 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
   });
 }
 
+/**
+ * Map our string position labels (used in tracker definitions) to ST's numeric
+ * extension_prompt_types values. ST's setExtensionPrompt expects the numeric
+ * constant; passing the raw string makes ST silently drop the injection.
+ *
+ * ST extension_prompt_types (from extensions.js):
+ *   NONE = 0          — disabled
+ *   IN_PROMPT = 1     — main prompt body, before chat history (treat as our "system")
+ *   IN_CHAT = 2       — inserted at a depth within chat history (our "in-prompt" with depth)
+ *   BEFORE_PROMPT = 3 — before the main prompt (our "before-char-defs")
+ *   AFTER_SCENARIO = 4
+ */
+const POSITION_MAP = {
+  'system':           1, // IN_PROMPT (anchored in system part of the assembled prompt)
+  'in-prompt':        2, // IN_CHAT (inserted at depth)
+  'author-note':      2, // IN_CHAT (author-note uses same IN_CHAT slot with its own depth)
+  'before-char-defs': 3, // BEFORE_PROMPT
+};
+
+function resolvePosition(pos) {
+  if (typeof pos === 'number') return pos;
+  return POSITION_MAP[pos] ?? 2; // default IN_CHAT
+}
+
 export class Injection {
   constructor(engine, deps) {
     this.engine = engine;
@@ -135,14 +159,14 @@ export class Injection {
         );
 
         const key = `tracker:${subj.id}:${tracker.id}`;
-        this.deps.setExtensionPrompt(key, rendered, inj.position ?? 'in-prompt', inj.depth ?? 4);
+        this.deps.setExtensionPrompt(key, rendered, resolvePosition(inj.position ?? 'in-prompt'), inj.depth ?? 4);
         newKeys.add(key);
       }
     }
 
     // Clear keys that were emitted last run but not this run.
     for (const oldKey of this._lastKeys) {
-      if (!newKeys.has(oldKey)) this.deps.setExtensionPrompt(oldKey, '', 'in-prompt', 0);
+      if (!newKeys.has(oldKey)) this.deps.setExtensionPrompt(oldKey, '', resolvePosition('in-prompt'), 0);
     }
     this._lastKeys = newKeys;
     this._oneShot.clear();
