@@ -3,9 +3,17 @@
   "source": "preset:inventory",
   "appliesToRoles": ["protagonist","npc","location"],
   "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "tag",
+    "tags": ["combat","exploration"],
+    "position": "in-prompt",
+    "depth": 3,
+    "template": "**{{subject}} carries:** {{items}}"
+  },
   "fields": [
-    { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global", "inclusion": { "rule": "always" },
-      "injection": { "enabled": true, "trigger": "tag", "tags": ["combat","exploration"], "position": "in-prompt", "depth": 3,
-        "template": "**{{subject}} carries:** {{value}}" } }
+    { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } }
   ]
 }

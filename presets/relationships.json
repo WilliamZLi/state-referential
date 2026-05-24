@@ -3,11 +3,18 @@
   "source": "preset:relationships",
   "appliesToRoles": ["npc"],
   "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "tag",
+    "tags": ["social","intimate"],
+    "position": "in-prompt",
+    "depth": 3,
+    "template": "**{{subject}} ↔ protagonist:** {{dynamic_with_protagonist}}"
+  },
   "fields": [
-    { "id": "dynamic_with_protagonist", "label": "Dynamic with protagonist", "type": "prose", "default": "", "describable": true,
-      "injection": { "enabled": true, "trigger": "tag", "tags": ["social","intimate"], "position": "in-prompt", "depth": 3,
-        "template": "**{{subject}} ↔ protagonist:** {{value}}" } },
+    { "id": "dynamic_with_protagonist", "label": "Dynamic with protagonist", "type": "prose", "default": "", "describable": true, "injection": { "enabled": true } },
     { "id": "last_interaction_summary", "label": "Last interaction", "type": "text", "default": "", "describable": false,
-      "inclusion": { "rule": "active", "activeWindow": 10 } }
+      "inclusion": { "rule": "active", "activeWindow": 10 },
+      "injection": { "enabled": false } }
   ]
 }

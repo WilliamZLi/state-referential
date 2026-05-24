@@ -3,17 +3,24 @@
   "source": "preset:state",
   "appliesToRoles": ["protagonist","npc"],
   "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "always",
+    "position": "in-prompt",
+    "depth": 2,
+    "template": "**{{subject}}:** mood {{mood}}{{permanent_conditions}}"
+  },
   "fields": [
     { "id": "mood", "label": "Mood", "type": "enum",
       "options": ["neutral","happy","sad","angry","curious","afraid","aroused","smug","wistful","confident"],
-      "default": "neutral", "describable": true, "descriptionScope": "per-subject", "inclusion": { "rule": "always" },
-      "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
-        "template": "**{{subject}}:** mood {{value}}" } },
+      "default": "neutral", "describable": true, "descriptionScope": "per-subject",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
     { "id": "temporary_status_effects", "label": "Temporary status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
-      "inclusion": { "rule": "active", "activeWindow": 5 } },
+      "inclusion": { "rule": "active", "activeWindow": 5 },
+      "injection": { "enabled": false } },
     { "id": "permanent_conditions", "label": "Permanent conditions", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
       "inclusion": { "rule": "always" },
-      "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
-        "template": "**{{subject}} permanent conditions:** {{value}}" } }
+      "injection": { "enabled": true } }
   ]
 }
