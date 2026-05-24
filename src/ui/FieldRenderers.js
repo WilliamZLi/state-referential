@@ -165,7 +165,15 @@ export function makeRenderers(engine, deps) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? field.default ?? field.options[0];
       const $sel = $('<select class="text_pole"></select>');
       for (const opt of field.options) $sel.append($('<option></option>').val(opt).text(opt));
-      $sel.val(cur).on('change', e => engine.setField(subj.id, field._trackerId, field.id, e.target.value, { source: 'manual' }));
+      $sel.val(cur);
+      const commit = (e) => {
+        const v = e.target.value;
+        const stored = engine.getField(subj.id, field._trackerId, field.id);
+        if (stored === v) return; // no-op if unchanged (debounces double-fire from change+input)
+        engine.setField(subj.id, field._trackerId, field.id, v, { source: 'manual' });
+      };
+      // Bind both events — some ST themes enhance <select> in ways that suppress native 'change'.
+      $sel.on('change', commit).on('input', commit);
       return row(field, subj, $sel, [descBtn(field, subj, cur), reprobeBtn(field, subj, cur)].filter(Boolean));
     },
     list(field, subj) {

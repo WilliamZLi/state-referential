@@ -1,0 +1,18 @@
+{
+  "id": "wardrobe", "label": "Wardrobe", "icon": "fa-shirt",
+  "source": "preset:wardrobe",
+  "appliesToRoles": ["protagonist","npc"],
+  "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "always",
+    "position": "system",
+    "depth": 0,
+    "template": "**{{subject}}'s wardrobe (clothes owned but NOT currently worn — items removed from outfit go here; new clothes appear here before being worn):**\n{{fields}}"
+  },
+  "fields": [
+    { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } }
+  ]
+}
