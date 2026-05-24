@@ -9,7 +9,7 @@
     "tags": ["combat","exploration"],
     "position": "in-prompt",
     "depth": 3,
-    "template": "**{{subject}} carries:**\n{{fields}}"
+    "template": "**{{subject}} is carrying (authoritative — only these items, nothing else on their person):**\n{{fields}}"
   },
   "fields": [
     { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
