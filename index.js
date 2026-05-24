@@ -93,6 +93,30 @@ import * as EventHooks from './src/integration/EventHooks.js';
   });
   await settingsDrawer.mount();
 
+  // Robust popup dismissal — ST's popup markup varies across versions.
+  // Try native <dialog>.close(), then various known close-button selectors, then Escape.
+  const _closePopup = ($contentJq) => {
+    // Strategy 1: <dialog> ancestor with native close()
+    const $dialog = $contentJq.closest('dialog');
+    if ($dialog.length && typeof $dialog[0].close === 'function') {
+      $dialog[0].close();
+      return;
+    }
+    // Strategy 2: known close-button selectors
+    const $popup = $contentJq.closest('.popup, .popup_container, .dialogue_popup');
+    const closeSelectors = [
+      '.popup_cross', '.popup_close', '.popup-button-close',
+      '.menu_button.popup_button_cancel', '.popup_button_cancel',
+      '.fa-times', '.fa-xmark',
+    ];
+    for (const sel of closeSelectors) {
+      const $btn = $popup.find(sel).first();
+      if ($btn.length) { $btn.trigger('click'); return; }
+    }
+    // Strategy 3: Escape key dispatched on document
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  };
+
   const openProseModal = async ({ title, text, onSave, onRefresh }) => {
     const html = await loadTemplate('prose-edit-modal');
     const $f = $(html);
@@ -100,11 +124,8 @@ import * as EventHooks from './src/integration/EventHooks.js';
     $('#strk-prose-text', $f).val(text);
     $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); });
     $('#strk-prose-refresh', $f).on('click', () => { onRefresh?.(); });
-    // Cancel: close the popup via its cross button or dialog element
-    $('#strk-prose-cancel', $f).on('click', () => {
-      const $popup = $f.closest('.popup');
-      $popup.find('.popup_cross').first().trigger('click');
-    });
+    // Cancel: close via the robust helper
+    $('#strk-prose-cancel', $f).on('click', () => _closePopup($f));
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', { wide: true });
   };
 
@@ -145,17 +166,14 @@ import * as EventHooks from './src/integration/EventHooks.js';
       // Mark first-run complete so we don't keep popping the modal on every load.
       _strkSettings().firstRunComplete = true;
       saveSettingsDebounced();
-      // Close the popup
-      const $popup = $f.closest('.popup');
-      $popup.find('.popup_cross').first().trigger('click');
+      // Close the popup — try multiple strategies because ST popup markup varies by version.
+      _closePopup($f);
     });
-    // Cancel: close the popup via its cross button + mark first-run dismissed so
-    // we don't auto-pop on every load.
+    // Cancel: close the popup + mark first-run dismissed so we don't auto-pop on every load.
     $('#strk-subj-cancel', $f).on('click', () => {
       _strkSettings().firstRunComplete = true;
       saveSettingsDebounced();
-      const $popup = $f.closest('.popup');
-      $popup.find('.popup_cross').first().trigger('click');
+      _closePopup($f);
     });
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
   };
