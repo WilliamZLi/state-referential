@@ -16,16 +16,29 @@ export class ChatScopedBackend {
 
   _readContainer() {
     if (this._cache) return this._cache;
-    const chat = this.ctx.getChat?.() ?? [];
-    if (!chat.length) {
-      this._cache = { subjects: { subjects: [], protagonistId: null }, values: {}, descriptions: { global: {}, perSubject: {} }, sceneTags: [], snapshots: {} };
-      return this._cache;
+    const emptyContainer = () => ({
+      subjects: { subjects: [], protagonistId: null },
+      values: {},
+      descriptions: { global: {}, perSubject: {} },
+      sceneTags: [],
+      snapshots: {},
+    });
+
+    // Prefer live chatMetadata via getter (works even when chat[] is empty).
+    // Fall back to legacy captured `chatMetadata` (used by tests); then first
+    // message's `extra`; finally an ephemeral container.
+    let meta = this.ctx.getChatMetadata?.() ?? this.ctx.chatMetadata;
+    if (!meta) {
+      const chat = this.ctx.getChat?.() ?? [];
+      if (chat.length && chat[0]) {
+        meta = (chat[0].extra ??= {});
+      } else {
+        // No persistence target — ephemeral container until chat exists.
+        this._cache = emptyContainer();
+        return this._cache;
+      }
     }
-    // Use chatMetadata if available (sticky), else first message's extra.
-    const meta = this.ctx.chatMetadata ?? (this.ctx.getChat()[0].extra ??= {});
-    if (!meta.trackers) {
-      meta.trackers = { subjects: { subjects: [], protagonistId: null }, values: {}, descriptions: { global: {}, perSubject: {} }, sceneTags: [], snapshots: {} };
-    }
+    if (!meta.trackers) meta.trackers = emptyContainer();
     this._cache = meta.trackers;
     return this._cache;
   }

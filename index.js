@@ -29,10 +29,10 @@ import * as EventHooks from './src/integration/EventHooks.js';
 (async function init() {
   const ctx = {
     getChat: () => getContext().chat,
+    getChatMetadata: () => getContext().chatMetadata,
     getExtensionSettings: () => extension_settings,
     saveChatConditional,
     saveSettingsDebounced,
-    chatMetadata: getContext().chatMetadata,
   };
 
   const backend = new ChatScopedBackend(ctx);
