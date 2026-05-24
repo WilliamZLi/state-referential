@@ -172,14 +172,17 @@ import * as EventHooks from './src/integration/EventHooks.js';
   });
   await panel.mount();
 
-  // First-run: prompt for protagonist on truly first install only.
-  // Once the user saves OR cancels the modal, firstRunComplete is set and we
-  // never auto-pop again. They can still use "+ subject" manually from the panel.
-  if (
+  // First-run: prompt for protagonist on truly first install only AND only
+  // inside an actual chat (not the ST home/landing screen).
+  // The EventHooks backend-changed listener catches the case where the user
+  // is on home now and opens a chat later.
+  const shouldFirstRun = () =>
     !_strkSettings().firstRunComplete &&
+    (getContext().chat?.length ?? 0) > 0 &&
     engine.listTrackers().length > 0 &&
-    engine.listSubjects().length === 0
-  ) {
+    engine.listSubjects().length === 0;
+
+  if (shouldFirstRun()) {
     openSubjectAddModal({ forceProtagonist: true });
   }
 
@@ -196,7 +199,14 @@ import * as EventHooks from './src/integration/EventHooks.js';
   // Integration
   Macros.register(engine, { MacrosParser, proseStore });
   SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
-  EventHooks.register(engine, { versioning, descProbe, getSettings: () => extension_settings['state-referential'], panel, injection });
+  EventHooks.register(engine, {
+    versioning,
+    descProbe,
+    getSettings: () => extension_settings['state-referential'],
+    hasActiveChat: () => (getContext().chat?.length ?? 0) > 0,
+    panel,
+    injection,
+  });
 
   // Public API
   window.STTracker = {

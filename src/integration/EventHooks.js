@@ -14,12 +14,13 @@ export function register(engine, deps) {
   // Re-run injection whenever scene tags toggle (so tag-gated fields appear immediately).
   engine.on('tracker:tag-changed', () => deps.injection.run());
 
-  // First-run: if no subjects and definitions installed AND user hasn't dismissed
-  // the first-run prompt yet, prompt for protagonist. Otherwise stay silent —
-  // backend-changed fires on every CHAT_CHANGED now, so we must not auto-pop.
+  // First-run: only pop the protagonist modal when there's an actual chat loaded
+  // AND no subjects yet AND user hasn't dismissed the prompt before.
+  // backend-changed fires on every CHAT_CHANGED so most invocations should bail.
   engine.on('tracker:backend-changed', () => {
     const s = deps.getSettings();
     if (s?.firstRunComplete) return;
+    if (!deps.hasActiveChat?.()) return;
     if (!engine.listSubjects().length && engine.listTrackers().length) {
       deps.panel?.deps?.openSubjectAddModal?.({ forceProtagonist: true });
     }
