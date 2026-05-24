@@ -35,7 +35,7 @@ export function makeRenderers(engine, deps) {
   return {
     text(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? '';
-      const $input = $('<input type="text" />').val(cur).on('change', e => {
+      const $input = $('<input type="text" class="text_pole" />').val(cur).on('change', e => {
         engine.setField(subj.id, field._trackerId, field.id, e.target.value, { source: 'manual' });
       });
       return row(field, subj, $input, [descBtn(field, subj, cur), reprobeBtn(field, subj, cur)].filter(Boolean));
@@ -45,7 +45,7 @@ export function makeRenderers(engine, deps) {
       const useSlider = field.min != null && field.max != null;
       const $input = useSlider
         ? $(`<input type="range" min="${field.min}" max="${field.max}" />`).val(cur)
-        : $('<input type="number" />').val(cur);
+        : $('<input type="number" class="text_pole" />').val(cur);
       $input.on('change', e => engine.setField(subj.id, field._trackerId, field.id, Number(e.target.value), { source: 'manual' }));
       const $minus = $('<button class="strk-field-icon">−</button>').on('click', () =>
         engine.applyDelta(subj.id, field._trackerId, field.id, -(field.step ?? 1), { source: 'manual' }));
@@ -56,7 +56,7 @@ export function makeRenderers(engine, deps) {
     },
     enum(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? field.default ?? field.options[0];
-      const $sel = $('<select></select>');
+      const $sel = $('<select class="text_pole"></select>');
       for (const opt of field.options) $sel.append($('<option></option>').val(opt).text(opt));
       $sel.val(cur).on('change', e => engine.setField(subj.id, field._trackerId, field.id, e.target.value, { source: 'manual' }));
       return row(field, subj, $sel, [descBtn(field, subj, cur), reprobeBtn(field, subj, cur)].filter(Boolean));
