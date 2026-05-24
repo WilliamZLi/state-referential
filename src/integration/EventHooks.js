@@ -15,6 +15,11 @@ export function register(engine, deps) {
     }]);
   });
 
+  // Refresh injection on every value change (so manual edits, slash commands, and
+  // auto-update all keep the extension-prompt slot in sync). Cheap: just rebuilds
+  // the stored extension prompt for affected trackers.
+  engine.on('tracker:value-changed', () => deps.injection?.run?.());
+
   // Re-run injection whenever scene tags toggle (so tag-gated fields appear immediately).
   engine.on('tracker:tag-changed', () => deps.injection.run());
 

@@ -8,7 +8,7 @@
     "trigger": "always",
     "position": "in-prompt",
     "depth": 2,
-    "template": "**{{subject}}:**\n{{fields}}"
+    "template": "**{{subject}}'s current state (authoritative — write {{subject}}'s behavior consistent with these; do not contradict):**\n{{fields}}"
   },
   "fields": [
     { "id": "mood", "label": "Mood", "type": "enum",
