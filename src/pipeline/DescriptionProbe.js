@@ -88,6 +88,11 @@ export class DescriptionProbe {
     const prose = await this.deps.generateQuietPrompt(prompt);
     const text = (prose ?? '').trim();
     if (!text) return;
+    // Re-check the cache before writing — a user edit (via the pencil modal)
+    // could have populated the description while our generateQuietPrompt was awaiting.
+    // Don't clobber a user write.
+    const writtenDuring = this.engine.getDescription(subjectId, trackerId, fieldId, value);
+    if (writtenDuring != null && writtenDuring !== '') return;
     this.engine.setDescription(subjectId, trackerId, fieldId, value, text);
     this.engine.bus.emit('tracker:probe-completed', { subject: subjectId, tracker: trackerId, field: fieldId, prose: text });
   }
