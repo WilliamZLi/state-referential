@@ -8,8 +8,10 @@ function formatValue(value, fieldType) {
 
 /**
  * Build the auto-rendered {{fields}} block.
- * One line per included field with a non-empty value:
- *   "Label: value (desc)"  — desc part omitted if empty
+ * One line per included field with a non-empty value: "Label: value".
+ * Descriptions are NOT included by default (they're often paragraph-length probe
+ * output, which balloons the prompt). Users who want descriptions can author a
+ * custom template with explicit {{<fieldId>.desc}} placeholders.
  */
 function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
   const lines = [];
@@ -18,9 +20,7 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
     const raw = fieldValues[f.id];
     const formatted = formatValue(raw, f.type);
     if (!formatted) continue;                      // skip empty values
-    const desc = engine.getDescription(subjectId, tracker.id, f.id, raw);
-    const line = desc ? `${f.label}: ${formatted} (${desc})` : `${f.label}: ${formatted}`;
-    lines.push(line);
+    lines.push(`${f.label}: ${formatted}`);
   }
   return lines.join('\n');
 }
@@ -90,23 +90,22 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
  * extension_prompt_types values. ST's setExtensionPrompt expects the numeric
  * constant; passing the raw string makes ST silently drop the injection.
  *
- * ST extension_prompt_types (from extensions.js):
- *   NONE = 0          — disabled
- *   IN_PROMPT = 1     — main prompt body, before chat history (treat as our "system")
- *   IN_CHAT = 2       — inserted at a depth within chat history (our "in-prompt" with depth)
- *   BEFORE_PROMPT = 3 — before the main prompt (our "before-char-defs")
- *   AFTER_SCENARIO = 4
+ * ST extension_prompt_types (from public.js):
+ *   NONE = -1          — disabled
+ *   IN_PROMPT = 0      — main prompt body (after system, before chat history) — anchors background facts
+ *   IN_CHAT = 1        — inserted at a depth within chat history — context-sensitive placement
+ *   BEFORE_PROMPT = 2  — before the entire main prompt — top-of-context anchoring
  */
 const POSITION_MAP = {
-  'system':           1, // IN_PROMPT (anchored in system part of the assembled prompt)
-  'in-prompt':        2, // IN_CHAT (inserted at depth)
-  'author-note':      2, // IN_CHAT (author-note uses same IN_CHAT slot with its own depth)
-  'before-char-defs': 3, // BEFORE_PROMPT
+  'system':           0, // IN_PROMPT (in the main prompt body — most natural for always-true background facts)
+  'in-prompt':        1, // IN_CHAT (at depth in chat history)
+  'author-note':      1, // IN_CHAT (author-note uses the same depth-insertion slot)
+  'before-char-defs': 2, // BEFORE_PROMPT (before everything else; for ground-truth anchoring like traits)
 };
 
 function resolvePosition(pos) {
   if (typeof pos === 'number') return pos;
-  return POSITION_MAP[pos] ?? 2; // default IN_CHAT
+  return POSITION_MAP[pos] ?? 1; // default IN_CHAT
 }
 
 export class Injection {

@@ -46,7 +46,7 @@ test('always-trigger tracker calls setExtensionPrompt once per tracker with rend
   assert.strictEqual(outfitCalls.length, 1);
   assert.match(outfitCalls[0].t, /Lyra/);
   assert.match(outfitCalls[0].t, /red silk dress/);
-  assert.strictEqual(outfitCalls[0].pos, 2); // IN_CHAT (numeric mapping of 'in-prompt')
+  assert.strictEqual(outfitCalls[0].pos, 1); // IN_CHAT (numeric mapping of 'in-prompt')
   assert.strictEqual(outfitCalls[0].d, 4);
 });
 
@@ -152,10 +152,11 @@ test('{{fields}} placeholder expands to auto-formatted enabled fields', () => {
   inj.run();
   const call = calls.find(c => c.k === `tracker:${p.id}:gear`);
   assert.ok(call, 'expected injection call for gear tracker');
-  // Auto-format: "Sword: Excalibur (A gleaming legendary blade.)"
+  // Auto-format: "Sword: Excalibur" — descriptions are intentionally NOT included in {{fields}}
+  // (they balloon prompts; use explicit {{<field>.desc}} in a custom template if needed).
   assert.match(call.t, /Sword.*Excalibur/);
-  assert.match(call.t, /A gleaming legendary blade\./);
-  // Shield appears (no desc → no parenthetical)
+  assert.ok(!call.t.includes('A gleaming legendary blade'), '{{fields}} auto-block must omit descriptions');
+  // Shield appears
   assert.match(call.t, /Shield.*Round shield/);
   // Potion is injection.enabled=false → must not appear
   assert.ok(!call.t.includes('Health potion'), 'disabled field must not appear in {{fields}} expansion');
