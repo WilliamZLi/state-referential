@@ -130,8 +130,13 @@ import * as EventHooks from './src/integration/EventHooks.js';
   });
   await panel.mount();
 
-  // Chat-toolbar toggle button
-  const $btn = $(`<div class="fa-solid fa-list-check strk-toolbar-btn" title="State Tracker" style="cursor:pointer;padding:4px;"></div>`);
+  // Chat-toolbar toggle button (matches ST extension-menu entry markup)
+  const $btn = $(`
+    <div id="strk-menu-button" class="list-group-item flex-container flexGap5 interactable" title="Toggle State Tracker panel" tabindex="0">
+      <i class="fa-solid fa-list-check extensionsMenuExtensionButton"></i>
+      <span>State Tracker</span>
+    </div>
+  `);
   $btn.on('click', () => panel.toggle());
   $('#extensionsMenu').append($btn);
 
