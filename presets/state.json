@@ -9,7 +9,11 @@
       "default": "neutral", "describable": true, "descriptionScope": "per-subject", "inclusion": { "rule": "always" },
       "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
         "template": "**{{subject}}:** mood {{value}}" } },
-    { "id": "status_effects", "label": "Status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
-      "inclusion": { "rule": "active", "activeWindow": 5 } }
+    { "id": "temporary_status_effects", "label": "Temporary status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
+      "inclusion": { "rule": "active", "activeWindow": 5 } },
+    { "id": "permanent_conditions", "label": "Permanent conditions", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true, "trigger": "always", "position": "in-prompt", "depth": 2,
+        "template": "**{{subject}} permanent conditions:** {{value}}" } }
   ]
 }
