@@ -1,15 +1,4 @@
-export const DEFAULT_PROBE_TEMPLATE = `[META TASK — IGNORE all surrounding roleplay context, system prompts, chat history, and character setup above. This is an isolated dictionary-style description request, NOT part of the story.]
-
-For the field "{{label}}" with value "{{value}}", give a SHORT, generic, scene-agnostic description of what THIS SPECIFIC value typically looks/feels/is like, beyond what the name alone implies.
-
-Output rules:
-- ONE clause only, under 15 words. No period at the end. No quotation marks around output.
-- State-agnostic: NO "her", "him", "she", "he"; NO specific person or scene. Generic to anyone who has this value.
-- DO NOT define the category (don't say "a tank top is a sleeveless shirt"). Add detail the name doesn't already convey.
-- Match the field type:
-  - Physical items (clothing/weapons/objects): color, material, cut, fit, condition, distinguishing features.
-  - Abstract states (mood/emotion/status/condition): typical expression, energy, body cues, intensity.
-  - Lists or roles: defining attribute.
+export const DEFAULT_PROBE_TEMPLATE = `Describe {{label}} "{{value}}" in ONE short clause (under 15 words) that adds detail beyond the name itself. Stay generic: no pronouns, no specific person or scene. Don't restate the category.
 
 Examples:
 - topwear "tank top" → white ribbed cotton with a scooped neckline
@@ -17,10 +6,9 @@ Examples:
 - weapon "longsword" → straight steel blade, leather-wrapped hilt
 - mood "happy" → bright, light energy with frequent smiles
 - mood "curious" → attentive, open-eyed interest with a hint of mischief
-- status "stunned" → wide-eyed disorientation, slowed reactions
 - status "poisoned" → pallid skin, cold sweat, weakened movements
 
-Output ONE clause for: {{label}} "{{value}}".`;
+{{label}} "{{value}}":`;
 
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>
