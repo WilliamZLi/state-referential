@@ -1,10 +1,77 @@
 /**
+ * Compute whether a field's inclusion rule currently passes.
+ *
+ * Heuristic for 'active' rule when panel doesn't have message-index access:
+ * We use listSnapshots().length as a rough proxy for "turns elapsed". The
+ * snapshot is taken once per turn, so snapshot-count difference approximates
+ * the message-index difference well enough for a dim/undim UI signal.
+ * For more accurate behaviour, callers can pass getCurrentMsgId / getMsgIndex
+ * via deps.autoUpdate's deps — but we intentionally avoid coupling the panel
+ * to autoUpdate internals; the heuristic is documented here and in the report.
+ *
+ * @param {object} field - field definition (with .inclusion)
+ * @param {string} subjectId
+ * @param {string} trackerId
  * @param {TrackerEngine} engine
- * @param {{popup, openProseModal, requestProbe}} deps
+ * @returns {{ passes: boolean, reason: string }}
+ */
+function computeInclusion(field, subjectId, trackerId, engine) {
+  const rule = field.inclusion?.rule ?? 'always';
+  if (rule === 'always') return { passes: true, reason: '' };
+  if (rule === 'manual') return { passes: false, reason: 'Inactive: manual-only field' };
+  if (rule === 'tag') {
+    const required = field.inclusion?.tags ?? [];
+    const anyActive = engine.tags.anyActive(required);
+    if (anyActive) return { passes: true, reason: '' };
+    return { passes: false, reason: `Inactive: tag rule requires one of [${required.join(', ')}]` };
+  }
+  if (rule === 'active') {
+    const stored = engine.values.getStored(subjectId, trackerId, field.id);
+    if (!stored?.lastTouchedMsg) return { passes: false, reason: 'Inactive: field has never been set' };
+    // Snapshot-count heuristic: each snapshot ≈ one turn.
+    const snapshots = engine.listSnapshots();
+    const snapshotCount = snapshots.length;
+    // Find the snapshot index closest in time to lastTouchedMsg.
+    // snapshots are ordered oldest→newest; find last one at or before the touch.
+    const touchIdx = snapshots.findIndex(s => s.id === stored.lastTouchedMsg);
+    const activeWindow = field.inclusion?.activeWindow ?? 5;
+    let turnsSince;
+    if (touchIdx >= 0) {
+      turnsSince = snapshotCount - touchIdx;
+    } else {
+      // lastTouchedMsg not found in snapshot ids — assume it was pre-snapshot history
+      turnsSince = snapshotCount;
+    }
+    if (turnsSince <= activeWindow) return { passes: true, reason: '' };
+    return { passes: false, reason: `Inactive: active-window expired (last touched ~${turnsSince} turns ago, window=${activeWindow})` };
+  }
+  return { passes: true, reason: '' };
+}
+
+/**
+ * @param {TrackerEngine} engine
+ * @param {{popup, openProseModal, requestProbe, autoUpdate?, injection?}} deps
  */
 export function makeRenderers(engine, deps) {
   function row(field, subj, $input, extras = []) {
     const $row = $('<div class="strk-field-row"></div>');
+
+    // Compute inclusion state for visual dimming
+    const { passes, reason } = computeInclusion(field, subj.id, field._trackerId, engine);
+    if (!passes) {
+      $row.addClass('stale');
+      if (reason) $row.attr('title', reason);
+      // "[Include once]" button for stale rows
+      if (deps.autoUpdate || deps.injection) {
+        const $once = $('<button class="strk-field-icon strk-include-once" title="Include once in next update">↺</button>')
+          .on('click', () => {
+            deps.autoUpdate?.includeOnce(subj.id, field._trackerId, field.id);
+            deps.injection?.includeOnce(subj.id, field._trackerId, field.id);
+          });
+        extras = [...extras, $once];
+      }
+    }
+
     $row.append($('<span class="strk-field-label"></span>').text(field.label));
     $row.append($('<span class="strk-field-input"></span>').append($input));
     for (const ex of extras) $row.append(ex);
