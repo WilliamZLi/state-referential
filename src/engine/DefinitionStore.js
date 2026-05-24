@@ -23,6 +23,9 @@ function normalizeDef(def) {
     depth: rawInj.depth ?? DEFAULT_TRACKER_INJECTION.depth,
     template: rawInj.template ?? DEFAULT_TRACKER_INJECTION.template,
   };
+  const knownTrackerKeys = new Set(['id','label','icon','source','appliesToRoles','autoUpdate','probe','injection','fields']);
+  const knownFieldKeys = new Set(['id','label','type','default','describable','descriptionScope','inclusion','injection','options','min','max','step','allowDelta']);
+
   const out = {
     id: def.id,
     label: def.label,
@@ -32,23 +35,34 @@ function normalizeDef(def) {
     autoUpdate: def.autoUpdate ?? true,
     probe: def.probe ?? { enabled: false },
     injection,
-    fields: (def.fields ?? []).map(f => ({
-      id: f.id,
-      label: f.label ?? f.id,
-      type: f.type ?? 'text',
-      default: f.default ?? (f.type === 'list' ? [] : (f.type === 'number' ? 0 : '')),
-      describable: f.describable ?? (f.type !== 'number'),
-      descriptionScope: f.descriptionScope ?? 'per-subject',
-      inclusion: f.inclusion ?? { rule: 'always' },
-      // Per-field injection: ONLY { enabled } — all other keys stripped
-      injection: { enabled: (f.injection?.enabled !== false) },
-      ...(f.options ? { options: [...f.options] } : {}),
-      ...(f.min != null ? { min: f.min } : {}),
-      ...(f.max != null ? { max: f.max } : {}),
-      ...(f.step != null ? { step: f.step } : {}),
-      ...(f.allowDelta != null ? { allowDelta: f.allowDelta } : {}),
-    })),
+    fields: (def.fields ?? []).map((f, i) => {
+      const normalized = {
+        id: f.id,
+        label: f.label ?? f.id,
+        type: f.type ?? 'text',
+        default: f.default ?? (f.type === 'list' ? [] : (f.type === 'number' ? 0 : '')),
+        describable: f.describable ?? (f.type !== 'number'),
+        descriptionScope: f.descriptionScope ?? 'per-subject',
+        inclusion: f.inclusion ?? { rule: 'always' },
+        // Per-field injection: ONLY { enabled } — all other keys stripped
+        injection: { enabled: (f.injection?.enabled !== false) },
+        ...(f.options ? { options: [...f.options] } : {}),
+        ...(f.min != null ? { min: f.min } : {}),
+        ...(f.max != null ? { max: f.max } : {}),
+        ...(f.step != null ? { step: f.step } : {}),
+        ...(f.allowDelta != null ? { allowDelta: f.allowDelta } : {}),
+      };
+      // Preserve unknown field-level keys (e.g. userNotes, customMetadata)
+      for (const [k, v] of Object.entries(f)) {
+        if (!knownFieldKeys.has(k)) normalized[k] = v;
+      }
+      return normalized;
+    }),
   };
+  // Preserve unknown tracker-level keys (e.g. userNotes, customMetadata)
+  for (const [k, v] of Object.entries(def)) {
+    if (!knownTrackerKeys.has(k)) out[k] = v;
+  }
   out.fields.forEach(validateField);
   return out;
 }
