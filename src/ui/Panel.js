@@ -29,6 +29,8 @@ export class Panel {
     });
 
     $('#strk-add-subject').on('click', () => this.deps.openSubjectAddModal());
+    $('#strk-rename-subject').on('click', () => this._renameCurrentSubject());
+    $('#strk-remove-subject').on('click', () => this._removeCurrentSubject());
     $('#strk-probe-btn').on('click', () => this._currentTrackerId && this.deps.runManualProbe(this._currentTrackerId, this._currentSubject()));
     $('#strk-reset-btn').on('click', () => this._resetSubject());
 
@@ -65,6 +67,28 @@ export class Panel {
     if (!confirm(`Reset all tracker values for ${subj.name}?`)) return;
     this.engine.values.clearSubject(subj.id);
     this.render();
+  }
+
+  _removeCurrentSubject() {
+    const subj = this._currentSubject();
+    if (!subj) return;
+    if (!confirm(`Remove subject "${subj.name}" entirely? This also deletes all their tracker values and descriptions. Cannot be undone.`)) return;
+    this.engine.removeSubject(subj.name);
+    this._currentSubjectId = null;
+    this._currentTrackerId = null;
+    this.render();
+  }
+
+  _renameCurrentSubject() {
+    const subj = this._currentSubject();
+    if (!subj) return;
+    const next = prompt(`Rename "${subj.name}" to:`, subj.name);
+    if (!next || next.trim() === '' || next.trim() === subj.name) return;
+    try {
+      this.engine.renameSubject(subj.name, next.trim());
+    } catch (e) {
+      alert(`Could not rename: ${e.message}`);
+    }
   }
 
   render() {
