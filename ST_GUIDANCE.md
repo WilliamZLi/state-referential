@@ -207,18 +207,22 @@ setExtensionPrompt(key, text, position, depth);
   - `2` — BEFORE_PROMPT (before the entire main prompt)
 - `depth` — only meaningful for IN_CHAT (position=1). `0` = right at the bottom (closest to the AI's reply slot); higher = further up in the history.
 
-If you store positions as readable strings in user-facing config, map them to numbers before calling:
+If you store positions as readable strings in user-facing config, map them to numbers before calling. **CAREFUL with naming:** ST calls position 0 "IN_PROMPT" meaning "in the main prompt body" — that's the system part BEFORE chat history, NOT inside chat history. Position 1 is what most people mean colloquially by "in chat" (inserted at a depth within the chat history). Don't conflate.
 
 ```js
 const POSITION_MAP = {
-  'system':           0, // IN_PROMPT
-  'in-prompt':        1, // IN_CHAT
-  'author-note':      1, // IN_CHAT
-  'before-char-defs': 2, // BEFORE_PROMPT
+  'system':           0, // IN_PROMPT — main prompt body (where ST's preset prompts go)
+  'in-prompt':        0, // same — name aligns with ST's enum
+  'in-chat':          1, // IN_CHAT — at depth within chat history
+  'author-note':      1, // depth-positioned in chat
+  'before-char-defs': 2, // BEFORE_PROMPT — top of everything
+  'top':              2,
 };
-const resolvePosition = (p) => typeof p === 'number' ? p : (POSITION_MAP[p] ?? 1);
+const resolvePosition = (p) => typeof p === 'number' ? p : (POSITION_MAP[p] ?? 0);
 setExtensionPrompt(key, text, resolvePosition(positionString), depth);
 ```
+
+`depth` is IGNORED for IN_PROMPT/BEFORE_PROMPT — it only matters for IN_CHAT (where 0 = bottom of chat, N = N messages above).
 
 This was a major bug for us — we passed string positions for weeks and wondered why the AI never saw our injections. The prompt inspector shows ST's `Extensions: N tokens` line still incrementing (counting our string-positioned injections in some token budget but not actually inserting the text). Always pass numbers.
 

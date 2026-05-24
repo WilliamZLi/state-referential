@@ -113,15 +113,24 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
  *   BEFORE_PROMPT = 2  — before the entire main prompt — top-of-context anchoring
  */
 const POSITION_MAP = {
-  'system':           0, // IN_PROMPT (in the main prompt body — most natural for always-true background facts)
-  'in-prompt':        1, // IN_CHAT (at depth in chat history)
-  'author-note':      1, // IN_CHAT (author-note uses the same depth-insertion slot)
-  'before-char-defs': 2, // BEFORE_PROMPT (before everything else; for ground-truth anchoring like traits)
+  // IN_PROMPT (0) — main prompt body, AFTER system prompts, BEFORE chat history.
+  // Static placement; depth is ignored. This is where ST's preset PromptManager
+  // prompts live by default. Use for always-on facts you want anchored above the chat.
+  'system':           0,
+  'in-prompt':        0, // alias — name suggests "in the main prompt"
+  // IN_CHAT (1) — inserted at the given depth INSIDE chat history.
+  // depth=0 = just above the latest message; depth=N = N messages above.
+  // Use when you want the injection close to recent activity.
+  'in-chat':          1,
+  'author-note':      1,
+  // BEFORE_PROMPT (2) — before everything, including system prompts.
+  'before-char-defs': 2,
+  'top':              2,
 };
 
 function resolvePosition(pos) {
   if (typeof pos === 'number') return pos;
-  return POSITION_MAP[pos] ?? 1; // default IN_CHAT
+  return POSITION_MAP[pos] ?? 0; // default IN_PROMPT (main body)
 }
 
 export class Injection {
