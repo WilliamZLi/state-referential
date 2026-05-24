@@ -173,7 +173,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
 
   // Integration
   Macros.register(engine, { MacrosParser, proseStore });
-  SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, autoUpdate, injection, standalone });
+  SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
   EventHooks.register(engine, { versioning, descProbe, getSettings: () => extension_settings['state-referential'], panel, injection });
 
   // Public API

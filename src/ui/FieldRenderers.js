@@ -37,7 +37,7 @@ function computeInclusion(field, subjectId, trackerId, engine) {
     const activeWindow = field.inclusion?.activeWindow ?? 5;
     let turnsSince;
     if (touchIdx >= 0) {
-      turnsSince = snapshotCount - touchIdx;
+      turnsSince = snapshotCount - touchIdx - 1;
     } else {
       // lastTouchedMsg not found in snapshot ids — assume it was pre-snapshot history
       turnsSince = snapshotCount;
