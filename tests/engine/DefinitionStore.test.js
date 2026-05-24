@@ -63,6 +63,30 @@ test('persists via backend.saveDefinitions', () => {
   assert.strictEqual(b.loadDefinitions()[0].id, 'a');
 });
 
+test('normalizeDef preserves unknown top-level keys', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  store.define({
+    id: 'tk', label: 'TK', fields: [],
+    userNotes: 'some note', customMetadata: { foo: 42 },
+  });
+  const d = store.get('tk');
+  assert.strictEqual(d.userNotes, 'some note');
+  assert.deepStrictEqual(d.customMetadata, { foo: 42 });
+});
+
+test('normalizeDef preserves unknown field-level keys', () => {
+  const store = new DefinitionStore(new InMemoryBackend(), mkBus());
+  store.define({
+    id: 'tk', label: 'TK',
+    fields: [
+      { id: 'hp', label: 'HP', type: 'number', min: 0, max: 100, fieldNote: 'track carefully', customTag: 'vital' },
+    ],
+  });
+  const d = store.get('tk');
+  assert.strictEqual(d.fields[0].fieldNote, 'track carefully');
+  assert.strictEqual(d.fields[0].customTag, 'vital');
+});
+
 test('normalizeDef: tracker-level injection block; field injection strips to enabled only', () => {
   const store = new DefinitionStore(new InMemoryBackend(), mkBus());
   store.define({
