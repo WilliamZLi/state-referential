@@ -21,7 +21,7 @@
       <th title="Whether the AI should generate a prose description of the value (for visual consistency when re-encountered). Recommended for outfit slots, moods, items, etc.; not for numbers.">Describable</th>
       <th title="Where the cached description lives. per-subject: each subject gets their own prose (Lyra's 'red dress' looks different from Maya's). global: one prose for everyone (a sword looks the same to anyone).">Scope</th>
       <th title="When this field is included in the AI auto-update prompt. always = every turn. active = only if touched in last N turns (saves tokens, lets temporary effects fade). tag = only when a scene tag is active. manual = never auto, only via /tracker-include once.">Inclusion</th>
-      <th title="Whether this field's value is injected into the AI's generation prompt (so the AI 'sees' the current state when writing the next reply). Toggle to inject; configure trigger/position/depth in the field's injection block.">Injection</th>
+      <th title="Whether this field's value is injected into the AI's generation prompt (so the AI 'sees' the current state when writing the next reply). Only an on/off toggle is editable here in v1; full config (template, position, depth, trigger, tags) currently requires editing via Export JSON / Import JSON.">Injection</th>
       <th></th>
     </tr></thead>
     <tbody id="strk-fields-body"></tbody>

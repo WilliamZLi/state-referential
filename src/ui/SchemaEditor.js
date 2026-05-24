@@ -18,6 +18,7 @@ export class SchemaEditor {
     const $body = $('#strk-fields-body', $form);
     const renderFieldRow = (f) => {
       const $tr = $('<tr></tr>');
+      $tr.data('original', f);
       $tr.append($('<td><input class="text_pole f-id" /></td>').find('input').val(f.id ?? '').end());
       $tr.append($('<td><input class="text_pole f-label" /></td>').find('input').val(f.label ?? '').end());
       const $sel = $('<select class="text_pole f-type"></select>');
@@ -46,14 +47,17 @@ export class SchemaEditor {
       const fields = [];
       $('tr', $body).each((_, tr) => {
         const $tr = $(tr);
+        const original = $tr.data('original') ?? {};
+        const inclusionRule = $('.f-inclusion', $tr).val() || 'always';
         fields.push({
+          ...original, // preserve min/max/options/step/allowDelta/template/position/depth/trigger/tags
           id: $('.f-id', $tr).val(),
           label: $('.f-label', $tr).val(),
           type: $('.f-type', $tr).val(),
           describable: $('.f-describable', $tr).is(':checked'),
           descriptionScope: $('.f-scope', $tr).val(),
-          inclusion: { rule: $('.f-inclusion', $tr).val() || 'always' },
-          injection: { enabled: $('.f-inj', $tr).is(':checked') },
+          inclusion: { ...(original.inclusion ?? {}), rule: inclusionRule },
+          injection: { ...(original.injection ?? {}), enabled: $('.f-inj', $tr).is(':checked') },
         });
       });
       const next = {
