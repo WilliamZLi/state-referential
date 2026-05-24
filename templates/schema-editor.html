@@ -1,9 +1,9 @@
 <div class="strk-schema-editor">
   <div class="strk-schema-meta">
-    <label>ID: <input type="text" id="strk-schema-id" /></label>
-    <label>Label: <input type="text" id="strk-schema-label" /></label>
-    <label>Roles:
-      <select id="strk-schema-roles" multiple>
+    <label>ID <input type="text" class="text_pole" id="strk-schema-id" /></label>
+    <label>Label <input type="text" class="text_pole" id="strk-schema-label" /></label>
+    <label>Roles
+      <select class="text_pole" id="strk-schema-roles" multiple size="5">
         <option value="protagonist">protagonist</option>
         <option value="npc">npc</option>
         <option value="location">location</option>
@@ -18,8 +18,8 @@
     <thead><tr><th>ID</th><th>Label</th><th>Type</th><th>Describable</th><th>Scope</th><th>Inclusion</th><th>Injection</th><th></th></tr></thead>
     <tbody id="strk-fields-body"></tbody>
   </table>
-  <button class="menu_button" id="strk-add-field">+ field</button>
   <div class="strk-schema-actions">
+    <button class="menu_button" id="strk-add-field">+ field</button>
     <button class="menu_button" id="strk-schema-save">Save</button>
     <button class="menu_button" id="strk-schema-export">Export JSON</button>
     <button class="menu_button" id="strk-schema-reset">Reset to preset default</button>

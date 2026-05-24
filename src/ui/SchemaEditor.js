@@ -18,21 +18,24 @@ export class SchemaEditor {
     const $body = $('#strk-fields-body', $form);
     const renderFieldRow = (f) => {
       const $tr = $('<tr></tr>');
-      $tr.append($('<td><input class="f-id" /></td>').find('input').val(f.id ?? '').end());
-      $tr.append($('<td><input class="f-label" /></td>').find('input').val(f.label ?? '').end());
-      const $sel = $('<select class="f-type"></select>');
+      $tr.append($('<td><input class="text_pole f-id" /></td>').find('input').val(f.id ?? '').end());
+      $tr.append($('<td><input class="text_pole f-label" /></td>').find('input').val(f.label ?? '').end());
+      const $sel = $('<select class="text_pole f-type"></select>');
       for (const t of ['text','number','enum','list','prose']) $sel.append($('<option></option>').val(t).text(t));
       $sel.val(f.type ?? 'text');
       $tr.append($('<td></td>').append($sel));
-      $tr.append($('<td><input type="checkbox" class="f-describable" /></td>').find('input').prop('checked', f.describable !== false).end());
-      const $scope = $('<select class="f-scope"></select>')
+      $tr.append($('<td style="text-align:center"><input type="checkbox" class="f-describable" /></td>').find('input').prop('checked', f.describable !== false).end());
+      const $scope = $('<select class="text_pole f-scope"></select>')
         .append($('<option value="per-subject">per-subject</option>'))
         .append($('<option value="global">global</option>'));
       $scope.val(f.descriptionScope ?? 'per-subject');
       $tr.append($('<td></td>').append($scope));
-      $tr.append($('<td><input class="f-inclusion" placeholder="always|active|tag|manual" /></td>').find('input').val(f.inclusion?.rule ?? 'always').end());
-      $tr.append($('<td><input type="checkbox" class="f-inj" /></td>').find('input').prop('checked', f.injection?.enabled === true).end());
-      const $del = $('<td><button>×</button></td>').find('button').on('click', () => $tr.remove()).end();
+      const $incl = $('<select class="text_pole f-inclusion"></select>');
+      for (const r of ['always','active','tag','manual']) $incl.append($('<option></option>').val(r).text(r));
+      $incl.val(f.inclusion?.rule ?? 'always');
+      $tr.append($('<td></td>').append($incl));
+      $tr.append($('<td style="text-align:center"><input type="checkbox" class="f-inj" /></td>').find('input').prop('checked', f.injection?.enabled === true).end());
+      const $del = $('<td><button class="menu_button">×</button></td>').find('button').on('click', () => $tr.remove()).end();
       $tr.append($del);
       $body.append($tr);
     };
