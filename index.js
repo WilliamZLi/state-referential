@@ -186,7 +186,10 @@ import * as EventHooks from './src/integration/EventHooks.js';
     dialogs,
     openProseModal,
     openSubjectAddModal,
-    requestProbe: (subjId, trackerId, fieldId, value) => descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]).then(()=>descProbe.drain()),
+    requestProbe: (subjId, trackerId, fieldId, value) => {
+      descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]);
+      return descProbe.drain();
+    },
     runManualProbe: (trackerId, subject) => standalone.runOne(trackerId, subject),
     getDefaultTags: () => _strkSettings().defaultTags ?? [],
     autoUpdate,

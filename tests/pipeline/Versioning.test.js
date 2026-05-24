@@ -58,6 +58,29 @@ test('MESSAGE_SWIPED reverts to snapshot then re-runs auto-update', async () => 
   assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'blue');
 });
 
+test('MESSAGE_SWIPED with empty new variant removes additions from the original variant', async () => {
+  // Scenario the user reported: turn adds a field (e.g. "bra"), user swipes,
+  // new variant doesn't mention it — addition should disappear.
+  const r = mkRig();
+  // Define an extra field so we can simulate the "bra" addition path
+  r.eng.defineTracker({ id: 'extra', label: 'Extra', autoUpdate: true, fields: [
+    { id: 'topunderwear', label: 'Top underwear', type: 'text', inclusion: { rule: 'always' } },
+  ]});
+  // Pre-turn state: nothing set on topunderwear
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'topunderwear'), undefined);
+  // Turn N: AI adds "bra"
+  r.set(`SET Lyra extra.topunderwear = "bra"`);
+  await r.emit('MR', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'topunderwear'), 'bra');
+  // User swipes → new variant says nothing relevant (NONE)
+  r.set(`NONE`);
+  await r.emit('MSW', 0);
+  // bra should be gone — the snapshot taken before the original variant did not have it,
+  // and the new variant didn't re-add it.
+  const v = r.eng.getField(r.p.id, 'extra', 'topunderwear');
+  assert.ok(v === undefined || v === '', `expected topunderwear cleared after swipe with empty new variant, got: ${JSON.stringify(v)}`);
+});
+
 test('MESSAGE_DELETED drops snapshots from deleted onwards', async () => {
   const r = mkRig();
   r.set(`NONE`);
@@ -67,6 +90,24 @@ test('MESSAGE_DELETED drops snapshots from deleted onwards', async () => {
   r.chat.pop();
   await r.emit('MDEL', 1);
   assert.strictEqual(r.eng.loadSnapshot('m-2'), undefined);
+});
+
+test('MESSAGE_DELETED restores state to before the deleted message ran', async () => {
+  // User scenario: AI message N introduced a value (e.g. "bra"). User deletes N.
+  // Engine state must revert to as-if-N-never-happened.
+  const r = mkRig();
+  r.eng.defineTracker({ id: 'extra', label: 'Extra', autoUpdate: true, fields: [
+    { id: 'thing', label: 'Thing', type: 'text', inclusion: { rule: 'always' } },
+  ]});
+  // First turn: AI adds "bra"
+  r.set(`SET Lyra extra.thing = "bra"`);
+  await r.emit('MR', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'thing'), 'bra');
+  // User deletes the message; ST removes it from chat first, then fires MDEL
+  r.chat.shift();
+  await r.emit('MDEL', 0);
+  const v = r.eng.getField(r.p.id, 'extra', 'thing');
+  assert.ok(v === undefined || v === '', `expected thing cleared after delete, got: ${JSON.stringify(v)}`);
 });
 
 test('CHAT_CHANGED clears IS_BUSY', async () => {
