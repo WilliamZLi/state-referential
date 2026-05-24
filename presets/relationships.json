@@ -15,6 +15,6 @@
     { "id": "dynamic_with_protagonist", "label": "Dynamic with protagonist", "type": "prose", "default": "", "describable": true, "injection": { "enabled": true } },
     { "id": "last_interaction_summary", "label": "Last interaction", "type": "text", "default": "", "describable": false,
       "inclusion": { "rule": "active", "activeWindow": 10 },
-      "injection": { "enabled": true } }
+      "injection": { "enabled": false } }
   ]
 }
