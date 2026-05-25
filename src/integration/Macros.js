@@ -81,12 +81,34 @@ export function resolveTrackerBlock(engine, path) {
 }
 
 /**
+ * Decide whether a tracker block should currently render, matching the same
+ * gating logic the auto-injection pipeline uses:
+ *   - tracker.injection.enabled !== false
+ *   - tracker.injection.trigger === 'always' OR (trigger === 'tag' AND any tag active)
+ *     (trigger === 'manual' is treated as "skip" — manual-only)
+ * Used by {{tracker::<subject>}} so the all-trackers macro doesn't dump tag-gated
+ * blocks at times they shouldn't appear.
+ */
+function trackerShouldRender(engine, tracker) {
+  const inj = tracker.injection;
+  if (!inj) return true; // legacy tracker without an injection block — render
+  if (inj.enabled === false) return false;
+  const trigger = inj.trigger ?? 'always';
+  if (trigger === 'always') return true;
+  if (trigger === 'manual') return false;
+  if (trigger === 'tag') return engine.tags.anyActive(inj.tags ?? []);
+  return true;
+}
+
+/**
  * Resolve {{tracker::<subject>}} — all trackers for subject, concatenated.
+ * Respects each tracker's injection.enabled + trigger so tag-gated trackers
+ * (inventory, relationships) only appear when their scene tags are active.
  */
 export function resolveAllTrackers(engine, subjectAlias) {
   const subj = engine.resolveSubject(subjectAlias);
   if (!subj) return '';
-  const trackers = engine.definitions.forRole(subj.role);
+  const trackers = engine.definitions.forRole(subj.role).filter(t => trackerShouldRender(engine, t));
   const blocks = trackers.map(t => renderTrackerBlock(engine, subj, t)).filter(b => b.trim());
   return blocks.join('\n\n');
 }

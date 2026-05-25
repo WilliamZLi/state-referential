@@ -6,8 +6,8 @@
   "injection": {
     "enabled": true,
     "trigger": "always",
-    "position": "in-prompt",
-    "depth": 2,
+    "position": "in-chat",
+    "depth": 0,
     "template": "**{{subject}}:**\n{{fields}}"
   },
   "fields": [

@@ -6,8 +6,8 @@
   "injection": {
     "enabled": true,
     "trigger": "always",
-    "position": "system",
-    "depth": 0,
+    "position": "in-chat",
+    "depth": 4,
     "template": "**{{subject}} traits (authoritative — these are intrinsic; do not invent unlisted traits):**\n{{fields}}"
   },
   "fields": [

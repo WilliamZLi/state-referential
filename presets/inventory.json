@@ -7,7 +7,7 @@
     "enabled": true,
     "trigger": "tag",
     "tags": ["combat","exploration"],
-    "position": "in-prompt",
+    "position": "in-chat",
     "depth": 3,
     "template": "**{{subject}} is carrying (authoritative — only these items, nothing else on their person):**\n{{fields}}"
   },

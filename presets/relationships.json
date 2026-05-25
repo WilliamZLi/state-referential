@@ -7,7 +7,7 @@
     "enabled": true,
     "trigger": "tag",
     "tags": ["social","intimate"],
-    "position": "in-prompt",
+    "position": "in-chat",
     "depth": 3,
     "template": "**{{subject}} ↔ protagonist:**\n{{fields}}"
   },

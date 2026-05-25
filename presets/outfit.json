@@ -6,8 +6,8 @@
   "injection": {
     "enabled": true,
     "trigger": "always",
-    "position": "in-prompt",
-    "depth": 4,
+    "position": "in-chat",
+    "depth": 1,
     "template": "**{{subject}}'s outfit (authoritative — these are the ONLY garments worn; do not invent or add unlisted items including underwear, accessories, or layers):**\n{{fields}}"
   },
   "fields": [
