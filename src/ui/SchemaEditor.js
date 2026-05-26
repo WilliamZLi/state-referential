@@ -316,6 +316,7 @@ export class SchemaEditor {
     if (orig.max !== undefined && orig.max !== null) $('.strk-fdet-max', $d).val(orig.max);
     if (orig.step !== undefined && orig.step !== null) $('.strk-fdet-step', $d).val(orig.step);
     $('.strk-fdet-allow-delta', $d).prop('checked', orig.allowDelta === true);
+    if (orig.maxFromField) $('.strk-fdet-max-from-field', $d).val(orig.maxFromField);
 
     // Inclusion
     const inclRule = $('.f-inclusion', $tr).val() || orig.inclusion?.rule || 'always';
@@ -365,6 +366,9 @@ export class SchemaEditor {
         if (maxV !== '') updatedOrig.max = parseFloat(maxV);
         if (stepV !== '') updatedOrig.step = parseFloat(stepV);
         updatedOrig.allowDelta = $('.strk-fdet-allow-delta', $d).is(':checked');
+        const maxFrom = $('.strk-fdet-max-from-field', $d).val().trim();
+        if (maxFrom) updatedOrig.maxFromField = maxFrom;
+        else delete updatedOrig.maxFromField;
       }
 
       // inclusion

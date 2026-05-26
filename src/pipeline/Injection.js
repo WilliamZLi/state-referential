@@ -1,8 +1,19 @@
 /**
- * Renders a list-type value as a comma-separated string.
+ * Renders a value for injection. For number fields with `maxFromField` set,
+ * renders as "current/max" by looking up the partner field's current value.
  */
-function formatValue(value, fieldType) {
-  if (fieldType === 'list') return Array.isArray(value) ? value.join(', ') : String(value ?? '');
+function formatValue(value, field, fieldValues) {
+  if (!field) {
+    // Defensive fallback when no field def is provided (e.g. direct calls)
+    return value == null ? '' : String(value);
+  }
+  if (field.type === 'list') return Array.isArray(value) ? value.join(', ') : String(value ?? '');
+  if (field.type === 'number' && field.maxFromField && fieldValues) {
+    const maxVal = fieldValues[field.maxFromField];
+    if (maxVal !== undefined && maxVal !== null && maxVal !== '') {
+      return `${value ?? 0}/${maxVal}`;
+    }
+  }
   return value == null ? '' : String(value);
 }
 
@@ -46,7 +57,7 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
       }
       continue;
     }
-    const formatted = formatValue(raw, f.type);
+    const formatted = formatValue(raw, f, fieldValues);
     if (!formatted) continue;
     const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, raw));
     lines.push(desc ? `${f.label}: ${formatted} (${desc})` : `${f.label}: ${formatted}`);
@@ -104,13 +115,19 @@ function expandTemplate(tpl, tracker, subjectId, subjectName, fieldValues, engin
         return sanitizeValue(engine.getDescription(subjectId, tracker.id, fieldId, raw) ?? '');
       }
       if (prop === 'label') return sanitizeValue(f.label ?? fieldId);
+      if (prop === 'raw') {
+        // .raw = just the current value, skipping any paired-max formatting
+        const v = fieldValues[fieldId];
+        return sanitizeValue(v == null ? '' : String(v));
+      }
       return '';
     }
 
     // Plain {{fieldId}}
     const f = fieldMap.get(path);
     if (!f) return '';
-    return sanitizeValue(formatValue(fieldValues[path], f.type));
+    // Add _trackerId hint so formatValue can resolve paired-max field if needed
+    return sanitizeValue(formatValue(fieldValues[path], f, fieldValues));
   });
 }
 

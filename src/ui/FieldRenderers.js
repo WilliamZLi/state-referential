@@ -157,9 +157,6 @@ export function makeRenderers(engine, deps) {
     },
     number(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? field.default ?? 0;
-      // Always use a typeable number input. min/max (if set) act as validation
-      // bounds in setField (ValueStore clamps), not as UI constraints. Step
-      // defaults to 1 but can be set per-field.
       const $input = $('<input type="number" class="text_pole" />').val(cur);
       if (field.min != null) $input.attr('min', field.min);
       if (field.max != null) $input.attr('max', field.max);
@@ -171,8 +168,18 @@ export function makeRenderers(engine, deps) {
         engine.applyDelta(subj.id, field._trackerId, field.id, -(field.step ?? 1), { source: 'manual' }));
       const $plus  = $('<button class="strk-field-icon">+</button>').on('click', () =>
         engine.applyDelta(subj.id, field._trackerId, field.id,  (field.step ?? 1), { source: 'manual' }));
-      const $val = $('<span class="strk-field-val"></span>').text(cur);
-      return row(field, subj, $input, field.allowDelta ? [$minus, $val, $plus] : []);
+      // If paired with a max field, show "current / max" inline so user sees both at a glance
+      const extras = [];
+      if (field.allowDelta) {
+        const $val = $('<span class="strk-field-val"></span>').text(cur);
+        extras.push($minus, $val, $plus);
+      }
+      if (field.maxFromField) {
+        const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField);
+        const $ratio = $('<span class="strk-field-ratio"></span>').text(`/ ${maxValue ?? '?'}`);
+        extras.push($ratio);
+      }
+      return row(field, subj, $input, extras);
     },
     enum(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? field.default ?? field.options[0];
