@@ -1,6 +1,7 @@
 import { loadTemplate, makeDraggable } from './shared.js';
 import { makeRenderers } from './FieldRenderers.js';
 import { SceneTagsUI } from './SceneTags.js';
+import * as OutfitSets from '../features/OutfitSets.js';
 
 export class Panel {
   /**
@@ -72,6 +73,7 @@ export class Panel {
       'tracker:value-changed', 'tracker:subject-added', 'tracker:subject-removed',
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
+      'tracker:outfit-set-saved', 'tracker:outfit-set-deleted', 'tracker:outfit-set-applied',
     ]) this.engine.on(ev, safeRender);
 
     this.render();
@@ -148,5 +150,57 @@ export class Panel {
       const $row = this.renderers[f.type]?.(fwithTracker, subj);
       if ($row) $body.append($row);
     }
+    // Outfit-specific UI: saved outfit sets at the bottom of the Outfit tab.
+    if (this._currentTrackerId === 'outfit') {
+      $body.append(this._renderOutfitSets(subj));
+    }
+  }
+
+  _renderOutfitSets(subj) {
+    const $section = $('<div class="strk-outfit-sets"></div>');
+    $section.append($('<div class="strk-outfit-sets-header"></div>').text('Saved sets'));
+    const $chips = $('<div class="strk-outfit-sets-chips"></div>');
+    const names = OutfitSets.listSets(this.engine, subj.id);
+    if (!names.length) {
+      $chips.append($('<span class="strk-outfit-sets-empty"></span>').text('(none — save the current outfit to get started)'));
+    }
+    for (const name of names) {
+      const $chip = $('<span class="strk-chip strk-outfit-set-chip"></span>').text(name)
+        .attr('title', 'Click to apply this set (moves displaced clothes to wardrobe)');
+      $chip.on('click', async () => {
+        const ok = this.deps.dialogs
+          ? await this.deps.dialogs.confirm(`Apply outfit set "${name}"? Currently-worn items will go to wardrobe.`)
+          : confirm(`Apply outfit set "${name}"?`);
+        if (!ok) return;
+        try { OutfitSets.applySet(this.engine, subj.id, name); }
+        catch (e) { await this.deps.dialogs?.alert?.(`Could not apply: ${e.message}`); }
+      });
+      $chip.on('contextmenu', async (e) => {
+        e.preventDefault();
+        const ok = this.deps.dialogs
+          ? await this.deps.dialogs.confirm(`Delete outfit set "${name}"?`)
+          : confirm(`Delete outfit set "${name}"?`);
+        if (!ok) return;
+        OutfitSets.deleteSet(this.engine, subj.id, name);
+        this.render();
+      });
+      $chips.append($chip);
+    }
+    $section.append($chips);
+    const $saveBtn = $('<button class="menu_button strk-outfit-set-save"></button>').text('+ Save current as…')
+      .on('click', async () => {
+        const name = this.deps.dialogs
+          ? await this.deps.dialogs.prompt('Name for this outfit set:')
+          : prompt('Name for this outfit set:');
+        if (!name || !name.trim()) return;
+        try {
+          OutfitSets.saveSet(this.engine, subj.id, name.trim());
+          this.render();
+        } catch (e) {
+          await this.deps.dialogs?.alert?.(`Could not save: ${e.message}`);
+        }
+      });
+    $section.append($saveBtn);
+    return $section;
   }
 }
