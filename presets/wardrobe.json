@@ -6,7 +6,7 @@
   "injection": {
     "enabled": true,
     "trigger": "tag",
-    "tags": ["wardrobe"],
+    "tags": ["wardrobe", "dressing", "undressing", "shopping"],
     "position": "in-chat",
     "depth": 4,
     "template": "<injection>\n**{{subject}}'s wardrobe (clothes owned but NOT currently worn — items removed from outfit go here; new clothes appear here before being worn):**\n{{fields}}\n</injection>"

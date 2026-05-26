@@ -1,7 +1,7 @@
 {
   "id": "relationships", "label": "Relationships", "icon": "fa-heart",
   "source": "preset:relationships",
-  "appliesToRoles": ["npc"],
+  "appliesToRoles": ["protagonist","npc"],
   "autoUpdate": true,
   "injection": {
     "enabled": true,
