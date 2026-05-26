@@ -2,7 +2,7 @@ export class SceneTagsUI {
   constructor(engine, $container, opts = {}) {
     this.engine = engine;
     this.$el = $container;
-    this.defaults = opts.defaults ?? ['intimate','combat','social','exploration','wardrobe','dressing'];
+    this.defaults = opts.defaults ?? ['intimate','combat','social','exploration','wardrobe'];
     this._dialogs = opts.dialogs ?? null;
     this.engine.on('tracker:tag-changed', () => this.render());
     this.render();
