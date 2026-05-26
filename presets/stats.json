@@ -8,7 +8,7 @@
     "trigger": "always",
     "position": "in-chat",
     "depth": 2,
-    "template": "**{{subject}} stats:**\n{{fields}}"
+    "template": "<injection>\n**{{subject}} stats:**\n{{fields}}\n</injection>"
   },
   "fields": [
     { "id": "health", "label": "Health", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },

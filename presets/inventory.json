@@ -9,7 +9,7 @@
     "tags": ["combat","exploration"],
     "position": "in-chat",
     "depth": 3,
-    "template": "**{{subject}} is carrying (authoritative — only these items, nothing else on their person):**\n{{fields}}"
+    "template": "<injection>\n**{{subject}} is carrying (authoritative — only these items, nothing else on their person):**\n{{fields}}\n</injection>"
   },
   "fields": [
     { "id": "items", "label": "Items", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
