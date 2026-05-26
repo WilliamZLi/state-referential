@@ -157,10 +157,13 @@ export function makeRenderers(engine, deps) {
     },
     number(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? field.default ?? 0;
-      const useSlider = field.min != null && field.max != null;
-      const $input = useSlider
-        ? $(`<input type="range" min="${field.min}" max="${field.max}" />`).val(cur)
-        : $('<input type="number" class="text_pole" />').val(cur);
+      // Always use a typeable number input. min/max (if set) act as validation
+      // bounds in setField (ValueStore clamps), not as UI constraints. Step
+      // defaults to 1 but can be set per-field.
+      const $input = $('<input type="number" class="text_pole" />').val(cur);
+      if (field.min != null) $input.attr('min', field.min);
+      if (field.max != null) $input.attr('max', field.max);
+      if (field.step != null) $input.attr('step', field.step);
       const commit = debouncedSetter(subj.id, field._trackerId, field.id, (v) => Number(v));
       $input.on('input', e => commit(e.target.value))
             .on('change', e => engine.setField(subj.id, field._trackerId, field.id, Number(e.target.value), { source: 'manual' }));
