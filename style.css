@@ -74,11 +74,28 @@
   gap: 4px;
   margin-bottom: 6px;
 }
+.strk-outfit-set-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1px 2px 1px 0;
+}
 .strk-outfit-set-chip {
   cursor: pointer;
+  background: transparent !important;
 }
-.strk-outfit-set-chip:hover {
-  background: rgba(255, 255, 255, 0.15);
+.strk-outfit-set-group:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.strk-outfit-set-overwrite {
+  font-size: 11px;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+.strk-outfit-set-overwrite:hover {
+  opacity: 1;
 }
 .strk-outfit-sets-empty {
   font-size: 11px;

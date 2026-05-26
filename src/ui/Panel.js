@@ -165,8 +165,9 @@ export class Panel {
       $chips.append($('<span class="strk-outfit-sets-empty"></span>').text('(none — save the current outfit to get started)'));
     }
     for (const name of names) {
+      const $group = $('<span class="strk-outfit-set-group"></span>');
       const $chip = $('<span class="strk-chip strk-outfit-set-chip"></span>').text(name)
-        .attr('title', 'Click to apply this set (moves displaced clothes to wardrobe)');
+        .attr('title', 'Click to apply this set (moves displaced clothes to wardrobe). Right-click to delete.');
       $chip.on('click', async () => {
         const ok = this.deps.dialogs
           ? await this.deps.dialogs.confirm(`Apply outfit set "${name}"? Currently-worn items will go to wardrobe.`)
@@ -184,7 +185,21 @@ export class Panel {
         OutfitSets.deleteSet(this.engine, subj.id, name);
         this.render();
       });
-      $chips.append($chip);
+      $group.append($chip);
+      // ✎ overwrite-with-current button
+      const $overwrite = $('<button class="strk-field-icon strk-outfit-set-overwrite"></button>').text('✎')
+        .attr('title', `Overwrite "${name}" with the currently-worn outfit`)
+        .on('click', async (e) => {
+          e.stopPropagation();
+          const ok = this.deps.dialogs
+            ? await this.deps.dialogs.confirm(`Overwrite outfit set "${name}" with the currently-worn outfit?`)
+            : confirm(`Overwrite "${name}"?`);
+          if (!ok) return;
+          try { OutfitSets.saveSet(this.engine, subj.id, name); }
+          catch (e) { await this.deps.dialogs?.alert?.(`Could not overwrite: ${e.message}`); }
+        });
+      $group.append($overwrite);
+      $chips.append($group);
     }
     $section.append($chips);
     const $saveBtn = $('<button class="menu_button strk-outfit-set-save"></button>').text('+ Save current as…')
@@ -193,8 +208,16 @@ export class Panel {
           ? await this.deps.dialogs.prompt('Name for this outfit set:')
           : prompt('Name for this outfit set:');
         if (!name || !name.trim()) return;
+        const trimmed = name.trim();
+        // Confirm if a set with this name already exists
+        if (OutfitSets.getSet(this.engine, subj.id, trimmed)) {
+          const ok = this.deps.dialogs
+            ? await this.deps.dialogs.confirm(`Outfit set "${trimmed}" already exists. Overwrite it?`)
+            : confirm(`Overwrite "${trimmed}"?`);
+          if (!ok) return;
+        }
         try {
-          OutfitSets.saveSet(this.engine, subj.id, name.trim());
+          OutfitSets.saveSet(this.engine, subj.id, trimmed);
           this.render();
         } catch (e) {
           await this.deps.dialogs?.alert?.(`Could not save: ${e.message}`);
