@@ -1,26 +1,4 @@
-/**
- * Renders a value for injection. For number fields with `maxFromField` set,
- * renders as "current/max" by looking up the partner field's current value.
- */
-function formatValue(value, field, fieldValues) {
-  if (!field) {
-    return value == null ? '' : String(value);
-  }
-  if (field.type === 'list') return Array.isArray(value) ? value.join(', ') : String(value ?? '');
-  if (field.type === 'number') {
-    // displayAs: 'percent' → "120%". Paired-max takes priority if both are set.
-    if (field.maxFromField && fieldValues) {
-      const maxVal = fieldValues[field.maxFromField];
-      if (maxVal !== undefined && maxVal !== null && maxVal !== '') {
-        return `${value ?? 0}/${maxVal}`;
-      }
-    }
-    if (field.displayAs === 'percent') {
-      return `${value ?? 0}%`;
-    }
-  }
-  return value == null ? '' : String(value);
-}
+import { formatValue } from '../util/formatValue.js';
 
 /**
  * Maximum length of a cached description when rendered into the {{fields}}

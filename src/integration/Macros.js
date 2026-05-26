@@ -1,3 +1,5 @@
+import { formatValue } from '../util/formatValue.js';
+
 function parsePath(path) {
   // <subject>.<tracker>.<field>[.suffix]
   const parts = String(path).split('.');
@@ -25,11 +27,7 @@ function renderTrackerBlock(engine, subj, tracker) {
         const v = fieldValues[f.id];
         return v !== null && v !== undefined && String(v) !== '';
       })
-      .map(f => {
-        const v = fieldValues[f.id];
-        const formatted = Array.isArray(v) ? v.join(', ') : String(v ?? '');
-        return `**${f.label}:** ${formatted}`;
-      })
+      .map(f => `**${f.label}:** ${formatValue(fieldValues[f.id], f, fieldValues)}`)
       .join('\n');
 
     return tpl.replace(/\{\{([\w.]+)\}\}/g, (match, key) => {
@@ -47,8 +45,7 @@ function renderTrackerBlock(engine, subj, tracker) {
       }
       const f = fieldMap.get(key);
       if (!f) return '';
-      const v = fieldValues[key];
-      return Array.isArray(v) ? v.join(', ') : String(v ?? '');
+      return formatValue(fieldValues[key], f, fieldValues);
     });
   }
 
@@ -58,11 +55,7 @@ function renderTrackerBlock(engine, subj, tracker) {
       const v = fieldValues[f.id];
       return v !== null && v !== undefined && String(v) !== '' && !(Array.isArray(v) && v.length === 0);
     })
-    .map(f => {
-      const v = fieldValues[f.id];
-      const formatted = Array.isArray(v) ? v.join(', ') : String(v ?? '');
-      return `**${f.label}:** ${formatted}`;
-    });
+    .map(f => `**${f.label}:** ${formatValue(fieldValues[f.id], f, fieldValues)}`);
   return lines.join('\n');
 }
 
@@ -143,9 +136,13 @@ export function resolveMacro(engine, path) {
   }
   if (p.suffix === 'raw') return String(value ?? '');
   if (p.suffix === 'label') return fdef.label;
-  // default render
-  if (fdef.type === 'list') return (value ?? []).join(', ');
-  return String(value ?? '');
+  // Default render — apply field-level formatting (displayAs, maxFromField).
+  // For paired-max lookup we need the partner field's current value too.
+  const fieldValues = {};
+  if (fdef.maxFromField) {
+    fieldValues[fdef.maxFromField] = engine.getField(subj.id, p.tracker, fdef.maxFromField);
+  }
+  return formatValue(value, fdef, fieldValues);
 }
 
 export function resolveListMacro(engine, path) {
