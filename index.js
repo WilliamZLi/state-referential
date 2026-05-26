@@ -213,7 +213,13 @@ import * as EventHooks from './src/integration/EventHooks.js';
     },
     runManualProbe: (trackerId, subject) => standalone.runOne(trackerId, subject),
     descProbe,
-    getDefaultTags: () => _strkSettings().defaultTags ?? [],
+    // Merge built-in defaults with user-added so the chips always include the
+    // baseline set even when defaultTags setting is empty.
+    getDefaultTags: () => {
+      const builtins = ['intimate', 'combat', 'social', 'exploration', 'wardrobe', 'dressing'];
+      const user = _strkSettings().defaultTags ?? [];
+      return [...new Set([...builtins, ...user])];
+    },
     autoUpdate,
     injection,
   });
