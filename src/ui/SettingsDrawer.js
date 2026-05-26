@@ -2,7 +2,7 @@ import { loadTemplate, loadPreset } from './shared.js';
 import { DEFAULT_AUTOUPDATE_TEMPLATE } from '../pipeline/AutoUpdate.js';
 import { DEFAULT_PROBE_TEMPLATE } from '../pipeline/DescriptionProbe.js';
 
-const PRESETS = ['traits','outfit','wardrobe','stats','state','inventory','relationships'];
+const PRESETS = ['traits','outfit','wardrobe','stats','state','sensitivities','inventory','relationships'];
 
 export class SettingsDrawer {
   constructor(engine, deps) {
