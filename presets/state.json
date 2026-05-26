@@ -7,7 +7,7 @@
     "enabled": true,
     "trigger": "always",
     "position": "in-chat",
-    "depth": 0,
+    "depth": 1,
     "template": "**{{subject}}:**\n{{fields}}"
   },
   "fields": [

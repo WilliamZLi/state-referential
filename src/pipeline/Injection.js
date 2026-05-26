@@ -186,6 +186,18 @@ export class Injection {
           fieldValues[f.id] = this.engine.getField(subj.id, tracker.id, f.id) ?? f.default;
         }
 
+        // Skip the entire block if no included field has a non-empty value —
+        // otherwise we'd emit a lone header like "**Sylvia's wardrobe:**" with
+        // nothing under it.
+        const hasAnyContent = tracker.fields.some(f => {
+          if (f.injection?.enabled === false) return false;
+          const v = fieldValues[f.id];
+          if (v === undefined || v === null || v === '') return false;
+          if (Array.isArray(v) && v.length === 0) return false;
+          return true;
+        });
+        if (!hasAnyContent) continue;
+
         const rendered = expandTemplate(
           inj.template ?? '',
           tracker,
