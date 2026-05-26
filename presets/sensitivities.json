@@ -14,12 +14,12 @@
   "fields": [
     { "id": "breasts", "label": "Breasts", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false,
       "inclusion": { "rule": "tag", "tags": ["intimate"] },
-      "injection": { "enabled": true } },
+      "injection": { "enabled": true }, "displayAs": "percent" },
     { "id": "anus", "label": "Anus", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false,
       "inclusion": { "rule": "tag", "tags": ["intimate"] },
-      "injection": { "enabled": true } },
+      "injection": { "enabled": true }, "displayAs": "percent" },
     { "id": "vagina", "label": "Vagina", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false,
       "inclusion": { "rule": "tag", "tags": ["intimate"] },
-      "injection": { "enabled": true } }
+      "injection": { "enabled": true }, "displayAs": "percent" }
   ]
 }

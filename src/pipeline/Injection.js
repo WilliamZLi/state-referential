@@ -4,14 +4,19 @@
  */
 function formatValue(value, field, fieldValues) {
   if (!field) {
-    // Defensive fallback when no field def is provided (e.g. direct calls)
     return value == null ? '' : String(value);
   }
   if (field.type === 'list') return Array.isArray(value) ? value.join(', ') : String(value ?? '');
-  if (field.type === 'number' && field.maxFromField && fieldValues) {
-    const maxVal = fieldValues[field.maxFromField];
-    if (maxVal !== undefined && maxVal !== null && maxVal !== '') {
-      return `${value ?? 0}/${maxVal}`;
+  if (field.type === 'number') {
+    // displayAs: 'percent' → "120%". Paired-max takes priority if both are set.
+    if (field.maxFromField && fieldValues) {
+      const maxVal = fieldValues[field.maxFromField];
+      if (maxVal !== undefined && maxVal !== null && maxVal !== '') {
+        return `${value ?? 0}/${maxVal}`;
+      }
+    }
+    if (field.displayAs === 'percent') {
+      return `${value ?? 0}%`;
     }
   }
   return value == null ? '' : String(value);

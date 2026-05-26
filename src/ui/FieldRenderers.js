@@ -178,6 +178,9 @@ export function makeRenderers(engine, deps) {
         const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField);
         const $ratio = $('<span class="strk-field-ratio"></span>').text(`/ ${maxValue ?? '?'}`);
         extras.push($ratio);
+      } else if (field.displayAs === 'percent') {
+        const $pct = $('<span class="strk-field-ratio"></span>').text('%');
+        extras.push($pct);
       }
       return row(field, subj, $input, extras);
     },
