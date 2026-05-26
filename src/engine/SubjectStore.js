@@ -18,6 +18,14 @@ export class SubjectStore {
     });
   }
 
+  /**
+   * Public persist trigger — same as the internal _persist but safe for
+   * external feature code (e.g. OutfitSets) to call after mutating a subject's
+   * extra properties directly (subj.outfitSets, etc.). Use this instead of
+   * reaching into _persist directly.
+   */
+  persist() { this._persist(); }
+
   add(name, opts = {}) {
     if (!/^[^.\{\}|]+$/.test(name)) throw new Error(`subject name contains forbidden chars (.,{,},|): ${name}`);
     if (this.findByName(name)) throw new Error(`subject name exists: ${name}`);

@@ -67,7 +67,7 @@ export function saveSet(engine, subjectId, name) {
   sets[name] = snapshot;
   // Persist via SubjectStore's existing mechanism: writing to the subject
   // object then re-saving the whole list.
-  engine.subjects._persist();
+  engine.subjects.persist();
   engine.bus.emit('tracker:outfit-set-saved', { subject: subjectId, name });
 }
 
@@ -78,7 +78,7 @@ export function deleteSet(engine, subjectId, name) {
   const subj = getSubject(engine, subjectId);
   if (!subj?.outfitSets) return;
   delete subj.outfitSets[name];
-  engine.subjects._persist();
+  engine.subjects.persist();
   engine.bus.emit('tracker:outfit-set-deleted', { subject: subjectId, name });
 }
 

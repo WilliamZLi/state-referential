@@ -160,3 +160,56 @@ test('{{fields}} placeholder expands to auto-formatted enabled fields', () => {
   // Potion is injection.enabled=false → must not appear
   assert.ok(!call.t.includes('Health potion'), 'disabled field must not appear in {{fields}} expansion');
 });
+
+// ── Test 7: tracker with all fields empty is skipped (no header-only block) ────
+
+test('tracker with all fields empty does not emit an extension prompt', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'wardrobe',
+    label: 'Wardrobe',
+    injection: { enabled: true, trigger: 'always', position: 'in-prompt', depth: 4,
+      template: '**{{subject}} wardrobe:**\n{{items}}' },
+    fields: [
+      { id: 'items', label: 'Items', type: 'list', injection: { enabled: true } },
+    ],
+  });
+  const p = eng.addSubject('Sylvia', { role: 'protagonist' });
+  // Intentionally do NOT set items — empty list.
+  const calls = [];
+  const inj = new Injection(eng, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const call = calls.find(c => c.k === `tracker:${p.id}:wardrobe`);
+  // Either no call at all, or a clearing empty-string call — but never a populated header.
+  assert.ok(!call || call.t === '', 'empty tracker must not emit header-only injection');
+});
+
+// ── Test 8: previously-populated tracker clears its slot when fields go empty ──
+
+test('tracker that becomes empty clears its previous extension prompt slot', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'outfit',
+    label: 'Outfit',
+    injection: { enabled: true, trigger: 'always', position: 'in-prompt', depth: 4,
+      template: '**{{subject}} outfit:** {{topwear}}' },
+    fields: [
+      { id: 'topwear', label: 'Topwear', type: 'text', injection: { enabled: true } },
+    ],
+  });
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red silk dress');
+
+  const calls = [];
+  const inj = new Injection(eng, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const firstCall = calls.find(c => c.k === `tracker:${p.id}:outfit`);
+  assert.ok(firstCall && firstCall.t.includes('red silk dress'), 'first run should emit populated block');
+
+  // Now clear the field and re-run — the slot should be cleared with an empty string.
+  eng.setField(p.id, 'outfit', 'topwear', '');
+  calls.length = 0;
+  inj.run();
+  const secondCall = calls.find(c => c.k === `tracker:${p.id}:outfit`);
+  assert.ok(secondCall && secondCall.t === '', 'cleared field should clear the previous injection slot');
+});

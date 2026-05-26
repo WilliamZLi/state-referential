@@ -1,6 +1,11 @@
+import { debounce } from '../util/debounce.js';
+
 export function register(engine, deps) {
   // deps: { versioning, descProbe, getSettings, panel, injection }
   deps.versioning.register();
+
+  // Debounced injection refresh — rapid value edits collapse into one run().
+  const refreshInjection = debounce(() => deps.injection?.run?.(), 50);
 
   // Bridge: value-changed events that came from the AI (or slash commands)
   // enqueue a description probe. Manual UI edits do NOT auto-probe — clicking
@@ -15,12 +20,11 @@ export function register(engine, deps) {
     }]);
   });
 
-  // Refresh injection on every value change (so manual edits, slash commands, and
-  // auto-update all keep the extension-prompt slot in sync). Cheap: just rebuilds
-  // the stored extension prompt for affected trackers.
-  engine.on('tracker:value-changed', () => deps.injection?.run?.());
+  // Refresh injection on every value change (debounced so mass-edits collapse).
+  engine.on('tracker:value-changed', () => refreshInjection());
 
-  // Re-run injection whenever scene tags toggle (so tag-gated fields appear immediately).
+  // Re-run injection whenever scene tags toggle (immediate, no debounce — tag
+  // toggle is a deliberate user action, want instant response).
   engine.on('tracker:tag-changed', () => deps.injection.run());
 
   // First-run: only pop the protagonist modal when there's an actual chat loaded

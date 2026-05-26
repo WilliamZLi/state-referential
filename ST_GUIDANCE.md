@@ -324,3 +324,44 @@ Use `node --test` with no arg — Node's default test discovery globs `**/*.test
 Pure-engine modules (no DOM, no ST imports) are unit-testable with `node:test`. UI and
 integration modules need manual smoke testing in a running ST instance — there's no
 practical headless harness.
+
+## Field display options (number fields)
+
+Two optional field-definition keys shape how a number field renders in the panel
+and in injected prompts. Both are surfaced through the Schema Editor "Field
+details" modal and persisted in the tracker definition.
+
+- **`maxFromField`** — string fieldId of a partner field that holds the
+  maximum. The number renders as `current / max` (e.g. `120 / 125`) in both the
+  UI and `{{fields}}` injection block. The partner field must live in the same
+  tracker. Used by the HP-style pattern (`hp` + `hp_max`).
+- **`displayAs`** — set to `'percent'` to render the value with a `%` suffix
+  (`62%`). Compatible with `maxFromField` — if both are set, the ratio still
+  renders (`62 / 100`) since the partner field provides the upper bound
+  explicitly.
+
+Both options are handled by `src/util/formatValue.js`, which is the single
+source of truth — used by `Injection`, `Macros.renderTrackerBlock`,
+`Macros.resolveMacro`, and the panel number-field renderer. Adding a new format
+option means editing that one file plus the schema-editor modal.
+
+Use `.raw` suffix in macros (`{{tracker::name.stats.hp.raw}}`) to bypass
+formatting and get the underlying numeric value.
+
+## Outfit sets (per-subject wardrobe swap)
+
+`src/features/OutfitSets.js` saves named snapshots of a subject's outfit fields
+on `subject.outfitSets`. Apply performs a wardrobe swap: displaced field values
+move into `wardrobe.items`, set values are removed from `wardrobe.items`. The
+feature mutates subject properties directly (not via the value store), so it
+calls `engine.subjects.persist()` after each mutation — that's the public
+trigger any feature should use when writing extra subject properties. Don't
+reach into `_persist()`.
+
+## Injection wrapping (`<injection>...</injection>`)
+
+All shipped preset templates wrap their content in literal `<injection>...</injection>`
+XML-style tags. This is a behavioral signal to the model: don't mirror the
+wrapped block in narrative output. Without it, models tend to repeat the
+injected facts verbatim in prose. The wrapper is not parsed by ST or by us —
+it's just inert text the model has learned to treat as context-only.
