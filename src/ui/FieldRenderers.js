@@ -27,7 +27,8 @@ function computeInclusion(field, subjectId, trackerId, engine) {
   }
   if (rule === 'active') {
     const stored = engine.values.getStored(subjectId, trackerId, field.id);
-    if (!stored?.lastTouchedMsg) return { passes: false, reason: 'Inactive: field has never been set' };
+    // Never touched = neutral/ready state, not stale. Only dim when the window has expired after a prior activation.
+    if (!stored?.lastTouchedMsg) return { passes: true, reason: '' };
     // Snapshot-count heuristic: each snapshot ≈ one turn.
     const snapshots = engine.listSnapshots();
     const snapshotCount = snapshots.length;
