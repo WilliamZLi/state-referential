@@ -202,9 +202,22 @@ export function makeRenderers(engine, deps) {
     },
     list(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? [];
+      const activeWindow = field.inclusion?.activeWindow;
+      const itemMeta = activeWindow != null ? engine.getListMeta(subj.id, field._trackerId, field.id) : {};
+      const snapshots = activeWindow != null ? engine.listSnapshots() : [];
       const $cluster = $('<div class="strk-chip-cluster"></div>');
       for (const entry of cur) {
-        const $chip = $('<span class="strk-chip"></span>').text(entry);
+        let label = entry;
+        if (activeWindow != null) {
+          const meta = itemMeta[entry];
+          if (meta?.addedAtMsg) {
+            const touchIdx = snapshots.findIndex(s => s.id === meta.addedAtMsg);
+            const turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
+            const turnsLeft = Math.max(0, activeWindow - turnsSince);
+            label = `${entry} (${turnsLeft})`;
+          }
+        }
+        const $chip = $('<span class="strk-chip"></span>').text(label);
         $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' }); });
         $chip.on('click', () => {
           if (field.describable) {

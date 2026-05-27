@@ -63,7 +63,17 @@ export class ValueStore {
     const oldValue = this.getField(s, t, f);
     if (!this._values[s]) this._values[s] = {};
     if (!this._values[s][t]) this._values[s][t] = {};
+    const prev = this._values[s][t][f];
     this._values[s][t][f] = { v, lastTouchedMsg: opts.msgId ?? null };
+    // Carry forward and prune per-item timestamps for timed list fields
+    if (field.type === 'list' && prev?.itemMeta) {
+      const kept = new Set(Array.isArray(v) ? v : []);
+      const meta = {};
+      for (const [k, val] of Object.entries(prev.itemMeta)) {
+        if (kept.has(k)) meta[k] = val;
+      }
+      if (Object.keys(meta).length > 0) this._values[s][t][f].itemMeta = meta;
+    }
     if (field.type === 'prose') {
       const key = this._descKey(field);
       if (!this._desc.perSubject[s]) this._desc.perSubject[s] = {};
@@ -85,6 +95,18 @@ export class ValueStore {
     const cur = this.getField(s, t, f) ?? [];
     if (cur.includes(entry)) return;
     this.setField(s, t, f, [...cur, entry], opts);
+    // Stamp per-item addedAtMsg for timed lists (drives countdown in UI)
+    if (field.inclusion?.activeWindow != null && opts.msgId) {
+      const rec = this._values[s]?.[t]?.[f];
+      if (rec) {
+        if (!rec.itemMeta) rec.itemMeta = {};
+        rec.itemMeta[entry] = { addedAtMsg: opts.msgId };
+        this._persist();
+      }
+    }
+  }
+  getListMeta(s, t, f) {
+    return this._values[s]?.[t]?.[f]?.itemMeta ?? {};
   }
   removeListEntry(s, t, f, entry, opts = {}) {
     const field = this._field(t, f);

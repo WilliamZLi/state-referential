@@ -94,6 +94,7 @@ export class TrackerEngine {
   applyDelta(s, t, f, d, opts) { this.values.applyDelta(s, t, f, d, opts); }
   addListEntry(s, t, f, e, opts) { this.values.addListEntry(s, t, f, e, opts); }
   removeListEntry(s, t, f, e, opts) { this.values.removeListEntry(s, t, f, e, opts); }
+  getListMeta(s, t, f) { return this.values.getListMeta(s, t, f); }
   setPair(s, t, f, name, descriptor, opts) { this.values.setPair(s, t, f, name, descriptor, opts); }
   removePair(s, t, f, name, opts) { this.values.removePair(s, t, f, name, opts); }
 

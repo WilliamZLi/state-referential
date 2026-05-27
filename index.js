@@ -320,6 +320,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
     applyDelta: (...a) => engine.applyDelta(...a),
     addListEntry: (...a) => engine.addListEntry(...a),
     removeListEntry: (...a) => engine.removeListEntry(...a),
+    getListMeta: (...a) => engine.getListMeta(...a),
     applyCommands: (t, o) => engine.applyCommands(t, o),
 
     getDescription: (...a) => engine.getDescription(...a),
