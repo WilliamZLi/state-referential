@@ -48,6 +48,23 @@ test('applyDelta clamps', () => {
   assert.strictEqual(vs.getField('p1', 'stats', 'hp'), 100);
 });
 
+test('number field accepts missing max (uncapped — used by sensitivities preset)', () => {
+  const ds = new DefinitionStore(new InMemoryBackend(), mkBus());
+  // No max: must not throw at define time.
+  ds.define({ id: 'sens', label: 'Sensitivities', fields: [
+    { id: 'breasts', label: 'Breasts', type: 'number', min: 0, default: 100 },
+  ]});
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), ds);
+  // Any positive integer above the legacy 100 ceiling is accepted.
+  vs.setField('p1', 'sens', 'breasts', 250);
+  assert.strictEqual(vs.getField('p1', 'sens', 'breasts'), 250);
+  vs.setField('p1', 'sens', 'breasts', 9999);
+  assert.strictEqual(vs.getField('p1', 'sens', 'breasts'), 9999);
+  // min still floors.
+  vs.setField('p1', 'sens', 'breasts', -5);
+  assert.strictEqual(vs.getField('p1', 'sens', 'breasts'), 0);
+});
+
 test('list add/remove unique', () => {
   const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
   vs.addListEntry('p1', 'outfit', 'items', 'sword');

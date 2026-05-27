@@ -5,7 +5,10 @@ function validateField(f) {
   if (!f.id) throw new Error('field.id required');
   if (!FIELD_TYPES.has(f.type)) throw new Error(`field.type invalid: ${f.type}`);
   if (f.type === 'enum' && !Array.isArray(f.options)) throw new Error('enum field requires options[]');
-  if (f.type === 'number' && (f.min == null || f.max == null)) throw new Error('number field requires min and max');
+  // number fields may leave `max` open-ended (uncapped) — e.g. sensitivities
+  // tracker uses 100 = baseline with no ceiling. min is still required so the
+  // UI input + validator have a floor.
+  if (f.type === 'number' && f.min == null) throw new Error('number field requires min');
 }
 
 const DEFAULT_TRACKER_INJECTION = { enabled: false, trigger: 'always', tags: [], position: 'in-prompt', depth: 4, template: '' };
