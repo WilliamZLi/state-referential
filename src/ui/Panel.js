@@ -30,6 +30,7 @@ export class Panel {
     });
 
     $('#strk-add-subject').on('click', () => this.deps.openSubjectAddModal());
+    $('#strk-roster-btn').on('click', () => this.deps.openSceneRosterModal?.());
     $('#strk-rename-subject').on('click', async () => this._renameCurrentSubject());
     $('#strk-remove-subject').on('click', async () => this._removeCurrentSubject());
     $('#strk-probe-btn').on('click', () => this._currentTrackerId && this.deps.runManualProbe(this._currentTrackerId, this._currentSubject()));
@@ -74,6 +75,7 @@ export class Panel {
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
       'tracker:outfit-set-saved', 'tracker:outfit-set-deleted', 'tracker:outfit-set-applied',
+      'tracker:subject-active-changed',
     ]) this.engine.on(ev, safeRender);
 
     this.render();
@@ -122,6 +124,13 @@ export class Panel {
   render() {
     if (!this.$el) return;
     const subjects = this.engine.listSubjects();
+
+    // Update roster badge: count inactive non-protagonist subjects
+    const inactiveCount = subjects.filter(s => s.role !== 'protagonist' && !this.engine.isSubjectActive(s.id)).length;
+    const $badge = $('#strk-roster-badge');
+    if (inactiveCount) $badge.text(inactiveCount).removeClass('strk-hidden');
+    else $badge.addClass('strk-hidden');
+
     const $sel = $('#strk-subject-select').empty();
     if (!subjects.length) { $('#strk-tabs').empty(); $('#strk-tab-body').html('<p>No subjects yet.</p>'); return; }
     for (const s of subjects) $sel.append($('<option></option>').val(s.id).text(`${s.name} (${s.role})`));

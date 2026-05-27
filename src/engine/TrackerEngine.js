@@ -75,6 +75,8 @@ export class TrackerEngine {
   listSubjects() { return this.subjects.list(); }
   protagonist() { return this.subjects.protagonist(); }
   resolveSubject(t) { return this.subjects.resolveAlias(t); }
+  setSubjectActive(id, active) { this.subjects.setActive(id, active); }
+  isSubjectActive(id) { return this.subjects.isSubjectActive(id); }
 
   // Values
   getField(s, t, f) { return this.values.getField(s, t, f); }

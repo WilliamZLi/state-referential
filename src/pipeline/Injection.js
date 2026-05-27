@@ -177,6 +177,7 @@ export class Injection {
     const newKeys = new Set();
 
     for (const subj of this.engine.listSubjects()) {
+      if (!this.engine.isSubjectActive(subj.id)) continue;
       for (const tracker of this.engine.definitions.forRole(subj.role)) {
         const inj = tracker.injection;
         if (!inj?.enabled) continue;

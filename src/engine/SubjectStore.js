@@ -38,6 +38,7 @@ export class SubjectStore {
       createdAtMsg: opts.createdAtMsg ?? null,
       createdBy: opts.createdBy ?? 'user',
       traits: opts.traits ?? {},
+      active: role === 'protagonist' ? true : false,
     };
     if (role === 'protagonist') {
       if (this._protagonistId) this._subjects.get(this._protagonistId).role = 'npc';
@@ -78,6 +79,21 @@ export class SubjectStore {
     this._protagonistId = subj.id;
     this._persist();
     this.bus.emit('tracker:protagonist-changed', { id: subj.id });
+  }
+
+  setActive(id, active) {
+    const subj = this._subjects.get(id);
+    if (!subj || subj.role === 'protagonist') return;
+    subj.active = !!active;
+    this._persist();
+    this.bus.emit('tracker:subject-active-changed', { id, active: subj.active });
+  }
+
+  isSubjectActive(id) {
+    const subj = this._subjects.get(id);
+    if (!subj) return false;
+    if (subj.role === 'protagonist') return true;
+    return subj.active !== false; // migration-safe: undefined → true for existing subjects
   }
 
   get(id) { return this._subjects.get(id); }

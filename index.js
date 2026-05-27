@@ -169,6 +169,63 @@ import * as EventHooks from './src/integration/EventHooks.js';
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   };
 
+  const openSceneRosterModal = async () => {
+    const html = await loadTemplate('scene-roster-modal');
+    const $f = $(html);
+
+    const ROLE_ORDER = ['protagonist', 'npc', 'location', 'faction', 'object'];
+    const ROLE_LABELS = { protagonist: 'Protagonist', npc: 'NPCs', location: 'Locations', faction: 'Factions', object: 'Objects' };
+
+    const renderGroups = () => {
+      const $container = $('#strk-roster-groups', $f).empty();
+      const subjects = engine.listSubjects();
+      const byRole = {};
+      for (const s of subjects) {
+        if (!byRole[s.role]) byRole[s.role] = [];
+        byRole[s.role].push(s);
+      }
+      for (const role of ROLE_ORDER) {
+        const group = byRole[role];
+        if (!group?.length) continue;
+        const $group = $('<div class="strk-roster-group"></div>');
+        $group.append($('<div class="strk-roster-role-header"></div>').text(ROLE_LABELS[role] ?? role));
+        for (const s of group) {
+          const isProtag = s.role === 'protagonist';
+          const active = engine.isSubjectActive(s.id);
+          const $row = $('<div class="strk-roster-row"></div>');
+          const $cb = $(`<input type="checkbox"${active ? ' checked' : ''}${isProtag ? ' disabled' : ''}/>`);
+          if (!isProtag) {
+            $cb.on('change', e => {
+              engine.setSubjectActive(s.id, e.target.checked);
+            });
+          }
+          $row.append($cb);
+          const $label = $('<span class="strk-roster-name"></span>').text(s.name);
+          $row.append($label);
+          if (isProtag) $row.append($('<span class="strk-roster-protag-badge"></span>').text('protagonist'));
+          $group.append($row);
+        }
+        $container.append($group);
+      }
+    };
+
+    renderGroups();
+    const onChanged = () => renderGroups();
+    engine.on('tracker:subject-active-changed', onChanged);
+    engine.on('tracker:subject-added', onChanged);
+    engine.on('tracker:subject-removed', onChanged);
+
+    const cleanup = () => {
+      engine.off('tracker:subject-active-changed', onChanged);
+      engine.off('tracker:subject-added', onChanged);
+      engine.off('tracker:subject-removed', onChanged);
+    };
+
+    $('#strk-roster-close', $f).on('click', () => { cleanup(); _closePopup($f); });
+    await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
+    cleanup();
+  };
+
   const openProseModal = async ({ title, text, onSave, onRefresh }) => {
     const html = await loadTemplate('prose-edit-modal');
     const $f = $(html);
@@ -242,6 +299,7 @@ import * as EventHooks from './src/integration/EventHooks.js';
     dialogs,
     openProseModal,
     openSubjectAddModal,
+    openSceneRosterModal,
     requestProbe: (subjId, trackerId, fieldId, value) => {
       descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]);
       return descProbe.drain();
@@ -320,6 +378,8 @@ import * as EventHooks from './src/integration/EventHooks.js';
     listSubjects: () => engine.listSubjects(),
     protagonist: () => engine.protagonist(),
     resolveSubject: (token) => engine.resolveSubject(token),
+    setSubjectActive: (id, active) => engine.setSubjectActive(id, active),
+    isSubjectActive: (id) => engine.isSubjectActive(id),
 
     getField: (...a) => engine.getField(...a),
     setField: (...a) => engine.setField(...a),

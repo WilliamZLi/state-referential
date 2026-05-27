@@ -98,7 +98,7 @@ export class AutoUpdate {
   }
 
   buildPrompt({ lastNarratorReply }) {
-    const subjects = this.engine.listSubjects();
+    const subjects = this.engine.listSubjects().filter(s => this.engine.isSubjectActive(s.id));
     const blocks = [];
     for (const subj of subjects) {
       const trackers = this.engine.definitions.forRole(subj.role).filter(d => d.autoUpdate !== false);
