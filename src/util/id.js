@@ -10,20 +10,38 @@ function uuid4() {
 
 export function newId() { return uuid4(); }
 
+/**
+ * Tracker msgId lives at the MESSAGE TOP LEVEL — NOT in `extra` — because ST
+ * stores `extra` per-swipe inside `swipe_info[swipe_id]`. When the user swipes
+ * to a different alternative, `msg.extra` is replaced with that swipe's entry,
+ * which wipes any per-extension state stored there. A top-level property on
+ * the message object is preserved across swipes by ST.
+ *
+ * Legacy chats may still have the id in extra; readTrackerMsgId falls back to
+ * those keys, and ensureTrackerMsgId hoists them to the top level on first use.
+ */
+const TOP_KEY = 'state_referential_msgId';
+const LEGACY_KEYS = ['state_referential_msgId', 'trackerMsgId'];
+
 export function ensureTrackerMsgId(message) {
-  if (!message.extra) message.extra = {};
-  // Migration: if the legacy key exists but the new key doesn't, promote it.
-  if (!message.extra.state_referential_msgId && message.extra.trackerMsgId) {
-    message.extra.state_referential_msgId = message.extra.trackerMsgId;
-  }
-  if (!message.extra.state_referential_msgId) message.extra.state_referential_msgId = uuid4();
-  return message.extra.state_referential_msgId;
+  if (!message) return null;
+  if (message[TOP_KEY]) return message[TOP_KEY];
+  // Migration: hoist a legacy per-swipe id from `extra` if present.
+  const legacy = LEGACY_KEYS.map(k => message.extra?.[k]).find(Boolean);
+  message[TOP_KEY] = legacy ?? uuid4();
+  return message[TOP_KEY];
 }
 
 /**
- * Read the tracker message-id from a message, accepting both the current
- * namespaced key and the legacy key for backward compatibility.
+ * Read the tracker message-id from a message, preferring the top-level (swipe-
+ * stable) key and falling back to legacy `extra.*` placements.
  */
 export function readTrackerMsgId(message) {
-  return message?.extra?.state_referential_msgId ?? message?.extra?.trackerMsgId ?? null;
+  if (!message) return null;
+  if (message[TOP_KEY]) return message[TOP_KEY];
+  for (const k of LEGACY_KEYS) {
+    const v = message.extra?.[k];
+    if (v) return v;
+  }
+  return null;
 }

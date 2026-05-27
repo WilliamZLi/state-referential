@@ -9,18 +9,18 @@ test('newId returns a v4-ish uuid string', () => {
   assert.notStrictEqual(a, b);
 });
 
-test('ensureTrackerMsgId assigns to message.extra.state_referential_msgId once', () => {
+test('ensureTrackerMsgId assigns to top-level state_referential_msgId once', () => {
   const msg = {};
   const id1 = ensureTrackerMsgId(msg);
   assert.ok(id1);
-  assert.strictEqual(msg.extra.state_referential_msgId, id1);
+  assert.strictEqual(msg.state_referential_msgId, id1);
   const id2 = ensureTrackerMsgId(msg);
   assert.strictEqual(id2, id1);
 });
 
-test('ensureTrackerMsgId tolerates missing extra', () => {
+test('ensureTrackerMsgId works with or without an extra object', () => {
   const msg = { mes: 'hi' };
   const id = ensureTrackerMsgId(msg);
   assert.ok(id);
-  assert.strictEqual(msg.extra.state_referential_msgId, id);
+  assert.strictEqual(msg.state_referential_msgId, id);
 });
