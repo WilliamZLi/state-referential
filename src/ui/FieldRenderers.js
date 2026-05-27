@@ -236,7 +236,11 @@ export function makeRenderers(engine, deps) {
         const v = deps.dialogs
           ? await deps.dialogs.prompt(`Add entry to ${field.label}:`)
           : prompt(`Add entry to ${field.label}:`);
-        if (v) engine.addListEntry(subj.id, field._trackerId, field.id, v, { source: 'manual' });
+        if (v) {
+          // Anchor timed-list countdown to the current turn (latest snapshot = 0 turns ago = full window)
+          const addMsgId = activeWindow != null ? (snapshots[snapshots.length - 1]?.msgId ?? null) : null;
+          engine.addListEntry(subj.id, field._trackerId, field.id, v, { source: 'manual', msgId: addMsgId });
+        }
       });
       $cluster.append($add);
       return row(field, subj, $cluster, []);
