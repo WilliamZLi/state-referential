@@ -21,17 +21,30 @@ export const DEFAULT_AUTOUPDATE_TEMPLATE = [
 const COMMANDS_HELP = [
   'SET <subject> <tracker>.<field> = "<value>"',
   'DELTA <subject> <tracker>.<field> <±N>',
-  'ADD <subject> <tracker>.<field> "<entry>"',
-  'REMOVE <subject> <tracker>.<field> "<entry>"',
+  'ADD <subject> <tracker>.<field> "<entry>"                       (list fields)',
+  'ADD <subject> <tracker>.<field> "<name>" = "<descriptor>"       (pair-list fields)',
+  'REMOVE <subject> <tracker>.<field> "<entry-or-name>"',
   'NEW_SUBJECT <name> <role>',
   'NONE',
   '',
   'Use ONLY commands shown. Subject names must match exactly. Output nothing else.',
+  'For pair-list fields, ADD upserts: re-adding the same name replaces its descriptor.',
 ].join('\n');
 
 function formatValue(field, value) {
-  if (value === undefined || value === null) return field.type === 'list' ? '[]' : (field.type === 'number' ? '0' : '""');
+  if (value === undefined || value === null) {
+    if (field.type === 'list' || field.type === 'pair-list') return '[]';
+    return field.type === 'number' ? '0' : '""';
+  }
   if (field.type === 'list') return JSON.stringify(value);
+  if (field.type === 'pair-list') {
+    // Render as a readable pair list rather than raw JSON so the AI can mirror it.
+    if (!Array.isArray(value) || value.length === 0) return '[]';
+    return '[' + value
+      .filter(p => p?.name)
+      .map(p => `"${p.name}" = "${p.descriptor ?? ''}"`)
+      .join(', ') + ']';
+  }
   if (field.type === 'number') return String(value);
   return JSON.stringify(String(value));
 }
@@ -39,6 +52,7 @@ function formatValue(field, value) {
 function fieldTypeAnnotation(field) {
   if (field.type === 'number') return `number, ${field.min ?? 0}-${field.max ?? 100}`;
   if (field.type === 'enum') return `enum: ${field.options.join('|')}`;
+  if (field.type === 'pair-list') return 'pair-list (entries are "name = descriptor")';
   return field.type;
 }
 

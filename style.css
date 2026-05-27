@@ -47,6 +47,12 @@
 .strk-chip-cluster { display: flex; gap: 4px; flex-wrap: wrap; }
 .strk-chip { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.08); font-size: 12px; cursor: pointer; }
 
+.strk-pair-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.strk-pair-row { display: flex; gap: 4px; align-items: center; }
+.strk-pair-row .strk-pair-name { flex: 0 0 35%; min-width: 0; }
+.strk-pair-row .strk-pair-desc { flex: 1 1 auto; min-width: 0; }
+.strk-pair-add { align-self: flex-start; }
+
 .strk-panel-footer { padding: 6px 8px; display: flex; gap: 6px; border-top: 1px solid var(--SmartThemeBorderColor, #333); }
 
 .strk-danger { color: #f55; }

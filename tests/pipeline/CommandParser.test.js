@@ -29,6 +29,20 @@ test('ADD and REMOVE list entries', () => {
   ]);
 });
 
+test('ADD pair-list with = "<descriptor>" tail', () => {
+  const r = parseCommands(`ADD Lyra rel.bonds "Marcus" = "childhood friend turned rival"`);
+  assert.deepStrictEqual(r, [
+    { op: 'ADD', subject: 'Lyra', tracker: 'rel', field: 'bonds', entry: 'Marcus', descriptor: 'childhood friend turned rival' },
+  ]);
+});
+
+test('ADD pair-list without descriptor still parses (legacy list path)', () => {
+  const r = parseCommands(`ADD Lyra rel.bonds "Marcus"`);
+  assert.deepStrictEqual(r, [
+    { op: 'ADD', subject: 'Lyra', tracker: 'rel', field: 'bonds', entry: 'Marcus' },
+  ]);
+});
+
 test('NEW_SUBJECT with role', () => {
   const r = parseCommands(`NEW_SUBJECT "Cult Priest" npc`);
   assert.deepStrictEqual(r, [{ op: 'NEW_SUBJECT', name: 'Cult Priest', role: 'npc' }]);

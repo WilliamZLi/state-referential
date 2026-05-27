@@ -30,10 +30,30 @@ export class ValueStore {
       if (!Array.isArray(value)) throw new Error(`list expected: ${field.id}`);
       return [...value];
     }
+    if (field.type === 'pair-list') {
+      if (!Array.isArray(value)) throw new Error(`pair-list expected: ${field.id}`);
+      // Normalize entries: keep only well-formed {name, descriptor} pairs;
+      // strings get coerced to {name: str, descriptor: ''} for forgiving AI output.
+      const seen = new Set();
+      const out = [];
+      for (const e of value) {
+        let name; let descriptor;
+        if (typeof e === 'string') { name = e.trim(); descriptor = ''; }
+        else if (e && typeof e === 'object') {
+          name = String(e.name ?? '').trim();
+          descriptor = String(e.descriptor ?? '').trim();
+        } else continue;
+        if (!name) continue;
+        if (seen.has(name)) continue; // dedup by name (last write wins via upsert path)
+        seen.add(name);
+        out.push({ name, descriptor });
+      }
+      return out;
+    }
     return String(value);
   }
   _descKey(field) {
-    return `${field._trackerId}.${field.id}` + (field.type === 'list' ? '[]' : '');
+    return `${field._trackerId}.${field.id}` + (field.type === 'list' || field.type === 'pair-list' ? '[]' : '');
   }
   getStored(s, t, f) { return this._values[s]?.[t]?.[f]; }
   getField(s, t, f) { return this.getStored(s, t, f)?.v; }
@@ -71,6 +91,31 @@ export class ValueStore {
     if (field.type !== 'list') throw new Error('removeListEntry requires list');
     const cur = this.getField(s, t, f) ?? [];
     this.setField(s, t, f, cur.filter(x => x !== entry), opts);
+  }
+  /**
+   * Upsert a pair-list entry by name. If the name exists, replace its descriptor
+   * (preserving order); otherwise append. Empty/blank name is a no-op.
+   */
+  setPair(s, t, f, name, descriptor, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'pair-list') throw new Error('setPair requires pair-list');
+    const clean = String(name ?? '').trim();
+    if (!clean) return;
+    const cur = this.getField(s, t, f) ?? [];
+    const idx = cur.findIndex(p => p.name === clean);
+    const desc = String(descriptor ?? '').trim();
+    const next = idx === -1
+      ? [...cur, { name: clean, descriptor: desc }]
+      : cur.map((p, i) => i === idx ? { name: clean, descriptor: desc } : p);
+    this.setField(s, t, f, next, opts);
+  }
+  removePair(s, t, f, name, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'pair-list') throw new Error('removePair requires pair-list');
+    const clean = String(name ?? '').trim();
+    if (!clean) return;
+    const cur = this.getField(s, t, f) ?? [];
+    this.setField(s, t, f, cur.filter(p => p.name !== clean), opts);
   }
   getDescription(s, t, f, value) {
     const field = this._field(t, f);

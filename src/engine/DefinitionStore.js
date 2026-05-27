@@ -1,5 +1,5 @@
 const ALL_ROLES = ['protagonist', 'npc', 'location', 'faction', 'object'];
-const FIELD_TYPES = new Set(['text', 'number', 'enum', 'list', 'prose']);
+const FIELD_TYPES = new Set(['text', 'number', 'enum', 'list', 'prose', 'pair-list']);
 
 function validateField(f) {
   if (!f.id) throw new Error('field.id required');
@@ -40,8 +40,9 @@ function normalizeDef(def) {
         id: f.id,
         label: f.label ?? f.id,
         type: f.type ?? 'text',
-        default: f.default ?? (f.type === 'list' ? [] : (f.type === 'number' ? 0 : '')),
-        describable: f.describable ?? (f.type !== 'number'),
+        default: f.default ?? ((f.type === 'list' || f.type === 'pair-list') ? [] : (f.type === 'number' ? 0 : '')),
+        // pair-list carries its own descriptor inline; cached descriptions add nothing.
+        describable: f.describable ?? (f.type !== 'number' && f.type !== 'pair-list'),
         descriptionScope: f.descriptionScope ?? 'per-subject',
         inclusion: f.inclusion ?? { rule: 'always' },
         // Per-field injection: ONLY { enabled } — all other keys stripped

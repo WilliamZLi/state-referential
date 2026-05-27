@@ -151,7 +151,15 @@ export function resolveListMacro(engine, path) {
   const subj = engine.resolveSubject(p.subject);
   if (!subj) return '';
   const fdef = engine.definitions.getField(p.tracker, p.field);
-  if (!fdef || fdef.type !== 'list') return '';
+  if (!fdef) return '';
+  if (fdef.type === 'pair-list') {
+    const value = engine.getField(subj.id, p.tracker, p.field) ?? [];
+    return value
+      .filter(pair => pair?.name)
+      .map(pair => pair.descriptor ? `- ${pair.name}: ${pair.descriptor}` : `- ${pair.name}`)
+      .join('\n');
+  }
+  if (fdef.type !== 'list') return '';
   const value = engine.getField(subj.id, p.tracker, p.field) ?? [];
   if (p.suffix === 'desc') {
     return value.map(e => `- ${e}: ${engine.getDescription(subj.id, p.tracker, p.field, e) ?? ''}`).join('\n');

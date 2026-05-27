@@ -87,6 +87,8 @@ export class DescriptionProbe {
   async _runOne({ subjectId, trackerId, fieldId, value }) {
     const field = this.engine.definitions.getField(trackerId, fieldId);
     if (!field || !field.describable) return;
+    // pair-list carries its descriptor inline — never probe.
+    if (field.type === 'pair-list') return;
     if (value === '' || value == null) return;
     if (Array.isArray(value)) {
       // list — probe each entry separately

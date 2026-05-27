@@ -54,10 +54,20 @@ export function parseCommands(text, opts = {}) {
       continue;
     }
 
-    // ADD <subject> <tracker>.<field> <entry>
+    // ADD <subject> <tracker>.<field> <entry> [= <descriptor>]
+    // The optional `= <descriptor>` tail is for pair-list fields: the entry is
+    // the pair's name, the descriptor is the relationship/state text.
     m = line.match(/^ADD\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
     if (m) {
-      out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: stripQuotes(m[4]) });
+      const tail = m[4];
+      // Look for an unquoted ` = ` separator outside of any quoted entry.
+      const [entryToken, afterEntry] = tokenizeQuoted(tail);
+      const restAfterEq = afterEntry.match(/^=\s*(.+)$/);
+      if (restAfterEq) {
+        out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: entryToken, descriptor: stripQuotes(restAfterEq[1]) });
+      } else {
+        out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: stripQuotes(tail) });
+      }
       continue;
     }
 

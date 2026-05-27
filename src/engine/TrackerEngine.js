@@ -94,6 +94,8 @@ export class TrackerEngine {
   applyDelta(s, t, f, d, opts) { this.values.applyDelta(s, t, f, d, opts); }
   addListEntry(s, t, f, e, opts) { this.values.addListEntry(s, t, f, e, opts); }
   removeListEntry(s, t, f, e, opts) { this.values.removeListEntry(s, t, f, e, opts); }
+  setPair(s, t, f, name, descriptor, opts) { this.values.setPair(s, t, f, name, descriptor, opts); }
+  removePair(s, t, f, name, opts) { this.values.removePair(s, t, f, name, opts); }
 
   // Descriptions
   getDescription(s, t, f, v) { return this.values.getDescription(s, t, f, v); }
@@ -162,6 +164,17 @@ export class TrackerEngine {
             const aL = aV ?? [], bL = bV ?? [];
             for (const e of bL.filter(x => !aL.includes(x))) fieldChanges.push({ ...base, op: 'add', entry: e });
             for (const e of aL.filter(x => !bL.includes(x))) fieldChanges.push({ ...base, op: 'remove', entry: e });
+          } else if (fdef.type === 'pair-list') {
+            const aMap = new Map((aV ?? []).map(p => [p.name, p.descriptor]));
+            const bMap = new Map((bV ?? []).map(p => [p.name, p.descriptor]));
+            for (const [name, desc] of bMap) {
+              if (!aMap.has(name) || aMap.get(name) !== desc) {
+                fieldChanges.push({ ...base, op: 'add', entry: name, descriptor: desc });
+              }
+            }
+            for (const name of aMap.keys()) {
+              if (!bMap.has(name)) fieldChanges.push({ ...base, op: 'remove', entry: name });
+            }
           } else if (fdef.type === 'number' && typeof aV === 'number' && typeof bV === 'number') {
             fieldChanges.push({ ...base, op: 'delta', delta: bV - aV });
           } else {
@@ -205,7 +218,11 @@ export class TrackerEngine {
       const path = `${c.trackerId}.${c.fieldId}`;
       if (c.op === 'set') lines.push(`SET ${c.subjectName} ${path} = "${c.newValue}"`);
       else if (c.op === 'delta') lines.push(`DELTA ${c.subjectName} ${path} ${c.delta >= 0 ? '+' : ''}${c.delta}`);
-      else if (c.op === 'add') lines.push(`ADD ${c.subjectName} ${path} "${c.entry}"`);
+      else if (c.op === 'add') {
+        lines.push(c.descriptor != null
+          ? `ADD ${c.subjectName} ${path} "${c.entry}" = "${c.descriptor}"`
+          : `ADD ${c.subjectName} ${path} "${c.entry}"`);
+      }
       else if (c.op === 'remove') lines.push(`REMOVE ${c.subjectName} ${path} "${c.entry}"`);
     }
     return lines.join('\n');
@@ -230,8 +247,13 @@ export class TrackerEngine {
         const writeOpts = { source: opts.source ?? 'auto-update', msgId: opts.msgId ?? null };
         if (c.op === 'SET') this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.value), writeOpts);
         else if (c.op === 'DELTA') this.values.applyDelta(subj.id, c.tracker, c.field, c.delta, writeOpts);
-        else if (c.op === 'ADD') this.values.addListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
-        else if (c.op === 'REMOVE') this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        else if (c.op === 'ADD') {
+          if (field.type === 'pair-list') this.values.setPair(subj.id, c.tracker, c.field, c.entry, c.descriptor ?? '', writeOpts);
+          else this.values.addListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        } else if (c.op === 'REMOVE') {
+          if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
+          else this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        }
         applied++;
       } catch (e) {
         errors.push(e.message ?? String(e));
@@ -266,7 +288,26 @@ export class TrackerEngine {
         const oldType = oldField.type;
         const newType = newField.type;
 
-        if (oldType === 'list' && newType !== 'list') {
+        if (oldType === 'pair-list' && newType === 'list') {
+          // pair-list → list: drop descriptors, keep names
+          coerced = Array.isArray(raw) ? raw.map(p => p?.name).filter(Boolean) : [];
+        } else if (oldType === 'list' && newType === 'pair-list') {
+          // list → pair-list: each string becomes {name, descriptor: ''}
+          coerced = Array.isArray(raw) ? raw.filter(Boolean).map(name => ({ name: String(name), descriptor: '' })) : [];
+        } else if (oldType === 'pair-list' && newType !== 'pair-list') {
+          // pair-list → scalar: take first name or default
+          const first = Array.isArray(raw) && raw.length > 0 ? (raw[0]?.name ?? '') : '';
+          if (newType === 'number') {
+            const n = Number(first);
+            coerced = Number.isFinite(n) ? n : (newField.default ?? 0);
+          } else {
+            coerced = first !== '' ? first : (newField.default ?? '');
+          }
+        } else if (oldType !== 'pair-list' && newType === 'pair-list') {
+          // scalar → pair-list: single entry with raw as name, no descriptor
+          const s = String(raw);
+          coerced = s !== '' ? [{ name: s, descriptor: '' }] : [];
+        } else if (oldType === 'list' && newType !== 'list') {
           // list → scalar: take first entry or empty/default
           const first = Array.isArray(raw) && raw.length > 0 ? raw[0] : '';
           if (newType === 'number') {

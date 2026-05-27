@@ -61,7 +61,7 @@ export class SchemaEditor {
 
       // Type — with confirm on change
       const $sel = $('<select class="text_pole f-type"></select>');
-      for (const t of ['text', 'number', 'enum', 'list', 'prose']) {
+      for (const t of ['text', 'number', 'enum', 'list', 'pair-list', 'prose']) {
         $sel.append($('<option></option>').val(t).text(t));
       }
       $sel.val(f.type ?? 'text');
@@ -348,6 +348,9 @@ export class SchemaEditor {
       } else if (curType === 'list') {
         const raw = $('.strk-fdet-default-text', $d).val().trim();
         updatedOrig.default = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      } else if (curType === 'pair-list') {
+        // pair-list default isn't worth a UI editor — always start empty.
+        updatedOrig.default = [];
       } else {
         updatedOrig.default = $('.strk-fdet-default-text', $d).val();
       }

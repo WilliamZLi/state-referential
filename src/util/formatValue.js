@@ -19,6 +19,13 @@ export function formatValue(value, field, fieldValues) {
   if (field.type === 'list') {
     return Array.isArray(value) ? value.join(', ') : String(value ?? '');
   }
+  if (field.type === 'pair-list') {
+    if (!Array.isArray(value)) return '';
+    return value
+      .filter(p => p && p.name)
+      .map(p => p.descriptor ? `${p.name} — ${p.descriptor}` : p.name)
+      .join(', ');
+  }
   if (field.type === 'number') {
     if (field.maxFromField && fieldValues) {
       const maxVal = fieldValues[field.maxFromField];

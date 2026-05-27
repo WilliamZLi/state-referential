@@ -227,6 +227,52 @@ export function makeRenderers(engine, deps) {
       $cluster.append($add);
       return row(field, subj, $cluster, []);
     },
+    'pair-list': (field, subj) => {
+      const cur = engine.getField(subj.id, field._trackerId, field.id) ?? [];
+      const $cluster = $('<div class="strk-pair-list"></div>');
+
+      const renderPairRow = (pair, idx) => {
+        const $r = $('<div class="strk-pair-row"></div>');
+        const $name = $('<input class="text_pole strk-pair-name" type="text" />').val(pair.name);
+        const $desc = $('<input class="text_pole strk-pair-desc" type="text" />').val(pair.descriptor ?? '');
+        $name.attr('placeholder', 'Name');
+        $desc.attr('placeholder', 'Descriptor (e.g. childhood friend)');
+        // Commit on blur or Enter; rename does an upsert under the new name + remove of old.
+        let lastName = pair.name;
+        const commitName = () => {
+          const next = String($name.val() ?? '').trim();
+          if (next === lastName) return;
+          if (lastName) engine.removePair(subj.id, field._trackerId, field.id, lastName, { source: 'manual' });
+          if (next) engine.setPair(subj.id, field._trackerId, field.id, next, String($desc.val() ?? ''), { source: 'manual' });
+          lastName = next;
+        };
+        const commitDesc = () => {
+          const name = String($name.val() ?? '').trim();
+          if (!name) return;
+          engine.setPair(subj.id, field._trackerId, field.id, name, String($desc.val() ?? ''), { source: 'manual' });
+        };
+        $name.on('change', commitName).on('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitName(); } });
+        $desc.on('change', commitDesc).on('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitDesc(); } });
+        const $rm = $('<button class="strk-field-icon" title="Remove">×</button>').on('click', () => {
+          if (pair.name) engine.removePair(subj.id, field._trackerId, field.id, pair.name, { source: 'manual' });
+        });
+        $r.append($name).append($desc).append($rm);
+        return $r;
+      };
+
+      for (let i = 0; i < cur.length; i++) {
+        $cluster.append(renderPairRow(cur[i], i));
+      }
+      const $add = $('<button class="strk-field-icon strk-pair-add">+ Add</button>').on('click', async () => {
+        const name = deps.dialogs
+          ? await deps.dialogs.prompt(`Name for new ${field.label} entry:`)
+          : prompt(`Name for new ${field.label} entry:`);
+        if (!name || !String(name).trim()) return;
+        engine.setPair(subj.id, field._trackerId, field.id, String(name).trim(), '', { source: 'manual' });
+      });
+      $cluster.append($add);
+      return row(field, subj, $cluster, []);
+    },
     prose(field, subj) {
       const cur = engine.getField(subj.id, field._trackerId, field.id) ?? '';
       const $preview = $('<div class="strk-prose-preview"></div>').text(cur.slice(0, 80) + (cur.length > 80 ? '…' : ''));

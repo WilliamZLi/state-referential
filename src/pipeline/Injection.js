@@ -40,6 +40,16 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
       }
       continue;
     }
+    if (f.type === 'pair-list') {
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      lines.push(`${f.label}:`);
+      for (const pair of raw) {
+        if (!pair?.name) continue;
+        const desc = truncateDesc(pair.descriptor ?? '');
+        lines.push(desc ? `  - ${pair.name}: ${desc}` : `  - ${pair.name}`);
+      }
+      continue;
+    }
     const formatted = formatValue(raw, f, fieldValues);
     if (!formatted) continue;
     const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, raw));

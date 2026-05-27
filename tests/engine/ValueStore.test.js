@@ -20,6 +20,7 @@ function mkDefs() {
   ]});
   ds.define({ id: 'rel', label: 'Rel', fields: [
     { id: 'dyn', label: 'Dynamic', type: 'prose', default: '', describable: true },
+    { id: 'bonds', label: 'Bonds', type: 'pair-list', default: [] },
   ]});
   return ds;
 }
@@ -55,6 +56,47 @@ test('list add/remove unique', () => {
   assert.deepStrictEqual(vs.getField('p1', 'outfit', 'items'), ['sword','potion']);
   vs.removeListEntry('p1', 'outfit', 'items', 'sword');
   assert.deepStrictEqual(vs.getField('p1', 'outfit', 'items'), ['potion']);
+});
+
+test('pair-list setPair upserts by name, removePair drops by name', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setPair('p1', 'rel', 'bonds', 'Marcus', 'childhood friend');
+  vs.setPair('p1', 'rel', 'bonds', 'Lyra', 'distrusts after Vellmoor');
+  assert.deepStrictEqual(vs.getField('p1', 'rel', 'bonds'), [
+    { name: 'Marcus', descriptor: 'childhood friend' },
+    { name: 'Lyra', descriptor: 'distrusts after Vellmoor' },
+  ]);
+  // upsert: re-adding Marcus replaces descriptor in place (preserves order)
+  vs.setPair('p1', 'rel', 'bonds', 'Marcus', 'rival now');
+  assert.deepStrictEqual(vs.getField('p1', 'rel', 'bonds'), [
+    { name: 'Marcus', descriptor: 'rival now' },
+    { name: 'Lyra', descriptor: 'distrusts after Vellmoor' },
+  ]);
+  // remove by name
+  vs.removePair('p1', 'rel', 'bonds', 'Marcus');
+  assert.deepStrictEqual(vs.getField('p1', 'rel', 'bonds'), [
+    { name: 'Lyra', descriptor: 'distrusts after Vellmoor' },
+  ]);
+});
+
+test('pair-list setField normalizes mixed input and dedups by name', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setField('p1', 'rel', 'bonds', [
+    { name: 'Marcus', descriptor: 'rival' },
+    'Bare String',                               // coerced to {name, descriptor: ''}
+    { name: 'Marcus', descriptor: 'duplicate' }, // dropped (dedup by name, first wins)
+    { name: '', descriptor: 'unnamed' },          // dropped (empty name)
+  ]);
+  assert.deepStrictEqual(vs.getField('p1', 'rel', 'bonds'), [
+    { name: 'Marcus', descriptor: 'rival' },
+    { name: 'Bare String', descriptor: '' },
+  ]);
+});
+
+test('pair-list setPair ignores empty name', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setPair('p1', 'rel', 'bonds', '', 'orphan descriptor');
+  assert.strictEqual(vs.getField('p1', 'rel', 'bonds'), undefined);
 });
 
 test('description per-subject', () => {
