@@ -112,6 +112,10 @@ export class Versioning {
       const snap = this.engine.loadSnapshot(orphans[0].msgId);
       if (snap) this.engine.restoreSnapshot(snap);
       this.engine.dropSnapshots(orphans.map(s => s.msgId));
+      // Re-emit after drop so the panel re-renders with the now-clean snapshot list.
+      // restoreSnapshot already fired tracker:backend-changed before the drop, so
+      // countdown badges would show stale counts without this second signal.
+      this.engine.bus.emit('tracker:state-restored', {});
       return;
     }
     // Pre-splice fallback: chat[index] may still hold the message being deleted.
