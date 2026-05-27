@@ -8,7 +8,7 @@
     "trigger": "always",
     "position": "in-chat",
     "depth": 1,
-    "template": "<injection>\n**{{subject}}:**\n{{fields}}\n</injection>"
+    "template": "<reference_injection>\n**{{subject}}:**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
     { "id": "mood", "label": "Mood", "type": "enum",

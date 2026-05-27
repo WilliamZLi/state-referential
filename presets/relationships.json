@@ -9,7 +9,7 @@
     "tags": ["social","intimate"],
     "position": "in-chat",
     "depth": 3,
-    "template": "<injection>\n**{{subject}} ↔ protagonist:**\n{{fields}}\n</injection>"
+    "template": "<reference_injection>\n**{{subject}} ↔ protagonist:**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
     { "id": "dynamic_with_protagonist", "label": "Dynamic with protagonist", "type": "prose", "default": "", "describable": true, "injection": { "enabled": true } },

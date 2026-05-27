@@ -358,9 +358,9 @@ calls `engine.subjects.persist()` after each mutation — that's the public
 trigger any feature should use when writing extra subject properties. Don't
 reach into `_persist()`.
 
-## Injection wrapping (`<injection>...</injection>`)
+## Injection wrapping (`<reference_injection>...</reference_injection>`)
 
-All shipped preset templates wrap their content in literal `<injection>...</injection>`
+All shipped preset templates wrap their content in literal `<reference_injection>...</reference_injection>`
 XML-style tags. This is a behavioral signal to the model: don't mirror the
 wrapped block in narrative output. Without it, models tend to repeat the
 injected facts verbatim in prose. The wrapper is not parsed by ST or by us —

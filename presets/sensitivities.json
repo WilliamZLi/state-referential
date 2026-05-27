@@ -9,7 +9,7 @@
     "tags": ["intimate"],
     "position": "in-chat",
     "depth": 1,
-    "template": "<injection>\n**{{subject}}'s sensitivities (100 = baseline; higher = more sensitive; affects responses during intimate scenes):**\n{{fields}}\n</injection>"
+    "template": "<reference_injection>\n**{{subject}}'s sensitivities (100 = baseline; higher = more sensitive; affects responses during intimate scenes):**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
     { "id": "breasts", "label": "Breasts", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false,
