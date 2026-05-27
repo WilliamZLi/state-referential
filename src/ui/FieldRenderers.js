@@ -210,11 +210,17 @@ export function makeRenderers(engine, deps) {
         let label = entry;
         if (activeWindow != null) {
           const meta = itemMeta[entry];
-          if (meta?.addedAtMsg) {
-            const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
-            const turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
-            const turnsLeft = Math.max(0, activeWindow - turnsSince);
-            label = `${entry} (${turnsLeft})`;
+          if (meta) {
+            let turnsSince;
+            if (meta.addedAtMsg) {
+              const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
+              turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
+            } else if (meta.addedAtSnapCount != null) {
+              turnsSince = snapshots.length - meta.addedAtSnapCount;
+            } else {
+              turnsSince = 0;
+            }
+            label = `${entry} (${Math.max(0, activeWindow - turnsSince)})`;
           }
         }
         const $chip = $('<span class="strk-chip"></span>').text(label);
@@ -237,9 +243,12 @@ export function makeRenderers(engine, deps) {
           ? await deps.dialogs.prompt(`Add entry to ${field.label}:`)
           : prompt(`Add entry to ${field.label}:`);
         if (v) {
-          // Anchor timed-list countdown to the current turn (latest snapshot = 0 turns ago = full window)
           const addMsgId = activeWindow != null ? (snapshots[snapshots.length - 1]?.msgId ?? null) : null;
-          engine.addListEntry(subj.id, field._trackerId, field.id, v, { source: 'manual', msgId: addMsgId });
+          engine.addListEntry(subj.id, field._trackerId, field.id, v, {
+            source: 'manual',
+            msgId: addMsgId,
+            addedAtSnapCount: activeWindow != null ? snapshots.length : undefined,
+          });
         }
       });
       $cluster.append($add);

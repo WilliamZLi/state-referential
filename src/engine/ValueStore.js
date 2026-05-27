@@ -95,12 +95,17 @@ export class ValueStore {
     const cur = this.getField(s, t, f) ?? [];
     if (cur.includes(entry)) return;
     this.setField(s, t, f, [...cur, entry], opts);
-    // Stamp per-item addedAtMsg for timed lists (drives countdown in UI)
-    if (field.inclusion?.activeWindow != null && opts.msgId) {
+    // Stamp per-item timing metadata for timed lists (drives countdown in UI).
+    // addedAtMsg (msgId-based) is used when available; addedAtSnapCount is a fallback
+    // for manual adds when no message is in flight (e.g. no AI reply yet).
+    if (field.inclusion?.activeWindow != null) {
       const rec = this._values[s]?.[t]?.[f];
       if (rec) {
         if (!rec.itemMeta) rec.itemMeta = {};
-        rec.itemMeta[entry] = { addedAtMsg: opts.msgId };
+        rec.itemMeta[entry] = {
+          addedAtMsg: opts.msgId ?? null,
+          addedAtSnapCount: opts.addedAtSnapCount ?? null,
+        };
         this._persist();
       }
     }
