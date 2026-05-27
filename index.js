@@ -101,7 +101,36 @@ import * as EventHooks from './src/integration/EventHooks.js';
     throttleMs: 500,
   });
 
-  // Re-run injection just before generation
+  // PRE-GENERATION: detect regenerate/swipe BEFORE the LLM call so we can
+  // restore the engine to the relevant pre-message state. Without this,
+  // GENERATE_BEFORE_COMBINE_PROMPTS reads still-dirty state and the AI sees
+  // old outfit/state in the injection block even though the tracker UI
+  // later reverts (post-MESSAGE_RECEIVED).
+  //
+  // GENERATION_STARTED fires with (type, options, dryRun) where type is one
+  // of 'normal' | 'swipe' | 'regenerate' | 'continue' | 'impersonate' | 'quiet'.
+  // Older ST versions may not emit this — handler simply never fires; no harm.
+  const REGEN_TYPES = new Set(['regenerate', 'swipe']);
+  if (event_types.GENERATION_STARTED) {
+    eventSource.on(event_types.GENERATION_STARTED, async (type) => {
+      if (!REGEN_TYPES.has(type)) return;
+      // Find the last AI message in chat — that's the one being regenerated/swiped.
+      const chat = getContext().chat ?? [];
+      for (let i = chat.length - 1; i >= 0; i--) {
+        const msg = chat[i];
+        if (!msg || msg.is_user) continue;
+        const msgId = msg.state_referential_msgId ?? msg.extra?.state_referential_msgId ?? msg.extra?.trackerMsgId;
+        if (!msgId) break;
+        const snap = engine.loadSnapshot(msgId);
+        if (snap) engine.restoreSnapshot(snap);
+        break;
+      }
+    });
+  }
+
+  // Re-run injection just before generation — runs AFTER GENERATION_STARTED's
+  // restore (sync handlers fire in order), so injection slots see the
+  // already-reverted state.
   eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => injection.run());
 
   // UI
