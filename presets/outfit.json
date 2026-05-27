@@ -8,7 +8,7 @@
     "trigger": "always",
     "position": "in-chat",
     "depth": 1,
-    "template": "<reference_injection>\n**{{subject}}'s outfit (authoritative — these are the ONLY garments worn; do not invent or add unlisted items including underwear, accessories, or layers):**\n{{fields}}\n</reference_injection>"
+    "template": "<reference_injection>\n**{{subject}}'s outfit — authoritative reference for what exists NOW. These are the ONLY garments currently worn:**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
     { "id": "headwear", "label": "Headwear", "type": "text", "describable": true, "descriptionScope": "per-subject", "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
