@@ -7,7 +7,7 @@
     "enabled": true,
     "trigger": "always",
     "position": "in-chat",
-    "depth": 1,
+    "depth": 2,
     "template": "<reference_injection>\n**{{subject}}'s outfit — authoritative reference for what exists NOW. These are the ONLY garments currently worn:**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
