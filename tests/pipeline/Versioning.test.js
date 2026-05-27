@@ -58,6 +58,27 @@ test('MESSAGE_SWIPED reverts to snapshot then re-runs auto-update', async () => 
   assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'blue');
 });
 
+test('MESSAGE_RECEIVED re-fired on same msgId (regenerate) restores from existing snapshot', async () => {
+  // ST's regenerate button replaces msg.mes in-place and fires MESSAGE_RECEIVED
+  // again with the SAME index/message — no MESSAGE_SWIPED. Without an explicit
+  // restore step in _onReceived, the prior snapshot would get OVERWRITTEN with
+  // the dirty post-update state, and outfit changes from the old gen would
+  // permanently stick.
+  const r = mkRig();
+  // First gen of msg N: AI adds a red dress
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MR', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'red dress');
+  // User regenerates msg N. ST swaps msg.mes to the new gen and re-fires MR.
+  // New gen says nothing about clothes → autoupdate emits NONE.
+  r.chat[0].mes = 'They walked through a field.';
+  r.set(`NONE`);
+  await r.emit('MR', 0);
+  // Outfit must revert to pre-N state (no dress), NOT retain the previous gen's red dress.
+  const v = r.eng.getField(r.p.id, 'outfit', 'topwear');
+  assert.ok(v === undefined || v === '', `expected outfit cleared after regenerate with NONE, got: ${JSON.stringify(v)}`);
+});
+
 test('MESSAGE_SWIPED with empty new variant removes additions from the original variant', async () => {
   // Scenario the user reported: turn adds a field (e.g. "bra"), user swipes,
   // new variant doesn't mention it — addition should disappear.

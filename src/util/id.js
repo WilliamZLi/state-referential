@@ -34,14 +34,20 @@ export function ensureTrackerMsgId(message) {
 
 /**
  * Read the tracker message-id from a message, preferring the top-level (swipe-
- * stable) key and falling back to legacy `extra.*` placements.
+ * stable) key and falling back to legacy `extra.*` placements. When a legacy
+ * id is found, hoist it to the top-level in the same call so future swipes
+ * preserve it (msg.extra gets replaced per swipe by ST).
  */
 export function readTrackerMsgId(message) {
   if (!message) return null;
   if (message[TOP_KEY]) return message[TOP_KEY];
   for (const k of LEGACY_KEYS) {
     const v = message.extra?.[k];
-    if (v) return v;
+    if (v) {
+      // Lazy migration: promote to top-level so subsequent swipes don't lose it.
+      message[TOP_KEY] = v;
+      return v;
+    }
   }
   return null;
 }

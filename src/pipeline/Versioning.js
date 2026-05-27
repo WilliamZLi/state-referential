@@ -37,8 +37,20 @@ export class Versioning {
     const _valueChangedHandler = (e) => changedTrackerIds.add(e.tracker);
     this.engine.on('tracker:value-changed', _valueChangedHandler);
     try {
-      snapshotBefore = this.engine.snapshot(msgId);
-      this.engine.snapshots.save(msgId, snapshotBefore);
+      // If we've already snapshotted this msgId, this is a regenerate / re-receive
+      // (ST's ♻️ button replaces msg.mes in-place and fires MESSAGE_RECEIVED only —
+      // no MESSAGE_SWIPED, so _onSwiped's restore step doesn't run). Restore from
+      // the original pre-N snapshot so autoupdate sees the same starting state as
+      // the first time. Otherwise we'd overwrite the pre-state with the now-dirty
+      // post-N values and outfit/state changes from the old generation would stick.
+      const existingSnapshot = this.engine.loadSnapshot(msgId);
+      if (existingSnapshot) {
+        this.engine.restoreSnapshot(existingSnapshot);
+        snapshotBefore = existingSnapshot;
+      } else {
+        snapshotBefore = this.engine.snapshot(msgId);
+        this.engine.snapshots.save(msgId, snapshotBefore);
+      }
       const result = await this.deps.autoUpdate.run({ lastNarratorReply: msg.mes ?? '', msgId });
       // descProbe queue is filled by AutoUpdate via tracker:value-changed listener wired in Phase 8;
       // for now, fire drain regardless — implementation can be a no-op if queue empty.
@@ -105,6 +117,14 @@ export class Versioning {
     this._busy = false;
     this.engine.backend.invalidate?.();
     this.engine.setStorageBackend(this.engine.backend);
+    // Migration sweep: hoist any legacy in-extra msgIds to the top level on
+    // every AI message so the first swipe/regen after a fresh load doesn't
+    // lose the id when ST replaces msg.extra per swipe.
+    const chat = this.deps.getChat?.() ?? [];
+    for (const msg of chat) {
+      if (!msg || msg.is_user) continue;
+      readTrackerMsgId(msg); // side-effect: lazy hoist legacy → top-level
+    }
     this.deps.injection?.run?.();
   }
 }
