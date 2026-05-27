@@ -34,7 +34,7 @@ function computeInclusion(field, subjectId, trackerId, engine) {
     const snapshotCount = snapshots.length;
     // Find the snapshot index closest in time to lastTouchedMsg.
     // snapshots are ordered oldest→newest; find last one at or before the touch.
-    const touchIdx = snapshots.findIndex(s => s.id === stored.lastTouchedMsg);
+    const touchIdx = snapshots.findIndex(s => s.msgId === stored.lastTouchedMsg);
     const activeWindow = field.inclusion?.activeWindow ?? 5;
     let turnsSince;
     if (touchIdx >= 0) {
@@ -211,7 +211,7 @@ export function makeRenderers(engine, deps) {
         if (activeWindow != null) {
           const meta = itemMeta[entry];
           if (meta?.addedAtMsg) {
-            const touchIdx = snapshots.findIndex(s => s.id === meta.addedAtMsg);
+            const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
             const turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
             const turnsLeft = Math.max(0, activeWindow - turnsSince);
             label = `${entry} (${turnsLeft})`;
