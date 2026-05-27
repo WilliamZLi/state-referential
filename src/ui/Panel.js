@@ -125,12 +125,6 @@ export class Panel {
     if (!this.$el) return;
     const subjects = this.engine.listSubjects();
 
-    // Update roster badge: count inactive non-protagonist subjects
-    const inactiveCount = subjects.filter(s => s.role !== 'protagonist' && !this.engine.isSubjectActive(s.id)).length;
-    const $badge = $('#strk-roster-badge');
-    if (inactiveCount) $badge.text(inactiveCount).removeClass('strk-hidden');
-    else $badge.addClass('strk-hidden');
-
     const $sel = $('#strk-subject-select').empty();
     if (!subjects.length) { $('#strk-tabs').empty(); $('#strk-tab-body').html('<p>No subjects yet.</p>'); return; }
     for (const s of subjects) $sel.append($('<option></option>').val(s.id).text(`${s.name} (${s.role})`));
