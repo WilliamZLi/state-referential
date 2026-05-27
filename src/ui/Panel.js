@@ -75,7 +75,7 @@ export class Panel {
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
       'tracker:outfit-set-saved', 'tracker:outfit-set-deleted', 'tracker:outfit-set-applied',
-      'tracker:subject-active-changed', 'tracker:auto-update-completed',
+      'tracker:subject-active-changed', 'tracker:auto-update-completed', 'tracker:pipeline-completed',
     ]) this.engine.on(ev, safeRender);
 
     this.render();

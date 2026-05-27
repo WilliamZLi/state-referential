@@ -64,6 +64,7 @@ export class Versioning {
     } finally {
       this.engine.off('tracker:value-changed', _valueChangedHandler);
       this._busy = false;
+      this.engine.bus.emit('tracker:pipeline-completed', {});
     }
   }
 
