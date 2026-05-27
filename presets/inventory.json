@@ -1,7 +1,7 @@
 {
   "id": "inventory", "label": "Inventory", "icon": "fa-bag-shopping",
   "source": "preset:inventory",
-  "appliesToRoles": ["protagonist","npc","location"],
+  "appliesToRoles": ["protagonist","npc"],
   "autoUpdate": true,
   "injection": {
     "enabled": true,

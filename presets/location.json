@@ -1,0 +1,30 @@
+{
+  "id": "location", "label": "Location", "icon": "fa-map-pin",
+  "source": "preset:location",
+  "appliesToRoles": ["location"],
+  "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "always",
+    "position": "in-chat",
+    "depth": 1,
+    "template": "<reference_injection>\n**{{subject}} (location — authoritative reference for what is here NOW):**\n{{fields}}\n</reference_injection>"
+  },
+  "fields": [
+    { "id": "features", "label": "Features", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "atmosphere", "label": "Atmosphere", "type": "text", "describable": false,
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "current_state", "label": "Current state", "type": "text", "describable": false,
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "current_occupants", "label": "Current occupants", "type": "list", "default": [], "describable": false,
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "notable_items", "label": "Notable items", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "tag", "tags": ["exploration"] },
+      "injection": { "enabled": true } }
+  ]
+}
