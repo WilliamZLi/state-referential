@@ -1,0 +1,21 @@
+{
+  "id": "object", "label": "Object", "icon": "fa-cube",
+  "source": "preset:object",
+  "appliesToRoles": ["object"],
+  "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "always",
+    "position": "in-chat",
+    "depth": 1,
+    "template": "<reference_injection>\n**{{subject}} (object — authoritative reference):**\n{{fields}}\n</reference_injection>"
+  },
+  "fields": [
+    { "id": "description", "label": "Description", "type": "text", "describable": false,
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "properties", "label": "Properties", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } }
+  ]
+}
