@@ -1,0 +1,21 @@
+{
+  "id": "faction", "label": "Faction", "icon": "fa-flag",
+  "source": "preset:faction",
+  "appliesToRoles": ["faction"],
+  "autoUpdate": true,
+  "injection": {
+    "enabled": true,
+    "trigger": "always",
+    "position": "in-chat",
+    "depth": 1,
+    "template": "<reference_injection>\n**{{subject}} (faction — authoritative reference):**\n{{fields}}\n</reference_injection>"
+  },
+  "fields": [
+    { "id": "description", "label": "Description", "type": "text", "describable": false,
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } },
+    { "id": "members", "label": "Members", "type": "list", "default": [], "describable": true, "descriptionScope": "global",
+      "inclusion": { "rule": "always" },
+      "injection": { "enabled": true } }
+  ]
+}
