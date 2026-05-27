@@ -185,6 +185,12 @@ import * as EventHooks from './src/integration/EventHooks.js';
     const html = await loadTemplate('subject-add-modal');
     const $f = $(html);
     if (opts.forceProtagonist) { $('#strk-subj-role', $f).val('protagonist').prop('disabled', true); $('#strk-subject-modal-title', $f).text('Create protagonist'); }
+    // Show traits only for person-like roles; hide for location/faction/object.
+    const PERSON_ROLES = new Set(['protagonist', 'npc']);
+    const $traitsBlock = $('.strk-traits', $f);
+    const syncTraits = () => $traitsBlock.toggle(PERSON_ROLES.has($('#strk-subj-role', $f).val()));
+    $('#strk-subj-role', $f).on('change', syncTraits);
+    syncTraits();
     $('#strk-subj-save', $f).on('click', async () => {
       const name = $('#strk-subj-name', $f).val().trim();
       // For forceProtagonist, the role select is disabled which means jQuery .val() may
