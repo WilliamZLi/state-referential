@@ -147,7 +147,13 @@ export class Versioning {
     const orphanIds = this.engine.listSnapshots()
       .filter(s => !liveIds.has(s.msgId))
       .map(s => s.msgId);
-    if (orphanIds.length) this.engine.dropSnapshots(orphanIds);
+    if (orphanIds.length) {
+      this.engine.dropSnapshots(orphanIds);
+      // Re-emit so the panel re-renders with the clean snapshot list — same
+      // reasoning as in _onDeleted: setStorageBackend already fired
+      // tracker:backend-changed before the drop, leaving stale counts.
+      this.engine.bus.emit('tracker:state-restored', {});
+    }
     this.deps.injection?.run?.();
   }
 }
