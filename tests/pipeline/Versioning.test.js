@@ -113,6 +113,37 @@ test('MESSAGE_DELETED drops snapshots from deleted onwards', async () => {
   assert.strictEqual(r.eng.loadSnapshot('m-2'), undefined);
 });
 
+test('MESSAGE_DELETED with pre-splice ST behavior (msg still in chat) still restores', async () => {
+  // Some ST versions emit MESSAGE_DELETED BEFORE removing the message from
+  // chat[]. liveIds would still include the deleted msg's id → no orphans
+  // → previous logic skipped restore. Fix: fall back to chat[index]'s snapshot.
+  const r = mkRig();
+  r.eng.defineTracker({ id: 'extra', label: 'Extra', autoUpdate: true, fields: [
+    { id: 'thing', label: 'Thing', type: 'text', inclusion: { rule: 'always' } },
+  ]});
+  r.set(`SET Lyra extra.thing = "bra"`);
+  await r.emit('MR', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'thing'), 'bra');
+  // Pre-splice: ST fires MDEL but chat[0] STILL contains the message.
+  await r.emit('MDEL', 0);
+  const v = r.eng.getField(r.p.id, 'extra', 'thing');
+  assert.ok(v === undefined || v === '', `pre-splice MDEL should restore, got: ${JSON.stringify(v)}`);
+});
+
+test('CHAT_CHANGED drops stale orphan snapshots', async () => {
+  // Simulate pre-fix accumulated orphans: snapshots whose msgIds aren't in chat.
+  const r = mkRig();
+  r.set(`NONE`);
+  await r.emit('MR', 0); // creates snapshot for m-1
+  // Manually inject a stale orphan snapshot (no longer in chat).
+  r.eng.snapshots.save('ghost-msg-id', r.eng.snapshot('ghost-msg-id'));
+  assert.ok(r.eng.loadSnapshot('ghost-msg-id'), 'precondition: ghost snapshot exists');
+  await r.emit('CC');
+  // After CHAT_CHANGED, the ghost snapshot should be gone but m-1's snapshot retained.
+  assert.strictEqual(r.eng.loadSnapshot('ghost-msg-id'), undefined, 'orphan should be dropped');
+  assert.ok(r.eng.loadSnapshot('m-1'), 'live msg snapshot should remain');
+});
+
 test('MESSAGE_DELETED restores state to before the deleted message ran', async () => {
   // User scenario: AI message N introduced a value (e.g. "bra"). User deletes N.
   // Engine state must revert to as-if-N-never-happened.

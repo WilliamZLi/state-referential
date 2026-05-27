@@ -86,31 +86,41 @@ export class Versioning {
     await this._onSwiped(index);
   }
 
-  _onDeleted(/* index */) {
-    // MESSAGE_DELETED fires after ST has removed the message from chat. The
-    // deleted message's msgId is no longer present in chat[], but its snapshot
-    // still lives in the snapshot store.
+  _onDeleted(index) {
+    // MESSAGE_DELETED firing-order varies by ST version: some emit BEFORE the
+    // chat splice, others AFTER. We handle both.
     //
-    // Snapshot semantics: snapshot[X] is taken BEFORE X's auto-update runs, so
-    // it captures the state as it existed just before X was processed — which
-    // is exactly the state we want to restore to when X is deleted (effectively
-    // "as if X never happened").
+    // Snapshot semantics: snapshot[X] is taken BEFORE X's auto-update runs,
+    // capturing the state as it existed just before X was processed — which is
+    // exactly the state we want to restore to when X is deleted.
     //
     // Strategy:
-    //   1. Find all orphan snapshots (msgIds not in current chat).
-    //   2. Sort by takenAt ascending. The EARLIEST orphan = the earliest deleted
-    //      message; its snapshot is the state we want.
-    //   3. Restore from it, then drop all orphan snapshots so they don't pile up.
+    //   1. POST-splice path: find orphan snapshots (msgIds not in chat).
+    //      Earliest orphan = the earliest deleted message; restore from it,
+    //      drop all orphans to keep store clean.
+    //   2. PRE-splice fallback: if no orphans but chat[index] still has the
+    //      message being deleted, restore from its snapshot directly. The
+    //      snapshot will become an orphan after ST splices; CHAT_CHANGED
+    //      cleanup or a subsequent delete will drop it.
     const chat = this.deps.getChat();
     const liveIds = new Set(chat.map(m => readTrackerMsgId(m)).filter(Boolean));
     const orphans = this.engine.listSnapshots()
       .filter(s => !liveIds.has(s.msgId))
       .sort((a, b) => a.takenAt - b.takenAt);
-    if (!orphans.length) return;
-    const earliest = orphans[0];
-    const snap = this.engine.loadSnapshot(earliest.msgId);
-    if (snap) this.engine.restoreSnapshot(snap);
-    this.engine.dropSnapshots(orphans.map(s => s.msgId));
+
+    if (orphans.length) {
+      const snap = this.engine.loadSnapshot(orphans[0].msgId);
+      if (snap) this.engine.restoreSnapshot(snap);
+      this.engine.dropSnapshots(orphans.map(s => s.msgId));
+      return;
+    }
+    // Pre-splice fallback: chat[index] may still hold the message being deleted.
+    const atIndex = chat[index];
+    if (atIndex) {
+      const id = readTrackerMsgId(atIndex);
+      const snap = id ? this.engine.loadSnapshot(id) : null;
+      if (snap) this.engine.restoreSnapshot(snap);
+    }
   }
 
   _onChatChanged() {
@@ -125,6 +135,15 @@ export class Versioning {
       if (!msg || msg.is_user) continue;
       readTrackerMsgId(msg); // side-effect: lazy hoist legacy → top-level
     }
+    // Cleanup pass: drop orphan snapshots — these accumulate from pre-fix
+    // forward-swipes that minted new msgIds while abandoning old ones.
+    // Without this, _onDeleted's "earliest orphan" heuristic can land on
+    // ancient cruft and restore to a wrong state.
+    const liveIds = new Set(chat.map(m => readTrackerMsgId(m)).filter(Boolean));
+    const orphanIds = this.engine.listSnapshots()
+      .filter(s => !liveIds.has(s.msgId))
+      .map(s => s.msgId);
+    if (orphanIds.length) this.engine.dropSnapshots(orphanIds);
     this.deps.injection?.run?.();
   }
 }
