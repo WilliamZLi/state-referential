@@ -209,6 +209,7 @@ export function makeRenderers(engine, deps) {
       const $cluster = $('<div class="strk-chip-cluster"></div>');
       for (const entry of cur) {
         let label = entry;
+        let expired = false;
         if (activeWindow != null) {
           const meta = itemMeta[entry];
           if (meta) {
@@ -221,10 +222,13 @@ export function makeRenderers(engine, deps) {
             } else {
               turnsSince = 0;
             }
-            label = `${entry} (${Math.max(0, activeWindow - turnsSince)})`;
+            const remaining = activeWindow - turnsSince;
+            label = `${entry} (${Math.max(0, remaining)})`;
+            expired = remaining <= 0;
           }
         }
         const $chip = $('<span class="strk-chip"></span>').text(label);
+        if (expired) $chip.addClass('strk-chip-expired');
         $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' }); });
         $chip.on('click', () => {
           if (field.describable) {
