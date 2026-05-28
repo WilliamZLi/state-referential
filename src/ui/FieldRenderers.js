@@ -223,8 +223,8 @@ export function makeRenderers(engine, deps) {
               turnsSince = 0;
             }
             const remaining = activeWindow - turnsSince;
-            label = `${entry} (${Math.max(0, remaining)})`;
             expired = remaining <= 0;
+            label = expired ? entry : `${entry} (${remaining})`;
           }
         }
         const $chip = $('<span class="strk-chip"></span>').text(label);
