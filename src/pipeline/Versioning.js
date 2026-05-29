@@ -3,7 +3,8 @@ import { ensureTrackerMsgId, readTrackerMsgId } from '../util/id.js';
 export class Versioning {
   /**
    * @param {TrackerEngine} engine
-   * @param {object} deps - { eventSource, event_types, getChat, autoUpdate, descProbe, standalone, injection, throttleMs }
+   * @param {object} deps - { eventSource, event_types, getChat, getChatMetadata?, worldBinding?,
+   *                          autoUpdate, descProbe, standalone, injection, throttleMs }
    */
   constructor(engine, deps) {
     this.engine = engine;
@@ -128,33 +129,48 @@ export class Versioning {
     }
   }
 
-  _onChatChanged() {
-    this._busy = false;
-    this.engine.backend.invalidate?.();
-    this.engine.setStorageBackend(this.engine.backend);
+  async _onChatChanged() {
+    // Block MESSAGE_RECEIVED processing during backend selection.
+    // This is Layer 2's IS_BUSY semantics (spec §4.0).
+    this._busy = true;
+
+    // Select the correct backend for the newly-loaded chat.
+    // If worldBinding is wired, it fetches the world data from the server
+    // and returns a WorldScopedBackend; otherwise returns the chat-scoped backend.
+    let backend = this.engine.backend;
+    if (this.deps.worldBinding) {
+      const chatMeta = this.deps.getChatMetadata?.();
+      try {
+        backend = await this.deps.worldBinding.selectBackend(chatMeta);
+      } catch (e) {
+        console.error('[state-referential] _onChatChanged world backend error:', e);
+        backend = this.engine.backend;
+      }
+    }
+
+    backend.invalidate?.();
+    this.engine.setStorageBackend(backend);
+
     // Migration sweep: hoist any legacy in-extra msgIds to the top level on
     // every AI message so the first swipe/regen after a fresh load doesn't
     // lose the id when ST replaces msg.extra per swipe.
     const chat = this.deps.getChat?.() ?? [];
     for (const msg of chat) {
       if (!msg || msg.is_user) continue;
-      readTrackerMsgId(msg); // side-effect: lazy hoist legacy → top-level
+      readTrackerMsgId(msg);
     }
-    // Cleanup pass: drop orphan snapshots — these accumulate from pre-fix
-    // forward-swipes that minted new msgIds while abandoning old ones.
-    // Without this, _onDeleted's "earliest orphan" heuristic can land on
-    // ancient cruft and restore to a wrong state.
+
+    // Cleanup: drop orphan snapshots that accumulated from forward-swipes.
     const liveIds = new Set(chat.map(m => readTrackerMsgId(m)).filter(Boolean));
     const orphanIds = this.engine.listSnapshots()
       .filter(s => !liveIds.has(s.msgId))
       .map(s => s.msgId);
     if (orphanIds.length) {
       this.engine.dropSnapshots(orphanIds);
-      // Re-emit so the panel re-renders with the clean snapshot list — same
-      // reasoning as in _onDeleted: setStorageBackend already fired
-      // tracker:backend-changed before the drop, leaving stale counts.
       this.engine.bus.emit('tracker:state-restored', {});
     }
+
     this.deps.injection?.run?.();
+    this._busy = false;
   }
 }

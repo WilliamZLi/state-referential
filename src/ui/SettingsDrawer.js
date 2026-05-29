@@ -84,6 +84,18 @@ export class SettingsDrawer {
       this.deps.descProbe?.setTemplate('');
     });
 
+    // World settings
+    const ws = () => { this._settings().world ??= {}; return this._settings().world; };
+    const worldPromptEl = $('#strk-world-prompt-enabled', this.$el ?? document);
+    if (worldPromptEl.length) {
+      worldPromptEl.prop('checked', ws().bindingPromptDisabled !== true)
+        .on('change', e => { ws().bindingPromptDisabled = !e.target.checked; this.deps.saveSettingsDebounced(); });
+      $('#strk-world-default-window', this.$el ?? document).val(ws().defaultChronicleConfig?.verbatimWindow ?? 5)
+        .on('change', e => { ws().defaultChronicleConfig ??= {}; ws().defaultChronicleConfig.verbatimWindow = Number(e.target.value); this.deps.saveSettingsDebounced(); });
+      $('#strk-world-default-strategy', this.$el ?? document).val(ws().defaultChronicleConfig?.updateStrategy ?? 'lazy')
+        .on('change', e => { ws().defaultChronicleConfig ??= {}; ws().defaultChronicleConfig.updateStrategy = e.target.value; this.deps.saveSettingsDebounced(); });
+    }
+
     this.engine.on('tracker:schema-changed', () => this.render());
   }
 

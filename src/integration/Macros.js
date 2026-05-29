@@ -236,6 +236,17 @@ export function register(engine, deps) {
         description: 'Scene tag state: {{tracker-tag::intimate}} = "1"/"". {{tracker-tag::intimate::on::TEXT}} = TEXT if active.',
         handler: (ctx) => tagHandler(ctx.unnamedArgs[0], ctx.unnamedArgs[1], ctx.unnamedArgs[2]),
       });
+      registry.registerMacro('world', {
+        category: 'extras',
+        unnamedArgs: [{ name: 'path', optional: false, type: 'string',
+          description: 'name|id|bigpicture|recent|recent::N|chronicle' }],
+        description: 'World macro: resolves world name, id, big picture, or chronicle entries.',
+        handler: (ctx) => {
+          const worldMeta = deps?.getWorldMeta?.() ?? null;
+          const chronicle = deps?.getChronicle?.() ?? null;
+          return resolveWorldMacro(ctx.unnamedArgs[0], worldMeta, chronicle);
+        },
+      });
       return;
     } catch (e) {
       console.warn('[state-referential] new MacroRegistry registration failed, falling back to legacy:', e?.message);
@@ -247,5 +258,51 @@ export function register(engine, deps) {
     deps.MacrosParser.registerMacro('tracker', (...rawArgs) => trackerHandler(rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
     deps.MacrosParser.registerMacro('tracker-list', (...rawArgs) => resolveListMacro(engine, rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
     deps.MacrosParser.registerMacro('tracker-tag', (...rawArgs) => resolveTagMacro(engine, rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? ''));
+    deps.MacrosParser.registerMacro('world', (...rawArgs) => {
+      const worldMeta = deps?.getWorldMeta?.() ?? null;
+      const chronicle = deps?.getChronicle?.() ?? null;
+      return resolveWorldMacro(rawArgs.find(a => typeof a === 'string' && !a.startsWith('{{')) ?? '', worldMeta, chronicle);
+    });
   }
+}
+
+/**
+ * Resolve a {{world::*}} macro path.
+ * @param {string} path - everything after "world::"
+ * @param {object|null} worldMeta - current WorldMeta, or null if chat is unbound
+ * @param {ChronicleStore|null} chronicle - current ChronicleStore, or null
+ */
+export function resolveWorldMacro(path, worldMeta, chronicle) {
+  if (!worldMeta) return '';
+  const key = String(path ?? '').trim();
+
+  if (key === 'name')       return worldMeta.name ?? '';
+  if (key === 'id')         return worldMeta.id ?? '';
+  if (key === 'bigpicture') return chronicle?.getBigPicture() ?? '';
+
+  if (key === 'recent') {
+    const entries = chronicle?.listVerbatimEntries() ?? [];
+    return entries.map(e => `${e.title}: ${e.body}`).join('\n');
+  }
+
+  if (key.startsWith('recent::')) {
+    const n = parseInt(key.slice(8), 10);
+    if (isNaN(n) || n <= 0) return '';
+    const all = chronicle?.getEntries() ?? [];
+    return all.slice(-n).map(e => `${e.title}: ${e.body}`).join('\n');
+  }
+
+  if (key === 'chronicle') {
+    const bigPicture = chronicle?.getBigPicture() ?? '';
+    const entries = chronicle?.listVerbatimEntries() ?? [];
+    const lines = [];
+    if (bigPicture) lines.push(`**Story so far (overall):** ${bigPicture}`);
+    if (entries.length) {
+      lines.push('**Recent acts:**');
+      for (const e of entries) lines.push(`- ${e.title}: ${e.body}`);
+    }
+    return lines.join('\n');
+  }
+
+  return '';
 }

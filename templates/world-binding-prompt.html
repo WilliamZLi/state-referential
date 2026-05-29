@@ -1,0 +1,19 @@
+<div class="strk-binding-prompt" id="strk-binding-prompt">
+  <div class="strk-binding-prompt-title">Bind this chat to a World?</div>
+  <div class="strk-binding-options">
+    <label><input type="radio" name="strk-bind-choice" value="none" checked /> None — standalone chat (chat-scoped trackers)</label>
+    <label>
+      <input type="radio" name="strk-bind-choice" value="existing" />
+      Existing:
+      <select class="text_pole" id="strk-bind-world-select"></select>
+    </label>
+    <label>
+      <input type="radio" name="strk-bind-choice" value="new" />
+      New World: <input type="text" class="text_pole" id="strk-bind-new-name" placeholder="World name" />
+    </label>
+  </div>
+  <div class="strk-binding-prompt-actions">
+    <button class="menu_button" id="strk-bind-confirm">Confirm</button>
+    <button class="menu_button" id="strk-bind-skip">Skip</button>
+  </div>
+</div>

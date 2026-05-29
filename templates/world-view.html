@@ -1,0 +1,42 @@
+<div class="strk-world-view">
+  <div class="strk-world-view-meta">
+    <label>Name <input type="text" class="text_pole" id="strk-wv-name" /></label>
+    <label>Narrator hint <input type="text" class="text_pole" id="strk-wv-narrator-hint" /></label>
+    <div id="strk-wv-info"></div>
+  </div>
+
+  <h4>Chronicle</h4>
+  <div class="strk-chronicle-config">
+    <label title="Number of recent acts to show verbatim in the injection prompt. Acts beyond this window are folded into the big picture.">
+      Verbatim window <input type="number" class="text_pole" id="strk-chron-window" min="1" value="5" />
+    </label>
+    <label title="lazy: fold oldest entry into big picture when window overflows. eager: regenerate big picture after every act. manual: never auto-update.">
+      Update strategy
+      <select class="text_pole" id="strk-chron-strategy">
+        <option value="lazy">lazy</option>
+        <option value="eager">eager</option>
+        <option value="manual">manual</option>
+      </select>
+    </label>
+    <label>Big picture token cap <input type="number" class="text_pole" id="strk-chron-bp-cap" min="50" value="300" /></label>
+    <label>Entry token cap <input type="number" class="text_pole" id="strk-chron-entry-cap" min="50" value="200" /></label>
+    <button class="menu_button" id="strk-chron-save-config">Save config</button>
+    <button class="menu_button" id="strk-chron-refresh-bp">Regenerate big picture now</button>
+  </div>
+
+  <div class="strk-chronicle-bigpicture">
+    <h5>Big picture</h5>
+    <div id="strk-wv-bigpicture" class="strk-prose-display"></div>
+  </div>
+
+  <div class="strk-chronicle-entries">
+    <h5>Acts</h5>
+    <div id="strk-wv-entries"></div>
+  </div>
+
+  <div class="strk-world-view-actions">
+    <button class="menu_button" id="strk-wv-save">Save metadata</button>
+    <button class="menu_button" id="strk-wv-export">Export JSON</button>
+    <button class="menu_button" id="strk-wv-close">Close</button>
+  </div>
+</div>

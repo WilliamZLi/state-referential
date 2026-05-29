@@ -161,4 +161,106 @@ export function register(engine, deps) {
     }
     return 'Usage: /tracker-snapshot save|restore|list|delete [label]';
   }, '/tracker-snapshot save|restore|list|delete [label]');
+
+  // ── World commands (Layer 2) ──────────────────────────────────────────────────
+  // These are only functional when deps.worldRegistry and deps.worldBinding are wired.
+  // They silently no-op when those deps are absent (graceful degradation to Layer 1).
+
+  reg('world-list', (args, value) => {
+    const reg = deps.worldRegistry;
+    if (!reg) return 'World model not available.';
+    const worlds = reg.list();
+    if (!worlds.length) return '(no worlds)';
+    return worlds.map(w => `${w.id.slice(0, 8)}… ${w.name}${w.mainlineChatId ? ' [has mainline]' : ''}`).join('\n');
+  }, '/world-list — list all Worlds');
+
+  reg('world-new', async (args, value) => {
+    const name = String(value ?? '').trim();
+    if (!name) return 'Usage: /world-new <name>';
+    const reg = deps.worldRegistry;
+    if (!reg) return 'World model not available.';
+    const w = await reg.create({ name });
+    return `Created World "${w.name}" (${w.id})`;
+  }, '/world-new <name> — create a new World');
+
+  reg('world-bind', async (args, value) => {
+    const worldId = String(value ?? '').trim();
+    if (!worldId) return 'Usage: /world-bind <worldId>';
+    const binder = deps.worldBinder;
+    if (!binder) return 'World model not available.';
+    await binder.bindCurrentChat(worldId);
+    return `Bound current chat to World ${worldId}`;
+  }, '/world-bind <worldId> — bind current chat to a World');
+
+  reg('world-unbind', async (args, value) => {
+    const binder = deps.worldBinder;
+    if (!binder) return 'World model not available.';
+    await binder.unbindCurrentChat();
+    return 'Chat unbound from World. Now using chat-scoped trackers.';
+  }, '/world-unbind — unbind current chat from its World');
+
+  reg('world-act-complete', async (args, value) => {
+    const title = String(value ?? '').trim() || `Act (${new Date().toLocaleDateString()})`;
+    const ops = deps.chronicleOps;
+    if (!ops) return 'Chronicle not available (chat must be bound to a World).';
+    const messages = deps.getChat?.() ?? [];
+    await ops.actComplete(title, { messages, msgId: deps.getCurrentMsgId?.() });
+    deps.chronicleInjection?.run?.();
+    return `Chronicle entry "${title}" appended.`;
+  }, '/world-act-complete [title] — mark act complete, generate chronicle entry');
+
+  reg('world-bigpicture', async (args, value) => {
+    const sub = String(value ?? '').trim();
+    const chronicle = deps.getChronicle?.();
+    if (!chronicle) return 'Chronicle not available.';
+    if (sub === 'show') return chronicle.getBigPicture() || '(empty)';
+    if (sub === 'refresh') {
+      const ops = deps.chronicleOps;
+      if (!ops) return 'ChronicleOps not available.';
+      await ops._regenerateAllBigPicture(chronicle.getConfig().bigPictureTokenCap);
+      deps.chronicleInjection?.run?.();
+      return 'Big picture regenerated.';
+    }
+    return 'Usage: /world-bigpicture show|refresh';
+  }, '/world-bigpicture show|refresh');
+
+  reg('world-export', async (args, value) => {
+    const worldId = String(value ?? '').trim() || deps.worldBinding?.currentWorldId;
+    if (!worldId) return 'No world bound and no worldId given.';
+    const api = deps.serverApi;
+    if (!api) return 'Server API not available.';
+    try {
+      const blob = await api.exportWorld(worldId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `world-${worldId}.json`; a.click();
+      URL.revokeObjectURL(url);
+      return 'Export started.';
+    } catch (e) { return `Export failed: ${e.message}`; }
+  }, '/world-export [worldId] — export current (or given) World as JSON file');
+
+  reg('world-import', async () => {
+    const j = deps.dialogs
+      ? await deps.dialogs.prompt('Paste world export JSON:')
+      : prompt('Paste world export JSON:');
+    if (!j) return '';
+    try {
+      const bundle = JSON.parse(j);
+      const api = deps.serverApi;
+      if (!api) return 'Server API not available.';
+      const newWorld = await deps.serverApi.importWorld(bundle);
+      deps.worldRegistry?.init?.(); // refresh in-memory list
+      return `Imported World "${newWorld.name}" as ${newWorld.id}`;
+    } catch (e) { return `Import failed: ${e.message}`; }
+  }, '/world-import — paste a world export JSON and import it as a new World');
+
+  reg('world-subject', async (args, value) => {
+    const parts = tokenize(String(value ?? ''));
+    const op = parts.shift();
+    if (op === 'promote') {
+      engine.setProtagonist(parts[0]);
+      return `Promoted ${parts[0]} to protagonist.`;
+    }
+    return 'Usage: /world-subject promote <name>';
+  }, '/world-subject promote <name> — promote a World subject to protagonist');
 }

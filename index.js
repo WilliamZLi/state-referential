@@ -25,6 +25,16 @@ import { readTrackerMsgId } from './src/util/id.js';
 import * as Macros from './src/integration/Macros.js';
 import * as SlashCommands from './src/integration/SlashCommands.js';
 import * as EventHooks from './src/integration/EventHooks.js';
+import { WorldRegistry } from './src/engine/WorldRegistry.js';
+import { ChronicleStore } from './src/engine/ChronicleStore.js';
+import { WorldBinding, makeServerApi } from './src/pipeline/WorldBinding.js';
+import { WorldBinder } from './src/pipeline/WorldBinder.js';
+import { ChronicleInjection } from './src/pipeline/ChronicleInjection.js';
+import { ChronicleOps } from './src/pipeline/ChronicleOps.js';
+import { WorldLock } from './src/pipeline/WorldLock.js';
+import { WorldManager } from './src/ui/WorldManager.js';
+import { WorldView } from './src/ui/WorldView.js';
+import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
 (async function init() {
   const ctx = {
@@ -94,9 +104,15 @@ import * as EventHooks from './src/integration/EventHooks.js';
   const proseStore = {};
   const standalone = new StandaloneProbe(engine, { generateQuietPrompt, insertSmallSysMessage, proseStore });
   const injection = new Injection(engine, { setExtensionPrompt });
+  // Layer 2 — create serverApi and worldBinding early (needed by Versioning)
+  const serverApi = makeServerApi();
+  const worldBinding = new WorldBinding(backend, serverApi, ctx);
+
   const versioning = new Versioning(engine, {
     eventSource, event_types,
     getChat: () => getContext().chat,
+    getChatMetadata: () => getContext().chatMetadata,
+    worldBinding,
     autoUpdate, descProbe, standalone, injection,
     throttleMs: 500,
   });
@@ -131,7 +147,10 @@ import * as EventHooks from './src/integration/EventHooks.js';
   // Re-run injection just before generation — runs AFTER GENERATION_STARTED's
   // restore (sync handlers fire in order), so injection slots see the
   // already-reverted state.
-  eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => injection.run());
+  eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => {
+    injection.run();
+    chronicleInjection.run();
+  });
 
   // UI
   const schemaEditor = new SchemaEditor(engine, { callGenericPopup, POPUP_TYPE, dialogs, close: ($form) => _closePopup($form) });
@@ -144,6 +163,94 @@ import * as EventHooks from './src/integration/EventHooks.js';
     descProbe,
   });
   await settingsDrawer.mount();
+
+  // ── Layer 2 — World Model ─────────────────────────────────────────────────────
+
+  // World registry — in-memory list of worlds; loaded from server on init.
+  const worldRegistry = new WorldRegistry(serverApi);
+  try { await worldRegistry.init(); }
+  catch (e) { console.warn('[state-referential] world registry init failed (server plugin not installed?):', e?.message); }
+
+  // Chronicle store — loaded per-world on CHAT_CHANGED; starts empty until a world is bound.
+  let _chronicle = new ChronicleStore({});
+  const getChronicle = () => _chronicle;
+  const setChronicle = (c) => { _chronicle = c; chronicleInjection.chronicle = c; };
+
+  // Chronicle injection — renders chronicle → setExtensionPrompt before each generation.
+  const chronicleInjection = new ChronicleInjection(_chronicle, { setExtensionPrompt });
+
+  // Chronicle ops — act-complete pipeline.
+  const chronicleOps = new ChronicleOps(_chronicle, { generateQuietPrompt });
+
+  // WorldBinder — bind/unbind current chat + data migration.
+  const worldBinder = new WorldBinder(engine, worldRegistry, worldBinding, {
+    getChatMetadata: () => getContext().chatMetadata,
+    saveChatConditional,
+    ctx,
+    getChronicle,
+    setChronicle,
+    serverApi,
+  });
+
+  // Soft lock.
+  const worldLock = new WorldLock(serverApi);
+
+  // When backend changes to a world backend, also load the chronicle for that world.
+  engine.on('tracker:backend-changed', async () => {
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) { setChronicle(new ChronicleStore({})); chronicleInjection.run(); return; }
+    try {
+      const chronicleData = await serverApi.getChronicle(worldId);
+      const worldMeta = worldRegistry.get(worldId);
+      setChronicle(ChronicleStore.hydrate({
+        ...chronicleData,
+        config: worldMeta?.chronicleConfig,
+      }));
+      // Acquire soft lock for this world
+      await worldLock.release();
+      await worldLock.acquire(worldId).catch(e => console.warn('[state-referential] lock not acquired:', e.message));
+    } catch (e) {
+      console.warn('[state-referential] chronicle load failed:', e?.message);
+      setChronicle(new ChronicleStore({}));
+    }
+    chronicleInjection.run();
+  });
+
+  // Release lock when navigating away (best-effort)
+  window.addEventListener('beforeunload', () => worldLock.release());
+
+  // Layer 2 UI — mount world manager inside the settings drawer section.
+  const worldView = new WorldView(worldRegistry, {
+    callGenericPopup, POPUP_TYPE, chronicleOps, getChronicle, chronicleInjection, serverApi,
+    closePopup: ($f) => _closePopup($f),
+  });
+  const worldManager = new WorldManager(worldRegistry, {
+    worldBinding, worldBinder, callGenericPopup, POPUP_TYPE, dialogs, serverApi,
+    getWorldView: (id) => worldView.open(id),
+  });
+  // Mount world manager inside the state-referential extension settings section
+  const $worldSection = $('#extensions_settings .strk-world-manager-mount, #extensions_settings');
+  await worldManager.mount($worldSection.last());
+
+  // Binding prompt — shown on new chats
+  const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
+    worldBinder,
+    getSettings: _strkSettings,
+    saveSettingsDebounced,
+  });
+
+  // Show binding prompt when a NEW chat is detected (no messages yet, no worldId bound).
+  const _maybeShowBindingPrompt = async () => {
+    const chatMeta = getContext().chatMetadata ?? {};
+    if (chatMeta.trackerWorldId) return; // already bound
+    const chat = getContext().chat ?? [];
+    if (chat.length > 0) return; // not a new chat
+    if (_strkSettings().world?.bindingPromptDisabled) return;
+    // Small delay to let ST finish rendering the new chat UI
+    await new Promise(r => setTimeout(r, 500));
+    await worldBindingPrompt.show();
+  };
+  eventSource.on(event_types.CHAT_CHANGED, _maybeShowBindingPrompt);
 
   // Robust popup dismissal — ST's popup markup varies across versions.
   // Try native <dialog>.close(), then various known close-button selectors, then Escape.
@@ -352,8 +459,22 @@ import * as EventHooks from './src/integration/EventHooks.js';
   } catch (e) {
     console.warn('[state-referential] new macro-system.js not available, falling back to legacy MacrosParser:', e?.message);
   }
-  Macros.register(engine, { macros, MacrosParser, proseStore });
-  SlashCommands.register(engine, { SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone, getExtensionSettings: () => extension_settings, saveSettingsDebounced });
+  Macros.register(engine, {
+    macros, MacrosParser, proseStore,
+    getWorldMeta: () => worldBinding.currentWorldId ? worldRegistry.get(worldBinding.currentWorldId) : null,
+    getChronicle,
+  });
+  SlashCommands.register(engine, {
+    SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone,
+    getExtensionSettings: () => extension_settings, saveSettingsDebounced,
+    worldRegistry, worldBinding, worldBinder, serverApi,
+    chronicleOps, getChronicle, chronicleInjection,
+    getChat: () => getContext().chat,
+    getCurrentMsgId: () => {
+      const chat = getContext().chat;
+      return chat?.length ? (readTrackerMsgId(chat[chat.length - 1]) ?? null) : null;
+    },
+  });
   EventHooks.register(engine, {
     versioning,
     descProbe,
@@ -409,6 +530,13 @@ import * as EventHooks from './src/integration/EventHooks.js';
     dropSnapshots: (ids) => engine.dropSnapshots(ids),
 
     setStorageBackend: (b) => engine.setStorageBackend(b),
+
+    // Layer 2
+    worldRegistry,
+    worldBinding,
+    worldBinder,
+    getChronicle,
+    chronicleOps,
 
     on: (e, fn) => engine.on(e, fn),
     off: (e, fn) => engine.off(e, fn),
