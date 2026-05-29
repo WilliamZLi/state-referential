@@ -230,18 +230,55 @@ export function makeRenderers(engine, deps) {
         const $chip = $('<span class="strk-chip"></span>').text(label);
         if (expired) $chip.addClass('strk-chip-expired');
         $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' }); });
-        $chip.on('click', () => {
-          if (field.describable) {
-            const prose = engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
-            deps.openProseModal({
-              title: `${field.label}: ${entry}`,
-              text: prose,
-              onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
-              onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, entry),
+        if (activeWindow != null) {
+          // Left-click on countdown chip → set remaining turns
+          $chip.attr('title', 'Click to set turns remaining; right-click to remove');
+          $chip.on('click', async () => {
+            const currentRemaining = expired ? 0 : Math.max(0, activeWindow - (
+              (() => {
+                const meta = itemMeta[entry];
+                if (!meta) return 0;
+                if (meta.addedAtMsg) {
+                  const ti = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
+                  return ti >= 0 ? snapshots.length - ti - 1 : snapshots.length;
+                }
+                if (meta.addedAtSnapCount != null) return snapshots.length - meta.addedAtSnapCount;
+                return 0;
+              })()
+            ));
+            const raw = deps.dialogs
+              ? await deps.dialogs.prompt(`Turns remaining for "${entry}" (0–${activeWindow}):`, String(currentRemaining))
+              : prompt(`Turns remaining for "${entry}" (0–${activeWindow}):`, String(currentRemaining));
+            if (raw == null || raw.trim() === '') return;
+            const newRemaining = Math.min(activeWindow, Math.max(0, parseInt(raw, 10)));
+            if (isNaN(newRemaining)) return;
+            const nowSnapCount = engine.listSnapshots().length;
+            const newAddedAtSnapCount = nowSnapCount - (activeWindow - newRemaining);
+            engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' });
+            engine.addListEntry(subj.id, field._trackerId, field.id, entry, {
+              source: 'manual',
+              addedAtSnapCount: Math.max(0, newAddedAtSnapCount),
             });
-          }
-        });
+          });
+        } else {
+          $chip.on('click', () => {
+            if (field.describable) {
+              const prose = engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
+              deps.openProseModal({
+                title: `${field.label}: ${entry}`,
+                text: prose,
+                onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
+                onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, entry),
+              });
+            }
+          });
+        }
+        // For describable countdown chips, description accessible via pencil button
+        const $descBtn = (activeWindow != null && field.describable)
+          ? descBtn(field, subj, entry)
+          : null;
         $cluster.append($chip);
+        if ($descBtn) $cluster.append($descBtn);
       }
       const $add = $('<button class="strk-field-icon">+</button>').on('click', async () => {
         const v = deps.dialogs
