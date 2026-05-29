@@ -205,7 +205,6 @@ export function makeRenderers(engine, deps) {
       const activeWindow = field.inclusion?.activeWindow;
       const itemMeta = activeWindow != null ? engine.getListMeta(subj.id, field._trackerId, field.id) : {};
       const snapshots = activeWindow != null ? engine.listSnapshots() : [];
-      if (activeWindow != null) console.log('[strk-diag] list-render:', field.id, 'snapshots=', snapshots.length, 'meta=', JSON.stringify(engine.getListMeta(subj.id, field._trackerId, field.id)));
       const $cluster = $('<div class="strk-chip-cluster"></div>');
       for (const entry of cur) {
         let label = entry;

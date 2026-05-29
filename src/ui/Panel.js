@@ -53,9 +53,7 @@ export class Panel {
     this._renderPending = false;
     const safeRender = () => {
       const focused = document.activeElement;
-      const inPanel = focused && this.$el && this.$el[0].contains(focused) && /INPUT|TEXTAREA|SELECT/.test(focused.tagName);
-      console.log('[strk-diag] safeRender: deferred=', !!inPanel, 'tag=', focused?.tagName, 'id=', focused?.id, 'class=', focused?.className);
-      if (inPanel) {
+      if (focused && this.$el && this.$el[0].contains(focused) && /INPUT|TEXTAREA|SELECT/.test(focused.tagName)) {
         this._renderPending = true;
         return;
       }
