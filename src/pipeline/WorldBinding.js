@@ -52,11 +52,35 @@ export class WorldBinding {
  * BASE is the plugin route prefix under /api/plugins/state-referential-worlds.
  */
 export function makeServerApi(base = '/api/plugins/state-referential-worlds') {
+  let _csrfToken = null;
+
+  async function getCsrfToken() {
+    if (_csrfToken) return _csrfToken;
+    const res = await fetch('/csrf-token');
+    if (!res.ok) return null;
+    const data = await res.json();
+    _csrfToken = data.token ?? null;
+    return _csrfToken;
+  }
+
   async function apiFetch(url, opts = {}) {
-    const res = await fetch(url, {
-      ...opts,
-      headers: { 'Content-Type': 'application/json', ...(opts.headers ?? {}) },
-    });
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers ?? {}) };
+    const method = opts.method ?? 'GET';
+    if (method !== 'GET' && method !== 'HEAD') {
+      const token = await getCsrfToken();
+      if (token) headers['X-CSRF-Token'] = token;
+    }
+    const res = await fetch(url, { ...opts, headers });
+    if (res.status === 403) {
+      // CSRF token may have expired — clear cache and retry once
+      _csrfToken = null;
+      const token = await getCsrfToken();
+      if (token) headers['X-CSRF-Token'] = token;
+      const retry = await fetch(url, { ...opts, headers });
+      if (!retry.ok) throw new Error(`[state-referential] server ${retry.status}: ${retry.statusText} (${url})`);
+      if (retry.status === 204) return null;
+      return retry.json().catch(() => null);
+    }
     if (!res.ok) throw new Error(`[state-referential] server ${res.status}: ${res.statusText} (${url})`);
     if (res.status === 204) return null;
     return res.json().catch(() => null);
@@ -72,7 +96,7 @@ export function makeServerApi(base = '/api/plugins/state-referential-worlds') {
     putResource:   (id, key, d) => apiFetch(`${base}/worlds/${id}/${key}`, { method: 'PUT', body: JSON.stringify(d) }),
     getChronicle:  (id)         => apiFetch(`${base}/worlds/${id}/chronicle`),
     putChronicle:  (id, d)      => apiFetch(`${base}/worlds/${id}/chronicle`, { method: 'PUT', body: JSON.stringify(d) }),
-    exportWorld:   (id)         => fetch(`${base}/worlds/${id}/export`).then(r => r.blob()),
-    importWorld:   (formData)   => fetch(`${base}/worlds/import`, { method: 'POST', body: formData }).then(r => r.json()),
+    exportWorld:   (id)         => getCsrfToken().then(t => fetch(`${base}/worlds/${id}/export`, { headers: t ? { 'X-CSRF-Token': t } : {} })).then(r => r.blob()),
+    importWorld:   (bundle)     => getCsrfToken().then(t => fetch(`${base}/worlds/import`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { 'X-CSRF-Token': t } : {}) }, body: JSON.stringify(bundle) })).then(r => r.json()),
   };
 }
