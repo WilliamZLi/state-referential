@@ -109,7 +109,11 @@ export function makeRenderers(engine, deps) {
         title: `${field.label} = ${liveValue}`,
         text: prose,
         onSave: (newProse) => engine.setDescription(subj.id, field._trackerId, field.id, liveValue, newProse),
-        onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, liveValue),
+        onRefresh: async () => {
+          engine.invalidateDescription(subj.id, field._trackerId, field.id, liveValue);
+          await deps.requestProbe(subj.id, field._trackerId, field.id, liveValue);
+          return engine.getDescription(subj.id, field._trackerId, field.id, liveValue) ?? '';
+        },
       });
     });
   }
@@ -271,7 +275,11 @@ export function makeRenderers(engine, deps) {
                 title: `${field.label}: ${entry}`,
                 text: prose,
                 onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
-                onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, entry),
+                onRefresh: async () => {
+                  engine.invalidateDescription(subj.id, field._trackerId, field.id, entry);
+                  await deps.requestProbe(subj.id, field._trackerId, field.id, entry);
+                  return engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
+                },
               });
             }
           });
@@ -284,7 +292,11 @@ export function makeRenderers(engine, deps) {
                 title: `${field.label}: ${entry}`,
                 text: prose,
                 onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
-                onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, entry),
+                onRefresh: async () => {
+                  engine.invalidateDescription(subj.id, field._trackerId, field.id, entry);
+                  await deps.requestProbe(subj.id, field._trackerId, field.id, entry);
+                  return engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
+                },
               });
             })
           : null;

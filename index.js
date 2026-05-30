@@ -364,7 +364,25 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     $('#strk-prose-title', $f).text(title);
     $('#strk-prose-text', $f).val(text);
     $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); _closePopup($f); });
-    $('#strk-prose-refresh', $f).on('click', () => { onRefresh?.(); });
+    $('#strk-prose-refresh', $f).on('click', async () => {
+      if (!onRefresh) return;
+      const $btn = $('#strk-prose-refresh', $f);
+      const $ta = $('#strk-prose-text', $f);
+      const origLabel = $btn.text();
+      $btn.prop('disabled', true).text('Generating…');
+      $ta.prop('disabled', true);
+      try {
+        // onRefresh awaits the probe and resolves to the freshly generated prose (or null).
+        const fresh = await onRefresh();
+        if (fresh) $ta.val(fresh);
+        else toastr.info('No new description was generated.', 'Re-probe');
+      } catch (e) {
+        toastr.error(e?.message ?? String(e), 'Re-probe failed');
+      } finally {
+        $btn.prop('disabled', false).text(origLabel);
+        $ta.prop('disabled', false);
+      }
+    });
     // Cancel: close via the robust helper
     $('#strk-prose-cancel', $f).on('click', () => _closePopup($f));
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', { wide: true });
