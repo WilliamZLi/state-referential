@@ -19,7 +19,7 @@ export class WorldView {
     $('#strk-wv-name', $f).val(world.name);
     $('#strk-wv-narrator-hint', $f).val(world.narratorCardHint ?? '');
     const created = new Date(world.createdAt).toLocaleDateString();
-    const mainlineText = world.mainlineChatId ? `Mainline: ${world.mainlineChatId.slice(0, 8)}…` : 'No mainline yet';
+    const mainlineText = world.mainlineChatId ? 'Mainline: linked' : 'Mainline: none';
     $('#strk-wv-info', $f).text(`Created: ${created} · ${mainlineText}`);
 
     // Chronicle config
