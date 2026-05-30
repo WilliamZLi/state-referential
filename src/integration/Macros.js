@@ -1,41 +1,11 @@
 import { formatValue } from '../util/formatValue.js';
+import { activeEntries } from '../util/countdown.js';
 
 function parsePath(path) {
   // <subject>.<tracker>.<field>[.suffix]
   const parts = String(path).split('.');
   if (parts.length < 3) return null;
   return { subject: parts[0], tracker: parts[1], field: parts[2], suffix: parts.slice(3).join('.') };
-}
-
-/**
- * Filter expired entries from a countdown list field so they don't appear in injections.
- * Items with remaining <= 0 are excluded; items with no expiry metadata are kept.
- */
-function activeEntries(engine, subjectId, trackerId, field, entries) {
-  const activeWindow = field.inclusion?.activeWindow;
-  if (activeWindow == null || !Array.isArray(entries) || entries.length === 0) return entries;
-  const snapshots = engine.listSnapshots();
-  const itemMeta = engine.getListMeta(subjectId, trackerId, field.id);
-  return entries.filter(entry => {
-    const meta = itemMeta[entry];
-    if (!meta) return true;
-    let remaining;
-    if (meta.expiresAtSnapCount != null) {
-      remaining = meta.expiresAtSnapCount - snapshots.length;
-    } else {
-      let turnsSince;
-      if (meta.addedAtMsg) {
-        const ti = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
-        turnsSince = ti >= 0 ? snapshots.length - ti - 1 : snapshots.length;
-      } else if (meta.addedAtSnapCount != null) {
-        turnsSince = snapshots.length - meta.addedAtSnapCount;
-      } else {
-        turnsSince = 0;
-      }
-      remaining = activeWindow - turnsSince;
-    }
-    return remaining > 0;
-  });
 }
 
 /**

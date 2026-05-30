@@ -1,3 +1,5 @@
+import { activeEntries } from '../util/countdown.js';
+
 const DEFAULT_ACTIVE_WINDOW = 5;
 
 export const DEFAULT_AUTOUPDATE_TEMPLATE = [
@@ -106,7 +108,10 @@ export class AutoUpdate {
       for (const t of trackers) {
         for (const f of t.fields) {
           if (!this._passesInclusion(f, subj.id, t.id)) continue;
-          const val = this.engine.values.getField(subj.id, t.id, f.id) ?? f.default;
+          const raw = this.engine.values.getField(subj.id, t.id, f.id) ?? f.default;
+          const val = (f.type === 'list' && f.inclusion?.activeWindow != null)
+            ? activeEntries(this.engine, subj.id, t.id, f, raw)
+            : raw;
           lines.push(`  ${t.id}.${f.id} (${fieldTypeAnnotation(f)}) = ${formatValue(f, val)}`);
         }
       }

@@ -1,4 +1,5 @@
 import { formatValue } from '../util/formatValue.js';
+import { activeEntries } from '../util/countdown.js';
 
 /**
  * Maximum length of a cached description when rendered into the {{fields}}
@@ -191,10 +192,13 @@ export class Injection {
           (trigger === 'tag' && this.engine.tags.anyActive(inj.tags ?? []));
         if (!include) continue;
 
-        // Collect current field values for included fields
+        // Collect current field values for included fields (filtering expired countdown entries)
         const fieldValues = {};
         for (const f of tracker.fields) {
-          fieldValues[f.id] = this.engine.getField(subj.id, tracker.id, f.id) ?? f.default;
+          const raw = this.engine.getField(subj.id, tracker.id, f.id) ?? f.default;
+          fieldValues[f.id] = (f.type === 'list' && f.inclusion?.activeWindow != null)
+            ? activeEntries(this.engine, subj.id, tracker.id, f, raw)
+            : raw;
         }
 
         // Skip the entire block if no included field has a non-empty value —
