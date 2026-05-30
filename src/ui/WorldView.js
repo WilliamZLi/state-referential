@@ -62,11 +62,14 @@ export class WorldView {
 
         const $editBtn = $('<button class="menu_button strk-entry-btn">Edit</button>');
         $editBtn.on('click', async () => {
-          const newTitle = await (this.deps.dialogs?.prompt?.('Edit title:', e.title) ?? Promise.resolve(prompt('Edit title:', e.title)));
-          if (newTitle == null) return;
-          const newBody = await (this.deps.dialogs?.prompt?.('Edit body:', e.body) ?? Promise.resolve(prompt('Edit body:', e.body)));
-          if (newBody == null) return;
-          chronicle.updateEntry(e.id, { title: newTitle.trim() || e.title, body: newBody.trim() });
+          const $form = $('<div style="padding:8px;display:flex;flex-direction:column;gap:10px;min-width:400px"></div>');
+          $form.append($(`<label style="display:flex;flex-direction:column;gap:4px;font-size:12px">Title<input type="text" class="text_pole" value="${$('<div>').text(e.title).html()}" /></label>`));
+          $form.append($(`<label style="display:flex;flex-direction:column;gap:4px;font-size:12px">Body<textarea class="text_pole" rows="6" style="width:100%;box-sizing:border-box;resize:vertical">${$('<div>').text(e.body).html()}</textarea></label>`));
+          const confirmed = await this.deps.callGenericPopup($form[0], this.deps.POPUP_TYPE?.CONFIRM ?? 0, 'Edit Act', {});
+          if (!confirmed) return;
+          const newTitle = $('input', $form).val().trim() || e.title;
+          const newBody = $('textarea', $form).val().trim();
+          chronicle.updateEntry(e.id, { title: newTitle, body: newBody });
           await this.deps.persistChronicle?.();
           this.deps.chronicleInjection?.run?.();
           renderEntries();
