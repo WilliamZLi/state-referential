@@ -37,6 +37,15 @@ test('snapshot+restore', () => {
   assert.strictEqual(eng.getField(p.id, 'outfit', 'topwear'), 'red');
 });
 
+test('restoreSnapshot does NOT revert scene tags (sticky user controls)', () => {
+  const eng = mkEngine();
+  const s1 = eng.snapshot();             // snapshot with no tags active
+  eng.setSceneTag('intimate', true);      // user enables a tag afterward
+  eng.restoreSnapshot(s1);                 // undo to the older snapshot...
+  // ...tag must survive — tags are sticky across swipe/delete/regen
+  assert.deepStrictEqual(eng.listActiveTags(), ['intimate']);
+});
+
 test('diffSnapshots reports value/list/subject changes', () => {
   const eng = mkEngine();
   const p = eng.addSubject('Lyra', { role: 'protagonist' });
