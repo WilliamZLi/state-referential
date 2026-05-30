@@ -53,8 +53,9 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
     }
     const formatted = formatValue(raw, f, fieldValues);
     if (!formatted) continue;
+    const trend = numberTrendSuffix(engine, subjectId, tracker.id, f, raw);
     const desc = truncateDesc(engine.getDescription(subjectId, tracker.id, f.id, raw));
-    lines.push(desc ? `${f.label}: ${formatted} (${desc})` : `${f.label}: ${formatted}`);
+    lines.push(desc ? `${f.label}: ${formatted}${trend} (${desc})` : `${f.label}: ${formatted}${trend}`);
   }
   return lines.join('\n');
 }

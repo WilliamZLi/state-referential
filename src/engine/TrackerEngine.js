@@ -128,6 +128,21 @@ export class TrackerEngine {
   listSnapshots() { return this.snapshots.list(); }
   loadSnapshot(id) { return this.snapshots.load(id); }
   dropSnapshots(ids) { this.snapshots.dropSnapshots(ids); }
+
+  /**
+   * The value of a field as captured in the most recent snapshot — i.e. the
+   * pre-turn baseline, which is what the model saw on the previous turn.
+   * Used to render "up from / down from" deltas in the injection.
+   * Returns undefined if there is no snapshot or the field wasn't stored.
+   */
+  previousValue(subjectId, trackerId, fieldId) {
+    const list = this.listSnapshots();
+    if (!list.length) return undefined;
+    let latest = list[0];
+    for (const s of list) if ((s.takenAt ?? 0) > (latest.takenAt ?? 0)) latest = s;
+    const snap = this.loadSnapshot(latest.msgId);
+    return snap?.values?.[subjectId]?.[trackerId]?.[fieldId]?.v;
+  }
   restoreSnapshot(s) {
     // Scene tags are sticky user controls — NOT reverted by snapshot restore
     // (swipe/delete/regen). We deliberately skip saveSceneTags so the user's
