@@ -454,3 +454,28 @@
   opacity: 0.5;
   font-style: italic;
 }
+
+/* World Manager */
+.strk-world-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.strk-world-name { flex: 1; }
+.strk-world-badge {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.strk-world-current-binding {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
