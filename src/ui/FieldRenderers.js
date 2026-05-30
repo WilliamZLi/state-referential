@@ -276,9 +276,17 @@ export function makeRenderers(engine, deps) {
             }
           });
         }
-        // For describable countdown chips, description accessible via pencil button
+        // For countdown chips, inline pencil scoped to the specific entry (not the whole list)
         const $descBtn = (activeWindow != null && field.describable)
-          ? descBtn(field, subj, entry)
+          ? $('<button class="strk-field-icon" title="Edit description">🖉</button>').on('click', () => {
+              const prose = engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
+              deps.openProseModal({
+                title: `${field.label}: ${entry}`,
+                text: prose,
+                onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
+                onRefresh: () => deps.requestProbe(subj.id, field._trackerId, field.id, entry),
+              });
+            })
           : null;
         $cluster.append($chip);
         if ($descBtn) $cluster.append($descBtn);
