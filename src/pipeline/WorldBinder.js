@@ -39,7 +39,7 @@ export class WorldBinder {
 
     // Update world's mainlineChatId if needed
     if (role === 'mainline' && !world.mainlineChatId) {
-      await this.registry.setMainlineChatId(worldId, chatMeta.id ?? 'unknown');
+      await this.registry.setMainlineChatId(worldId, this.deps.getChatId?.() ?? 'unknown');
     }
 
     // Reload backend

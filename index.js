@@ -185,6 +185,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // WorldBinder — bind/unbind current chat + data migration.
   const worldBinder = new WorldBinder(engine, worldRegistry, worldBinding, {
     getChatMetadata: () => getContext().chatMetadata,
+    getChatId: () => getContext().chatId,
     saveChatConditional,
     ctx,
     getChronicle,
