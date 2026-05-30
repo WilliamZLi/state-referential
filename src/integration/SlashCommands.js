@@ -180,6 +180,7 @@ export function register(engine, deps) {
     const reg = deps.worldRegistry;
     if (!reg) return 'World model not available.';
     const w = await reg.create({ name });
+    toastr.success(`Created World "${w.name}"`, 'World Tracker');
     return `Created World "${w.name}" (${w.id})`;
   }, '/world-new <name> — create a new World');
 
@@ -189,6 +190,7 @@ export function register(engine, deps) {
     const binder = deps.worldBinder;
     if (!binder) return 'World model not available.';
     await binder.bindCurrentChat(worldId);
+    toastr.success(`Bound to World ${worldId}`, 'World Tracker');
     return `Bound current chat to World ${worldId}`;
   }, '/world-bind <worldId> — bind current chat to a World');
 
@@ -196,6 +198,7 @@ export function register(engine, deps) {
     const binder = deps.worldBinder;
     if (!binder) return 'World model not available.';
     await binder.unbindCurrentChat();
+    toastr.info('Chat unbound from World', 'World Tracker');
     return 'Chat unbound from World. Now using chat-scoped trackers.';
   }, '/world-unbind — unbind current chat from its World');
 
@@ -209,8 +212,11 @@ export function register(engine, deps) {
     try {
       await ops.actComplete(title, { messages, msgId: deps.getCurrentMsgId?.() });
       deps.chronicleInjection?.run?.();
-      return `Chronicle entry "${title}" appended. Total acts: ${chronicle.getEntries().length}`;
+      const msg = `Chronicle entry "${title}" appended. Total acts: ${chronicle.getEntries().length}`;
+      toastr.success(msg, 'World Chronicle');
+      return msg;
     } catch (e) {
+      toastr.error(e.message, 'Act complete failed');
       return `Act complete failed: ${e.message}`;
     }
   }, '/world-act-complete [title] — mark act complete, generate chronicle entry');
