@@ -211,6 +211,7 @@ export function register(engine, deps) {
     const messages = deps.getChat?.() ?? [];
     try {
       await ops.actComplete(title, { messages, msgId: deps.getCurrentMsgId?.() });
+      await deps.persistChronicle?.();
       deps.chronicleInjection?.run?.();
       const msg = `Chronicle entry "${title}" appended. Total acts: ${chronicle.getEntries().length}`;
       toastr.success(msg, 'World Chronicle');
@@ -224,17 +225,13 @@ export function register(engine, deps) {
   reg('world-act-insert', async (args, value) => {
     const chronicle = deps.getChronicle?.();
     if (!chronicle) return 'Chronicle not loaded — is this chat bound to a World?';
-    // Parse "title | body" or just "title"
     const raw = String(value ?? '').trim();
     const pipeIdx = raw.indexOf('|');
     const title = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
     const body = (pipeIdx >= 0 ? raw.slice(pipeIdx + 1) : '').trim();
     if (!title) return 'Usage: /world-act-insert <title> | <body>';
     chronicle.appendEntry(title, body, deps.getCurrentMsgId?.() ?? null);
-    try {
-      const worldId = deps.worldBinding?.currentWorldId;
-      if (worldId) await deps.serverApi?.putChronicle(worldId, chronicle.serialize());
-    } catch (e) { /* best-effort */ }
+    await deps.persistChronicle?.();
     deps.chronicleInjection?.run?.();
     const msg = `Act "${title}" inserted. Total acts: ${chronicle.getEntries().length}`;
     toastr.success(msg, 'World Chronicle');
@@ -250,6 +247,7 @@ export function register(engine, deps) {
       const ops = deps.chronicleOps;
       if (!ops) return 'ChronicleOps not available.';
       await ops._regenerateAllBigPicture(chronicle.getConfig().bigPictureTokenCap);
+      await deps.persistChronicle?.();
       deps.chronicleInjection?.run?.();
       return 'Big picture regenerated.';
     }

@@ -220,16 +220,18 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // Release lock when navigating away (best-effort)
   window.addEventListener('beforeunload', () => worldLock.release());
 
+  const persistChronicle = async () => {
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) return;
+    await serverApi.putChronicle(worldId, _chronicle.serialize());
+  };
+
   // Layer 2 UI — mount world manager inside the settings drawer section.
   const worldView = new WorldView(worldRegistry, {
     callGenericPopup, POPUP_TYPE, chronicleOps, getChronicle, chronicleInjection, serverApi,
     closePopup: ($f) => _closePopup($f),
     dialogs,
-    persistChronicle: async () => {
-      const worldId = worldBinding.currentWorldId;
-      if (!worldId) return;
-      await serverApi.putChronicle(worldId, _chronicle.serialize());
-    },
+    persistChronicle,
   });
   const worldManager = new WorldManager(worldRegistry, {
     worldBinding, worldBinder, callGenericPopup, POPUP_TYPE, dialogs, serverApi,
@@ -491,7 +493,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone,
     getExtensionSettings: () => extension_settings, saveSettingsDebounced,
     worldRegistry, worldBinding, worldBinder, serverApi,
-    chronicleOps, getChronicle, chronicleInjection,
+    chronicleOps, getChronicle, chronicleInjection, persistChronicle,
     getChat: () => getContext().chat,
     getCurrentMsgId: () => {
       const chat = getContext().chat;
