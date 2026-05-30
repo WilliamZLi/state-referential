@@ -106,6 +106,7 @@ export class ValueStore {
       rec.itemMeta[entry] = {
         addedAtMsg: opts.msgId ?? null,
         addedAtSnapCount: opts.addedAtSnapCount ?? null,
+        expiresAtSnapCount: opts.expiresAtSnapCount ?? null,
       };
     }
     this.setField(s, t, f, [...cur, entry], opts);

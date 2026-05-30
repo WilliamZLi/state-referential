@@ -212,16 +212,21 @@ export function makeRenderers(engine, deps) {
         if (activeWindow != null) {
           const meta = itemMeta[entry];
           if (meta) {
-            let turnsSince;
-            if (meta.addedAtMsg) {
-              const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
-              turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
-            } else if (meta.addedAtSnapCount != null) {
-              turnsSince = snapshots.length - meta.addedAtSnapCount;
+            let remaining;
+            if (meta.expiresAtSnapCount != null) {
+              remaining = meta.expiresAtSnapCount - snapshots.length;
             } else {
-              turnsSince = 0;
+              let turnsSince;
+              if (meta.addedAtMsg) {
+                const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
+                turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
+              } else if (meta.addedAtSnapCount != null) {
+                turnsSince = snapshots.length - meta.addedAtSnapCount;
+              } else {
+                turnsSince = 0;
+              }
+              remaining = activeWindow - turnsSince;
             }
-            const remaining = activeWindow - turnsSince;
             expired = remaining <= 0;
             label = expired ? entry : `${entry} (${remaining})`;
           }
@@ -252,11 +257,10 @@ export function makeRenderers(engine, deps) {
             const newRemaining = Math.min(activeWindow, Math.max(0, parseInt(raw, 10)));
             if (isNaN(newRemaining)) return;
             const nowSnapCount = engine.listSnapshots().length;
-            const newAddedAtSnapCount = nowSnapCount - (activeWindow - newRemaining);
             engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' });
             engine.addListEntry(subj.id, field._trackerId, field.id, entry, {
               source: 'manual',
-              addedAtSnapCount: Math.max(0, newAddedAtSnapCount),
+              expiresAtSnapCount: nowSnapCount + newRemaining,
             });
           });
         } else {
