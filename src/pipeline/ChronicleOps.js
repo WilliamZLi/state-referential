@@ -48,10 +48,25 @@ export class ChronicleOps {
     const chatText = messages
       .map(m => `${m.name ?? 'Narrator'}: ${m.mes ?? ''}`)
       .join('\n\n');
+
+    // Briefer: give the summarizer the story-so-far (big picture + recent acts) so it
+    // continues the chronicle instead of restating established context.
+    const bigPicture = this.chronicle.getBigPicture?.() ?? '';
+    const recentActs = (this.chronicle.getEntries?.() ?? []).slice(-3);
+    const briefParts = [];
+    if (bigPicture) briefParts.push(`Story so far (overall):\n${bigPicture}`);
+    if (recentActs.length) {
+      briefParts.push('Most recent acts (already chronicled — do NOT repeat these):\n' +
+        recentActs.map(e => `- ${e.title}: ${e.body}`).join('\n'));
+    }
+    const brief = briefParts.length ? briefParts.join('\n\n') + '\n\n' : '';
+
     const prompt =
-      `Summarize the events of the current act into ONE paragraph. ` +
+      `${brief}` +
+      `Summarize ONLY the NEW events below into ONE paragraph, continuing the chronicle from the context above. ` +
+      `Do not restate facts already covered by the story-so-far or recent acts; cover only what is new here. ` +
       `Focus on outcomes, decisions, relationships changed, items acquired or lost, world facts revealed. ` +
-      `Aim for ${tokenCap} tokens. No dialogue. Third person.\n\nRecent chat:\n${chatText}`;
+      `Aim for ${tokenCap} tokens. No dialogue. Third person.\n\nNew chat to summarize:\n${chatText}`;
     return await this.deps.generateQuietPrompt(prompt);
   }
 
