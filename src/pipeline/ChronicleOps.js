@@ -7,7 +7,8 @@ export class ChronicleOps {
 
   async actComplete(title, opts = {}) {
     const config = this.chronicle.getConfig();
-    const body = await this._generateSummary(opts.messages ?? [], config.entryTokenCap);
+    const since = this._messagesSinceLastAct(opts.messages ?? []);
+    const body = await this._generateSummary(since, config.entryTokenCap);
     const entry = this.chronicle.appendEntry(title, body, opts.msgId ?? null);
 
     const strategy = config.updateStrategy ?? 'lazy';
@@ -21,8 +22,30 @@ export class ChronicleOps {
     return entry;
   }
 
+  /**
+   * Return only the messages that belong to the current (not-yet-summarized) act:
+   * everything AFTER the message the previous act was marked at. Falls back to the
+   * whole list when there is no prior act or its boundary message isn't found.
+   * A hard cap keeps the summary prompt bounded if a single act runs very long.
+   */
+  _messagesSinceLastAct(messages, cap = 60) {
+    const entries = this.chronicle.getEntries();
+    const lastAct = entries[entries.length - 1];
+    const boundaryId = lastAct?.createdByMessageId;
+    let slice = messages;
+    if (boundaryId) {
+      const idx = messages.findIndex(m =>
+        m?.state_referential_msgId === boundaryId ||
+        m?.extra?.state_referential_msgId === boundaryId ||
+        m?.extra?.trackerMsgId === boundaryId
+      );
+      if (idx >= 0) slice = messages.slice(idx + 1);
+    }
+    return slice.slice(-cap);
+  }
+
   async _generateSummary(messages, tokenCap) {
-    const chatText = messages.slice(-30)
+    const chatText = messages
       .map(m => `${m.name ?? 'Narrator'}: ${m.mes ?? ''}`)
       .join('\n\n');
     const prompt =

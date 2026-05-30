@@ -44,6 +44,25 @@ test('actComplete appends entry with AI-generated body', async () => {
   assert.strictEqual(getCallCount(), 1, 'one generate call for summary');
 });
 
+test('second act only summarizes messages since the previous act boundary', async () => {
+  const chronicle = mkStore({ verbatimWindow: 5 });
+  const { ops, _prompts } = mkOps(chronicle);
+  // Chat: act 1 ends at the message tagged 'm2'; act 2 should only cover m3+m4.
+  const messages = [
+    { name: 'Lyra', mes: 'ACT1-A', extra: { state_referential_msgId: 'm1' } },
+    { name: 'Narrator', mes: 'ACT1-B', extra: { state_referential_msgId: 'm2' } },
+    { name: 'Lyra', mes: 'ACT2-C', extra: { state_referential_msgId: 'm3' } },
+    { name: 'Narrator', mes: 'ACT2-D', extra: { state_referential_msgId: 'm4' } },
+  ];
+  await ops.actComplete('Act One', { messages: messages.slice(0, 2), msgId: 'm2' });
+  await ops.actComplete('Act Two', { messages, msgId: 'm4' });
+  const act2Prompt = _prompts()[_prompts().length - 1];
+  assert.match(act2Prompt, /ACT2-C/);
+  assert.match(act2Prompt, /ACT2-D/);
+  assert.ok(!act2Prompt.includes('ACT1-A'), 'act 2 must not re-summarize act 1 content');
+  assert.ok(!act2Prompt.includes('ACT1-B'), 'act 2 must exclude the boundary message itself');
+});
+
 test('actComplete with lazy strategy and entries > verbatimWindow folds oldest', async () => {
   const chronicle = mkStore({ verbatimWindow: 2, updateStrategy: 'lazy' });
   chronicle.appendEntry('Old1', 'old1', null);
