@@ -38,23 +38,29 @@
       <button class="menu_button" id="strk-cleanup-desc">Cleanup orphan descriptions</button>
       <button class="menu_button strk-danger" id="strk-reset-state">Reset all state for current chat</button>
     </div>
-    <div class="strk-section">
-      <h4>Worlds (Layer 2)</h4>
-      <label title="Show the binding prompt when starting a new chat, asking whether to bind it to a World.">
-        <input type="checkbox" id="strk-world-prompt-enabled" checked /> Show binding prompt on new chats
-      </label>
-      <div id="strk-world-defaults">
-        <span>Default chronicle config for new Worlds:</span>
-        <label>Verbatim window <input type="number" class="text_pole" id="strk-world-default-window" min="1" value="5" /></label>
-        <label>Update strategy
-          <select class="text_pole" id="strk-world-default-strategy">
-            <option value="lazy">lazy</option>
-            <option value="eager">eager</option>
-            <option value="manual">manual</option>
-          </select>
+    <div class="inline-drawer">
+      <div class="inline-drawer-toggle inline-drawer-header">
+        <b>Worlds (Layer 2)</b>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+      </div>
+      <div class="inline-drawer-content">
+        <label title="Show the binding prompt when starting a new chat, asking whether to bind it to a World.">
+          <input type="checkbox" id="strk-world-prompt-enabled" checked /> Show binding prompt on new chats
         </label>
-        <label>Big picture token cap <input type="number" class="text_pole" id="strk-world-default-bp-cap" min="50" value="300" /></label>
-        <label>Entry token cap <input type="number" class="text_pole" id="strk-world-default-entry-cap" min="50" value="200" /></label>
+        <div id="strk-world-defaults">
+          <span>Default chronicle config for new Worlds:</span>
+          <label>Verbatim window <input type="number" class="text_pole" id="strk-world-default-window" min="1" value="5" /></label>
+          <label>Update strategy
+            <select class="text_pole" id="strk-world-default-strategy">
+              <option value="lazy">lazy</option>
+              <option value="eager">eager</option>
+              <option value="manual">manual</option>
+            </select>
+          </label>
+          <label>Big picture token cap <input type="number" class="text_pole" id="strk-world-default-bp-cap" min="50" value="300" /></label>
+          <label>Entry token cap <input type="number" class="text_pole" id="strk-world-default-entry-cap" min="50" value="200" /></label>
+        </div>
+        <div class="strk-world-manager-mount"></div>
       </div>
     </div>
   </div>
