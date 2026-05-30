@@ -17,6 +17,21 @@ function truncateDesc(text) {
 }
 
 /**
+ * For number fields, produce a " (up from X)" / " (down from X)" suffix comparing
+ * the current value to the previous-turn baseline (latest snapshot). Returns ''
+ * when there's no prior value, it's unchanged, or the field isn't a number.
+ */
+function numberTrendSuffix(engine, subjectId, trackerId, field, raw) {
+  if (field.type !== 'number') return '';
+  const cur = Number(raw);
+  if (!Number.isFinite(cur)) return '';
+  const prev = engine.previousValue?.(subjectId, trackerId, field.id);
+  const prevNum = Number(prev);
+  if (prev === undefined || !Number.isFinite(prevNum) || prevNum === cur) return '';
+  return cur > prevNum ? ` (up from ${prevNum})` : ` (down from ${prevNum})`;
+}
+
+/**
  * Build the auto-rendered {{fields}} block.
  * One line per included field with a non-empty value.
  *
