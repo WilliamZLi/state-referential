@@ -7,7 +7,7 @@ export class ChronicleOps {
 
   async actComplete(title, opts = {}) {
     const config = this.chronicle.getConfig();
-    const since = this._messagesSinceLastAct(opts.messages ?? []);
+    const since = this._messagesSinceLastAct(opts.messages ?? [], config.maxActMessages ?? 60);
     const body = await this._generateSummary(since, config.entryTokenCap);
     const entry = this.chronicle.appendEntry(title, body, opts.msgId ?? null);
 
@@ -29,19 +29,31 @@ export class ChronicleOps {
    * A hard cap keeps the summary prompt bounded if a single act runs very long.
    */
   _messagesSinceLastAct(messages, cap = 60) {
+    return this._sliceSinceLastAct(messages).slice(-cap);
+  }
+
+  /** The uncapped slice of messages after the previous act's boundary. */
+  _sliceSinceLastAct(messages) {
     const entries = this.chronicle.getEntries();
     const lastAct = entries[entries.length - 1];
     const boundaryId = lastAct?.createdByMessageId;
-    let slice = messages;
     if (boundaryId) {
       const idx = messages.findIndex(m =>
         m?.state_referential_msgId === boundaryId ||
         m?.extra?.state_referential_msgId === boundaryId ||
         m?.extra?.trackerMsgId === boundaryId
       );
-      if (idx >= 0) slice = messages.slice(idx + 1);
+      if (idx >= 0) return messages.slice(idx + 1);
     }
-    return slice.slice(-cap);
+    return messages;
+  }
+
+  /**
+   * How many messages have accumulated since the last act was marked.
+   * Used by the status command and the "act getting long" nudge.
+   */
+  countSinceLastAct(messages) {
+    return this._sliceSinceLastAct(messages ?? []).length;
   }
 
   async _generateSummary(messages, tokenCap) {

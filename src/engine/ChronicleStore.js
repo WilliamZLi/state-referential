@@ -6,6 +6,7 @@ const DEFAULT_CONFIG = {
   updateStrategy: 'lazy',
   bigPictureTokenCap: 300,
   entryTokenCap: 200,
+  maxActMessages: 60,
 };
 
 export class ChronicleStore {

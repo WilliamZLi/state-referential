@@ -222,6 +222,20 @@ export function register(engine, deps) {
     }
   }, '/world-act-complete [title] — mark act complete, generate chronicle entry');
 
+  reg('world-act-status', (args, value) => {
+    const ops = deps.chronicleOps;
+    const chronicle = deps.getChronicle?.();
+    if (!ops || !chronicle) return 'Chronicle not loaded — is this chat bound to a World?';
+    const messages = deps.getChat?.() ?? [];
+    const since = ops.countSinceLastAct(messages);
+    const entries = chronicle.getEntries();
+    const lastAct = entries[entries.length - 1];
+    const cap = chronicle.getConfig().maxActMessages ?? 60;
+    const lastLabel = lastAct ? `"${lastAct.title}"` : '(none yet)';
+    const capNote = since > cap ? ` (only the most recent ${cap} would be summarized)` : '';
+    return `${since} message(s) since last act ${lastLabel}. Next act would summarize them${capNote}. Total acts: ${entries.length}.`;
+  }, '/world-act-status — show how many messages have passed since the last act');
+
   reg('world-act-insert', async (args, value) => {
     const chronicle = deps.getChronicle?.();
     if (!chronicle) return 'Chronicle not loaded — is this chat bound to a World?';

@@ -24,11 +24,12 @@ export class WorldView {
 
     // Chronicle config
     const chronicle = this.deps.getChronicle?.();
-    const config = chronicle?.getConfig() ?? { verbatimWindow: 5, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200 };
+    const config = chronicle?.getConfig() ?? { verbatimWindow: 5, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200, maxActMessages: 60 };
     $('#strk-chron-window', $f).val(config.verbatimWindow);
     $('#strk-chron-strategy', $f).val(config.updateStrategy);
     $('#strk-chron-bp-cap', $f).val(config.bigPictureTokenCap);
     $('#strk-chron-entry-cap', $f).val(config.entryTokenCap);
+    $('#strk-chron-max-msgs', $f).val(config.maxActMessages ?? 60);
 
     // Big picture display
     $('#strk-wv-bigpicture', $f).text(chronicle?.getBigPicture() || '(none yet)');
@@ -100,6 +101,7 @@ export class WorldView {
         updateStrategy: $('#strk-chron-strategy', $f).val(),
         bigPictureTokenCap: parseInt($('#strk-chron-bp-cap', $f).val(), 10) || 300,
         entryTokenCap: parseInt($('#strk-chron-entry-cap', $f).val(), 10) || 200,
+        maxActMessages: parseInt($('#strk-chron-max-msgs', $f).val(), 10) || 60,
       };
       chronicle?.setConfig(newConfig);
       // Persist config to server (world.json chronicleConfig)

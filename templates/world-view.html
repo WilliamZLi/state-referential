@@ -30,6 +30,10 @@
         <label class="strk-wv-label" title="Target length in tokens for each individual act summary. Longer = more detail per act.">Entry token cap</label>
         <input type="number" class="text_pole" id="strk-chron-entry-cap" min="50" value="200" style="width:70px" />
       </div>
+      <div class="strk-wv-field">
+        <label class="strk-wv-label" title="Maximum number of recent messages fed into an act summary. If an act runs longer than this, only the most recent N messages are summarized.">Max messages / act</label>
+        <input type="number" class="text_pole" id="strk-chron-max-msgs" min="10" value="60" style="width:70px" />
+      </div>
     </div>
     <div class="strk-drawer-actions">
       <button class="menu_button" id="strk-chron-save-config">Save config</button>

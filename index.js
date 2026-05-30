@@ -277,6 +277,23 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   };
   eventSource.on(event_types.CHAT_CHANGED, _maybeShowBindingPrompt);
 
+  // Nudge: when a bound chat accumulates many messages since the last act, suggest
+  // marking one. Fires once per threshold crossing (every 25 msgs) to avoid spam.
+  let _lastActNudgeAt = 0;
+  const ACT_NUDGE_INTERVAL = 25;
+  eventSource.on(event_types.MESSAGE_RECEIVED, () => {
+    if (!worldBinding.currentWorldId) return;
+    if (_strkSettings().world?.actNudgeDisabled) return;
+    const count = chronicleOps.countSinceLastAct(getContext().chat ?? []);
+    const milestone = Math.floor(count / ACT_NUDGE_INTERVAL) * ACT_NUDGE_INTERVAL;
+    if (milestone >= ACT_NUDGE_INTERVAL && milestone !== _lastActNudgeAt) {
+      _lastActNudgeAt = milestone;
+      toastr.info(`${count} messages since the last act — consider /world-act-complete`, 'World Chronicle', { timeOut: 8000 });
+    } else if (milestone < _lastActNudgeAt) {
+      _lastActNudgeAt = milestone; // reset after an act is marked
+    }
+  });
+
   // Robust popup dismissal — ST's popup markup varies across versions.
   // Try native <dialog>.close(), then various known close-button selectors, then Escape.
   const _closePopup = ($contentJq) => {

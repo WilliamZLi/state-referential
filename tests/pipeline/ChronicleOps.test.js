@@ -66,6 +66,36 @@ test('second act only summarizes messages since the previous act boundary', asyn
   assert.ok(!act2Prompt.includes('ACT1-B'), 'act 2 must exclude the boundary message itself');
 });
 
+test('countSinceLastAct counts messages after the last act boundary', () => {
+  const chronicle = mkStore({ verbatimWindow: 5 });
+  const { ops } = mkOps(chronicle);
+  const messages = [
+    { name: 'Lyra', mes: 'a', extra: { state_referential_msgId: 'm1' } },
+    { name: 'Narrator', mes: 'b', extra: { state_referential_msgId: 'm2' } },
+    { name: 'Lyra', mes: 'c', extra: { state_referential_msgId: 'm3' } },
+  ];
+  // No acts yet → counts the whole chat.
+  assert.strictEqual(ops.countSinceLastAct(messages), 3);
+  // After an act marked at m2, only m3 remains.
+  chronicle.appendEntry('Act One', 'body', 'm2');
+  assert.strictEqual(ops.countSinceLastAct(messages), 1);
+});
+
+test('maxActMessages config caps how many messages a summary covers', async () => {
+  const chronicle = mkStore({ verbatimWindow: 5, config: { maxActMessages: 2 } });
+  const { ops, _prompts } = mkOps(chronicle);
+  const messages = [
+    { name: 'A', mes: 'FIRST' },
+    { name: 'B', mes: 'SECOND' },
+    { name: 'C', mes: 'THIRD' },
+  ];
+  await ops.actComplete('Act', { messages });
+  const prompt = _prompts()[_prompts().length - 1];
+  assert.ok(!prompt.includes('FIRST'), 'oldest message beyond cap excluded');
+  assert.match(prompt, /SECOND/);
+  assert.match(prompt, /THIRD/);
+});
+
 test('actComplete with lazy strategy and entries > verbatimWindow folds oldest', async () => {
   const chronicle = mkStore({ verbatimWindow: 2, updateStrategy: 'lazy' });
   chronicle.appendEntry('Old1', 'old1', null);
