@@ -228,10 +228,24 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     worldBinding, worldBinder, callGenericPopup, POPUP_TYPE, dialogs, serverApi,
     getWorldView: (id) => worldView.open(id),
   });
-  // Mount world manager inside the state-referential extension settings section
-  const $worldSection = $('#extensions_settings .strk-world-manager-mount, #extensions_settings');
-  await worldManager.mount($worldSection.last());
+  // Mount world drawer as a top-level sibling of the State Tracker drawer
+  const worldDrawerHtml = await loadTemplate('world-drawer');
+  const $worldDrawer = $(worldDrawerHtml);
+  $('#extensions_settings').append($worldDrawer);
+  await worldManager.mount($('.strk-world-manager-mount', $worldDrawer));
   engine.on('tracker:backend-changed', () => worldManager.render());
+
+  // Wire world settings controls (now in world-drawer, not settings-drawer)
+  const _ws = () => { _strkSettings().world ??= {}; return _strkSettings().world; };
+  $('#strk-world-prompt-enabled', $worldDrawer)
+    .prop('checked', _ws().bindingPromptDisabled !== true)
+    .on('change', e => { _ws().bindingPromptDisabled = !e.target.checked; saveSettingsDebounced(); });
+  $('#strk-world-default-window', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.verbatimWindow ?? 5)
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.verbatimWindow = Number(e.target.value); saveSettingsDebounced(); });
+  $('#strk-world-default-strategy', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.updateStrategy ?? 'lazy')
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.updateStrategy = e.target.value; saveSettingsDebounced(); });
 
   // Binding prompt — shown on new chats
   const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
