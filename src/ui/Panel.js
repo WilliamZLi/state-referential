@@ -75,8 +75,13 @@ export class Panel {
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
       'tracker:outfit-set-saved', 'tracker:outfit-set-deleted', 'tracker:outfit-set-applied',
-      'tracker:subject-active-changed', 'tracker:auto-update-completed', 'tracker:pipeline-completed',
+      'tracker:subject-active-changed', 'tracker:auto-update-completed',
     ]) this.engine.on(ev, safeRender);
+    // pipeline-completed always re-renders regardless of focus — countdowns need to tick
+    // and the AI just responded so no in-panel edit is in progress
+    this.engine.on('tracker:pipeline-completed', () => {
+      if (this.$el?.is(':visible')) this.render();
+    });
 
     this.render();
   }
