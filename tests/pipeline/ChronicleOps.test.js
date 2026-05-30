@@ -19,14 +19,17 @@ function mkStore(opts = {}) {
 
 function mkOps(chronicle, generateResponses = {}) {
   let callCount = 0;
+  const prompts = [];
   const generateQuietPrompt = async (prompt) => {
     callCount++;
+    prompts.push(prompt);
     if (generateResponses[callCount]) return generateResponses[callCount];
     return `Generated summary #${callCount}`;
   };
   return {
     ops: new ChronicleOps(chronicle, { generateQuietPrompt }),
     getCallCount: () => callCount,
+    _prompts: () => prompts,
   };
 }
 
