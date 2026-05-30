@@ -231,6 +231,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // Mount world manager inside the state-referential extension settings section
   const $worldSection = $('#extensions_settings .strk-world-manager-mount, #extensions_settings');
   await worldManager.mount($worldSection.last());
+  engine.on('tracker:backend-changed', () => worldManager.render());
 
   // Binding prompt — shown on new chats
   const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
