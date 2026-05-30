@@ -365,6 +365,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     const html = await loadTemplate('subject-add-modal');
     const $f = $(html);
     if (opts.forceProtagonist) { $('#strk-subj-role', $f).val('protagonist').prop('disabled', true); $('#strk-subject-modal-title', $f).text('Create protagonist'); }
+    else { $('#strk-subj-role', $f).val(engine.protagonist() ? 'npc' : 'protagonist'); }
     // Show traits only for person-like roles; hide for location/faction/object.
     const PERSON_ROLES = new Set(['protagonist', 'npc']);
     const $traitsBlock = $('.strk-traits', $f);
