@@ -129,10 +129,12 @@ export class TrackerEngine {
   loadSnapshot(id) { return this.snapshots.load(id); }
   dropSnapshots(ids) { this.snapshots.dropSnapshots(ids); }
   restoreSnapshot(s) {
+    // Scene tags are sticky user controls — NOT reverted by snapshot restore
+    // (swipe/delete/regen). We deliberately skip saveSceneTags so the user's
+    // active tags persist across undo; _attach re-reads them from the unchanged backend.
     this.backend.saveSubjects(clone(s.subjects));
     this.backend.saveValues(clone(s.values));
     this.backend.saveDescriptions(clone(s.descriptions));
-    this.backend.saveSceneTags(clone(s.sceneTags));
     this._attach(this.backend);
     this.bus.emit('tracker:state-restored', {});
   }
