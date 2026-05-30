@@ -3,11 +3,16 @@ import { activeEntries } from '../util/countdown.js';
 const DEFAULT_ACTIVE_WINDOW = 5;
 
 export const DEFAULT_AUTOUPDATE_TEMPLATE = [
-  'You are a state tracker. Based on the LAST narrator reply only, identify any',
-  'changes to the tracked entities below. Emit one command per line. If nothing',
-  'changed, reply exactly: NONE',
+  'You are a state tracker. Identify changes to the tracked entities below.',
+  'Emit one command per line. If nothing changed, reply exactly: NONE',
+  '',
+  'Apply TWO kinds of change:',
+  '1. Changes caused by the LAST narrator reply (new injuries, items gained/lost, mood shifts, etc.)',
+  '2. Standing/recurring effects: if an active status effect describes a per-turn change',
+  '   (e.g. "+5 arousal / turn", "lose 3 HP each turn"), apply that change ONCE now via DELTA.',
   '',
   '# Tracked entities',
+  '(status effects and conditions show their description in parentheses — read these for recurring rules)',
   '',
   '{{tracked_entities}}',
   '',
@@ -113,6 +118,14 @@ export class AutoUpdate {
             ? activeEntries(this.engine, subj.id, t.id, f, raw)
             : raw;
           lines.push(`  ${t.id}.${f.id} (${fieldTypeAnnotation(f)}) = ${formatValue(f, val)}`);
+          // For describable list fields, surface each entry's description so the AI
+          // can act on recurring-effect rules (e.g. "+5 arousal / turn").
+          if (f.type === 'list' && f.describable && Array.isArray(val)) {
+            for (const entry of val) {
+              const desc = this.engine.getDescription(subj.id, t.id, f.id, entry);
+              if (desc) lines.push(`      • ${entry}: ${desc}`);
+            }
+          }
         }
       }
       if (lines.length) {
