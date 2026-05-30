@@ -13,6 +13,7 @@ function mkStore(opts = {}) {
       updateStrategy: opts.updateStrategy ?? 'lazy',
       bigPictureTokenCap: 300,
       entryTokenCap: 200,
+      ...(opts.config ?? {}),
     },
   });
 }
