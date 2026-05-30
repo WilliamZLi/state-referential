@@ -85,6 +85,32 @@ test('setBigPicture + getBigPicture', () => {
   assert.strictEqual(s.getBigPictureCoversThrough(), id);
 });
 
+test('updateEntry edits title and body of an existing entry', () => {
+  const s = mkStore();
+  const e = s.appendEntry('Old Title', 'old body', null);
+  s.updateEntry(e.id, { title: 'New Title', body: 'new body' });
+  const updated = s.getEntries()[0];
+  assert.strictEqual(updated.title, 'New Title');
+  assert.strictEqual(updated.body, 'new body');
+  assert.strictEqual(updated.id, e.id); // id preserved
+});
+
+test('deleteEntry removes entry by id', () => {
+  const s = mkStore();
+  const a = s.appendEntry('A', 'a', null);
+  s.appendEntry('B', 'b', null);
+  s.deleteEntry(a.id);
+  assert.strictEqual(s.getEntries().length, 1);
+  assert.strictEqual(s.getEntries()[0].title, 'B');
+});
+
+test('updateEntry is no-op for unknown id', () => {
+  const s = mkStore();
+  s.appendEntry('A', 'a', null);
+  s.updateEntry('nonexistent-id', { title: 'X' }); // should not throw
+  assert.strictEqual(s.getEntries()[0].title, 'A');
+});
+
 test('serialize/hydrate round-trip', () => {
   const s = mkStore();
   const e = s.appendEntry('A', 'hello', 'tmsg-5');

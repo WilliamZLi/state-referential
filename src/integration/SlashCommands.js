@@ -221,6 +221,26 @@ export function register(engine, deps) {
     }
   }, '/world-act-complete [title] — mark act complete, generate chronicle entry');
 
+  reg('world-act-insert', async (args, value) => {
+    const chronicle = deps.getChronicle?.();
+    if (!chronicle) return 'Chronicle not loaded — is this chat bound to a World?';
+    // Parse "title | body" or just "title"
+    const raw = String(value ?? '').trim();
+    const pipeIdx = raw.indexOf('|');
+    const title = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
+    const body = (pipeIdx >= 0 ? raw.slice(pipeIdx + 1) : '').trim();
+    if (!title) return 'Usage: /world-act-insert <title> | <body>';
+    chronicle.appendEntry(title, body, deps.getCurrentMsgId?.() ?? null);
+    try {
+      const worldId = deps.worldBinding?.currentWorldId;
+      if (worldId) await deps.serverApi?.putChronicle(worldId, chronicle.serialize());
+    } catch (e) { /* best-effort */ }
+    deps.chronicleInjection?.run?.();
+    const msg = `Act "${title}" inserted. Total acts: ${chronicle.getEntries().length}`;
+    toastr.success(msg, 'World Chronicle');
+    return msg;
+  }, '/world-act-insert <title> | <body> — manually insert a chronicle act without AI');
+
   reg('world-bigpicture', async (args, value) => {
     const sub = String(value ?? '').trim();
     const chronicle = deps.getChronicle?.();

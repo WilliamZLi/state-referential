@@ -61,6 +61,16 @@ export class ChronicleStore {
     if (idx >= 0) this._entries = this._entries.slice(idx + 1);
   }
 
+  updateEntry(id, patch) {
+    const idx = this._entries.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    this._entries[idx] = { ...this._entries[idx], ...patch };
+  }
+
+  deleteEntry(id) {
+    this._entries = this._entries.filter(e => e.id !== id);
+  }
+
   serialize() {
     return {
       bigPicture: this._bigPicture,

@@ -469,6 +469,10 @@
 .strk-entry-date { font-size: 11px; opacity: 0.5; }
 .strk-chronicle-entry p { margin: 2px 0 0; font-size: 12px; opacity: 0.75; }
 
+.strk-entry-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.strk-entry-header strong { flex: 1; }
+.strk-entry-btn { padding: 1px 6px; font-size: 11px; }
+
 /* World Manager */
 .strk-world-row {
   display: flex;

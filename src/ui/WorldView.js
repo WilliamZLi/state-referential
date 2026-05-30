@@ -6,7 +6,7 @@ export class WorldView {
     this.registry = worldRegistry;
     this.deps = deps;
     // deps: { callGenericPopup, POPUP_TYPE, chronicleOps, getChronicle,
-    //         chronicleInjection, serverApi, closePopup }
+    //         chronicleInjection, serverApi, closePopup, persistChronicle, dialogs }
   }
 
   async open(worldId) {
@@ -34,16 +34,61 @@ export class WorldView {
     $('#strk-wv-bigpicture', $f).text(chronicle?.getBigPicture() || '(none yet)');
 
     // Entries list
-    const $entries = $('#strk-wv-entries', $f).empty();
-    const entries = chronicle?.getEntries() ?? [];
-    if (!entries.length) $entries.text('(no acts yet)');
-    for (const e of [...entries].reverse()) {
-      const $row = $('<div class="strk-chronicle-entry"></div>');
-      $row.append($('<strong></strong>').text(e.title));
-      $row.append($('<span class="strk-entry-date"></span>').text(` — ${new Date(e.createdAt).toLocaleDateString()}`));
-      $row.append($('<p></p>').text(e.body));
-      $entries.append($row);
-    }
+    const renderEntries = () => {
+      const $entries = $('#strk-wv-entries', $f).empty();
+      const entries = chronicle?.getEntries() ?? [];
+
+      // Insert act button
+      const $insertBtn = $('<button class="menu_button" style="margin-bottom:8px">+ Insert act manually</button>');
+      $insertBtn.on('click', async () => {
+        const title = await (this.deps.dialogs?.prompt?.('Act title:') ?? Promise.resolve(prompt('Act title:')));
+        if (!title?.trim()) return;
+        const body = await (this.deps.dialogs?.prompt?.('Act body (summary):') ?? Promise.resolve(prompt('Act body:')));
+        if (body == null) return;
+        chronicle.appendEntry(title.trim(), body.trim(), null);
+        await this.deps.persistChronicle?.();
+        this.deps.chronicleInjection?.run?.();
+        renderEntries();
+      });
+      $entries.append($insertBtn);
+
+      if (!entries.length) { $entries.append($('<div>(no acts yet)</div>')); return; }
+
+      for (const e of [...entries].reverse()) {
+        const $row = $('<div class="strk-chronicle-entry"></div>');
+        const $header = $('<div class="strk-entry-header"></div>');
+        $header.append($('<strong></strong>').text(e.title));
+        $header.append($('<span class="strk-entry-date"></span>').text(` — ${new Date(e.createdAt).toLocaleDateString()}`));
+
+        const $editBtn = $('<button class="menu_button strk-entry-btn">Edit</button>');
+        $editBtn.on('click', async () => {
+          const newTitle = await (this.deps.dialogs?.prompt?.('Edit title:', e.title) ?? Promise.resolve(prompt('Edit title:', e.title)));
+          if (newTitle == null) return;
+          const newBody = await (this.deps.dialogs?.prompt?.('Edit body:', e.body) ?? Promise.resolve(prompt('Edit body:', e.body)));
+          if (newBody == null) return;
+          chronicle.updateEntry(e.id, { title: newTitle.trim() || e.title, body: newBody.trim() });
+          await this.deps.persistChronicle?.();
+          this.deps.chronicleInjection?.run?.();
+          renderEntries();
+        });
+
+        const $delBtn = $('<button class="menu_button strk-entry-btn strk-danger">×</button>');
+        $delBtn.on('click', async () => {
+          const ok = await (this.deps.dialogs?.confirm?.(`Delete act "${e.title}"?`) ?? Promise.resolve(confirm(`Delete act "${e.title}"?`)));
+          if (!ok) return;
+          chronicle.deleteEntry(e.id);
+          await this.deps.persistChronicle?.();
+          this.deps.chronicleInjection?.run?.();
+          renderEntries();
+        });
+
+        $header.append($editBtn).append($delBtn);
+        $row.append($header);
+        $row.append($('<p></p>').text(e.body));
+        $entries.append($row);
+      }
+    };
+    renderEntries();
 
     // Save config
     $('#strk-chron-save-config', $f).on('click', async () => {

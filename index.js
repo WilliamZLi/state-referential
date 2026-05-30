@@ -224,6 +224,12 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const worldView = new WorldView(worldRegistry, {
     callGenericPopup, POPUP_TYPE, chronicleOps, getChronicle, chronicleInjection, serverApi,
     closePopup: ($f) => _closePopup($f),
+    dialogs,
+    persistChronicle: async () => {
+      const worldId = worldBinding.currentWorldId;
+      if (!worldId) return;
+      await serverApi.putChronicle(worldId, _chronicle.serialize());
+    },
   });
   const worldManager = new WorldManager(worldRegistry, {
     worldBinding, worldBinder, callGenericPopup, POPUP_TYPE, dialogs, serverApi,
