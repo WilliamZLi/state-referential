@@ -156,7 +156,13 @@ export class AutoUpdate {
 
   async run({ lastNarratorReply, msgId }) {
     const prompt = this.buildPrompt({ lastNarratorReply });
+    if (this.deps.debug) {
+      console.groupCollapsed('[state-referential] auto-update prompt');
+      console.log(prompt);
+      console.groupEnd();
+    }
     const response = await this.deps.generateQuietPrompt(prompt);
+    if (this.deps.debug) console.log('[state-referential] auto-update response:', response);
     return this.engine.applyCommands(response ?? '', { source: 'auto-update', msgId });
   }
 }

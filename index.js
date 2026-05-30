@@ -96,6 +96,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       return i < 0 ? null : i;
     },
     template: _strkSettings().templates?.autoUpdate,
+    get debug() { return _strkSettings().debug === true; },
   });
   const descProbe = new DescriptionProbe(engine, {
     generateQuietPrompt: generateProbePrompt, // isolated, no chat context
