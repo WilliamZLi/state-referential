@@ -174,7 +174,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // Chronicle store — loaded per-world on CHAT_CHANGED; starts empty until a world is bound.
   let _chronicle = new ChronicleStore({});
   const getChronicle = () => _chronicle;
-  const setChronicle = (c) => { _chronicle = c; chronicleInjection.chronicle = c; };
+  const setChronicle = (c) => { _chronicle = c; chronicleInjection.chronicle = c; chronicleOps.chronicle = c; };
 
   // Chronicle injection — renders chronicle → setExtensionPrompt before each generation.
   const chronicleInjection = new ChronicleInjection(_chronicle, { setExtensionPrompt });

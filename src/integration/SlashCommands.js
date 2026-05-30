@@ -203,10 +203,16 @@ export function register(engine, deps) {
     const title = String(value ?? '').trim() || `Act (${new Date().toLocaleDateString()})`;
     const ops = deps.chronicleOps;
     if (!ops) return 'Chronicle not available (chat must be bound to a World).';
+    const chronicle = deps.getChronicle?.();
+    if (!chronicle) return 'Chronicle not loaded — is this chat bound to a World?';
     const messages = deps.getChat?.() ?? [];
-    await ops.actComplete(title, { messages, msgId: deps.getCurrentMsgId?.() });
-    deps.chronicleInjection?.run?.();
-    return `Chronicle entry "${title}" appended.`;
+    try {
+      await ops.actComplete(title, { messages, msgId: deps.getCurrentMsgId?.() });
+      deps.chronicleInjection?.run?.();
+      return `Chronicle entry "${title}" appended. Total acts: ${chronicle.getEntries().length}`;
+    } catch (e) {
+      return `Act complete failed: ${e.message}`;
+    }
   }, '/world-act-complete [title] — mark act complete, generate chronicle entry');
 
   reg('world-bigpicture', async (args, value) => {
