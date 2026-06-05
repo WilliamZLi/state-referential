@@ -173,19 +173,19 @@ export function makeRenderers(engine, deps) {
         engine.applyDelta(subj.id, field._trackerId, field.id, -(field.step ?? 1), { source: 'manual' }));
       const $plus  = $('<button class="strk-field-icon">+</button>').on('click', () =>
         engine.applyDelta(subj.id, field._trackerId, field.id,  (field.step ?? 1), { source: 'manual' }));
-      // If paired with a max field, show "current / max" inline so user sees both at a glance
+      // Show "/ max" (or "%") right after the input, then the −/+ stepper:  [input] / max  − val +
       const extras = [];
+      if (field.maxFromField) {
+        const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField);
+        extras.push($('<span class="strk-field-ratio"></span>').text(`/ ${maxValue ?? '?'}`));
+      } else if (field.displayAs === 'percent') {
+        extras.push($('<span class="strk-field-ratio"></span>').text('%'));
+      } else if (field.max != null) {
+        extras.push($('<span class="strk-field-ratio"></span>').text(`/ ${field.max}`));
+      }
       if (field.allowDelta) {
         const $val = $('<span class="strk-field-val"></span>').text(cur);
         extras.push($minus, $val, $plus);
-      }
-      if (field.maxFromField) {
-        const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField);
-        const $ratio = $('<span class="strk-field-ratio"></span>').text(`/ ${maxValue ?? '?'}`);
-        extras.push($ratio);
-      } else if (field.displayAs === 'percent') {
-        const $pct = $('<span class="strk-field-ratio"></span>').text('%');
-        extras.push($pct);
       }
       return row(field, subj, $input, extras);
     },
