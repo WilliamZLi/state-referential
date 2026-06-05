@@ -13,6 +13,6 @@
   "fields": [
     { "id": "health", "label": "Health", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
     { "id": "stamina", "label": "Stamina", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
-    { "id": "arousal", "label": "Arousal", "type": "number", "min": 0, "max": 100, "default": 0, "allowDelta": true, "describable": false, "inclusion": { "rule": "tag", "tags": ["intimate"] }, "injection": { "enabled": true } }
+    { "id": "arousal", "label": "Arousal", "type": "number", "min": 0, "max": 100, "default": 0, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } }
   ]
 }
