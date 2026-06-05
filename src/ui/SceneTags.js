@@ -4,7 +4,13 @@ export class SceneTagsUI {
     this.$el = $container;
     this.defaults = opts.defaults ?? ['intimate','combat','social','exploration','wardrobe','dressing'];
     this._dialogs = opts.dialogs ?? null;
+    // Re-render on tag toggles, and on events that reload active tags WITHOUT a
+    // tag-changed emit: chat-switch / world-bind (backend-changed) and undo/redo
+    // (state-restored). Without these, persisted tags render unhighlighted on
+    // reload until the first manual click.
     this.engine.on('tracker:tag-changed', () => this.render());
+    this.engine.on('tracker:backend-changed', () => this.render());
+    this.engine.on('tracker:state-restored', () => this.render());
     this.render();
   }
   render() {
