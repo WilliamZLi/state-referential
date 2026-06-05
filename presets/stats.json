@@ -6,7 +6,7 @@
   "injection": {
     "enabled": true,
     "trigger": "always",
-    "position": "in-prompt",
+    "position": "in-chat",
     "depth": 0,
     "template": "<reference_injection>\n**{{subject}} stats:**\n{{fields}}\n</reference_injection>"
   },
