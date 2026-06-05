@@ -1,9 +1,9 @@
 // src/pipeline/ChronicleInjection.js
-const KEY = 'world:chronicle';
+import { resolvePosition } from './Injection.js';
 
-// BEFORE_PROMPT = 2 (same POSITION_MAP as Injection.js)
-const DEFAULT_POSITION = 2;
+const KEY = 'world:chronicle';
 const DEFAULT_DEPTH = 0;
+const IN_CHAT = 1;
 
 export class ChronicleInjection {
   constructor(chronicle, deps) {
@@ -12,21 +12,21 @@ export class ChronicleInjection {
   }
 
   run() {
+    const cfg = this.chronicle.getConfig();
     const bigPicture = this.chronicle.getBigPicture() ?? '';
-    const verbatim = this.chronicle.listVerbatimEntries();
-
-    if (!bigPicture && verbatim.length === 0) {
-      this.deps.setExtensionPrompt(KEY, '', DEFAULT_POSITION, DEFAULT_DEPTH);
-      return;
-    }
+    const acts = this.chronicle.getEntries().filter(e => e.inject === true);
 
     const lines = [];
-    if (bigPicture) lines.push(`**Story so far (overall):** ${bigPicture}`);
-    if (verbatim.length) {
+    if (cfg.injectBigPicture !== false && bigPicture) {
+      lines.push(`**Story so far (overall):** ${bigPicture}`);
+    }
+    if (acts.length) {
       lines.push('\n**Recent acts:**');
-      for (const e of verbatim) lines.push(`- ${e.title}: ${e.body}`);
+      for (const e of acts) lines.push(`- ${e.title}: ${e.body}`);
     }
 
-    this.deps.setExtensionPrompt(KEY, lines.join('\n'), DEFAULT_POSITION, DEFAULT_DEPTH);
+    const pos = resolvePosition(cfg.injectPosition ?? 'in-prompt');
+    const depth = pos === IN_CHAT ? (cfg.injectDepth ?? 4) : DEFAULT_DEPTH;
+    this.deps.setExtensionPrompt(KEY, lines.join('\n'), pos, depth);
   }
 }

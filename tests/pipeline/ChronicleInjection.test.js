@@ -25,7 +25,7 @@ test('run calls setExtensionPrompt with rendered chronicle text', () => {
   });
   const chronicle2 = ChronicleStore.hydrate({
     bigPicture: 'Lyra arrived.',
-    entries: [{ id: 'e1', createdAt: 1, title: 'Act I', body: 'She crossed the border.', createdByMessageId: null }],
+    entries: [{ id: 'e1', createdAt: 1, title: 'Act I', body: 'She crossed the border.', createdByMessageId: null, inject: true }],
     config: { verbatimWindow: 3, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200 },
   });
   const calls = [];
@@ -54,10 +54,10 @@ test('run clears injection when chronicle is empty', () => {
   assert.ok(cleared, 'should clear injection when empty');
 });
 
-test('run only shows verbatimWindow entries', () => {
+test('run injects only acts flagged inject:true, regardless of verbatimWindow', () => {
   const entries = [
-    { id: 'e1', createdAt: 1, title: 'Old Act', body: 'old', createdByMessageId: null },
-    { id: 'e2', createdAt: 2, title: 'Recent Act', body: 'recent', createdByMessageId: null },
+    { id: 'e1', createdAt: 1, title: 'Old Act', body: 'old', createdByMessageId: null, inject: true },
+    { id: 'e2', createdAt: 2, title: 'Recent Act', body: 'recent', createdByMessageId: null, inject: false },
   ];
   const chronicle = ChronicleStore.hydrate({
     bigPicture: 'Summary.',
@@ -68,12 +68,11 @@ test('run only shows verbatimWindow entries', () => {
   const inj = new ChronicleInjection(chronicle, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
   inj.run();
   const c = calls.find(x => x.k === 'world:chronicle');
-  assert.ok(c, 'should emit');
-  assert.ok(!c.t.includes('Old Act'), 'old act should not appear');
-  assert.ok(c.t.includes('Recent Act'), 'recent act should appear');
+  assert.ok(c.t.includes('Old Act'), 'inject:true act shows even though it is outside verbatimWindow=1');
+  assert.ok(!c.t.includes('Recent Act'), 'inject:false act excluded even though it is the most recent');
 });
 
-test('position defaults to 2 (BEFORE_PROMPT)', () => {
+test('position defaults to 0 (IN_PROMPT)', () => {
   const chronicle = ChronicleStore.hydrate({
     bigPicture: 'x',
     entries: [],
@@ -82,6 +81,46 @@ test('position defaults to 2 (BEFORE_PROMPT)', () => {
   const calls = [];
   const inj = new ChronicleInjection(chronicle, { setExtensionPrompt: (k, t, pos, d) => calls.push({ pos, d }) });
   inj.run();
-  assert.strictEqual(calls[0].pos, 2);
+  assert.strictEqual(calls[0].pos, 0);
   assert.strictEqual(calls[0].d, 0);
+});
+
+test('injectBigPicture:false omits the big picture line', () => {
+  const chronicle = ChronicleStore.hydrate({
+    bigPicture: 'Big summary text.',
+    entries: [{ id: 'e1', createdAt: 1, title: 'A', body: 'b', createdByMessageId: null, inject: true }],
+    config: { verbatimWindow: 3, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200, injectBigPicture: false },
+  });
+  const calls = [];
+  const inj = new ChronicleInjection(chronicle, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const c = calls.find(x => x.k === 'world:chronicle');
+  assert.ok(!c.t.includes('Big summary text.'), 'big picture omitted when toggle off');
+  assert.ok(c.t.includes('A'), 'acts still injected');
+});
+
+test('injectPosition maps labels to numeric; in-chat carries depth', () => {
+  const mk = (pos) => ChronicleStore.hydrate({
+    bigPicture: 'x', entries: [],
+    config: { verbatimWindow: 3, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200, injectPosition: pos, injectDepth: 6 },
+  });
+  const run = (pos) => { const calls = []; new ChronicleInjection(mk(pos), { setExtensionPrompt: (k, t, p, d) => calls.push({ p, d }) }).run(); return calls[0]; };
+  assert.strictEqual(run('in-prompt').p, 0);
+  assert.strictEqual(run('top').p, 2);
+  const ic = run('in-chat');
+  assert.strictEqual(ic.p, 1);
+  assert.strictEqual(ic.d, 6);
+});
+
+test('run clears injection when nothing is toggled on', () => {
+  const chronicle = ChronicleStore.hydrate({
+    bigPicture: 'Present but disabled.',
+    entries: [{ id: 'e1', createdAt: 1, title: 'A', body: 'b', createdByMessageId: null, inject: false }],
+    config: { verbatimWindow: 3, updateStrategy: 'lazy', bigPictureTokenCap: 300, entryTokenCap: 200, injectBigPicture: false },
+  });
+  const calls = [];
+  const inj = new ChronicleInjection(chronicle, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const c = calls.find(x => x.k === 'world:chronicle');
+  assert.strictEqual(c.t, '', 'empty when big picture off and no acts toggled on');
 });
