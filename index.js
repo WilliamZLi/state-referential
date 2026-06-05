@@ -168,7 +168,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // ── Layer 2 — World Model ─────────────────────────────────────────────────────
 
   // World registry — in-memory list of worlds; loaded from server on init.
-  const worldRegistry = new WorldRegistry(serverApi);
+  const worldRegistry = new WorldRegistry(serverApi, { getDefaults: () => _strkSettings().world?.defaultChronicleConfig ?? {} });
   try { await worldRegistry.init(); }
   catch (e) { console.warn('[state-referential] world registry init failed (server plugin not installed?):', e?.message); }
 
@@ -256,6 +256,18 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   $('#strk-world-default-strategy', $worldDrawer)
     .val(_ws().defaultChronicleConfig?.updateStrategy ?? 'lazy')
     .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.updateStrategy = e.target.value; saveSettingsDebounced(); });
+  $('#strk-world-default-bp-cap', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.bigPictureTokenCap ?? 300)
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.bigPictureTokenCap = Number(e.target.value); saveSettingsDebounced(); });
+  $('#strk-world-default-entry-cap', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.entryTokenCap ?? 200)
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.entryTokenCap = Number(e.target.value); saveSettingsDebounced(); });
+  $('#strk-world-default-inject-bp', $worldDrawer)
+    .prop('checked', _ws().defaultChronicleConfig?.injectBigPicture !== false)
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.injectBigPicture = e.target.checked; saveSettingsDebounced(); });
+  $('#strk-world-default-inject-pos', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.injectPosition ?? 'in-prompt')
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.injectPosition = e.target.value; saveSettingsDebounced(); });
 
   // Binding prompt — shown on new chats
   const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
