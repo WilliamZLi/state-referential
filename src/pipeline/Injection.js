@@ -168,7 +168,7 @@ const POSITION_MAP = {
   'top':              2,
 };
 
-function resolvePosition(pos) {
+export function resolvePosition(pos) {
   if (typeof pos === 'number') return pos;
   return POSITION_MAP[pos] ?? 0; // default IN_PROMPT (main body)
 }
