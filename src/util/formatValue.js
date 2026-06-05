@@ -5,6 +5,7 @@
  *   - type: 'list' → comma-joined
  *   - maxFromField: paired with another number field → "value/maxVal"
  *   - displayAs: 'percent' → "value%"
+ *   - number with a static `max` → "value/max" (so the model sees the ceiling)
  *   - else → String(value)
  *
  * @param {*} value - the raw stored value
@@ -35,6 +36,9 @@ export function formatValue(value, field, fieldValues) {
     }
     if (field.displayAs === 'percent') {
       return `${value ?? 0}%`;
+    }
+    if (field.max !== undefined && field.max !== null) {
+      return `${value ?? 0}/${field.max}`;
     }
   }
   return value == null ? '' : String(value);
