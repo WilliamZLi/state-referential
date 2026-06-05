@@ -7,11 +7,14 @@ const DEFAULT_CHRONICLE_CONFIG = {
   bigPictureTokenCap: 300,
   entryTokenCap: 200,
   maxActMessages: 60,
+  injectBigPicture: true,
+  injectPosition: 'in-prompt',
 };
 
 export class WorldRegistry {
-  constructor(serverApi) {
+  constructor(serverApi, deps = {}) {
     this.serverApi = serverApi;
+    this.getDefaults = deps.getDefaults ?? (() => ({}));
     this._worlds = new Map();
   }
 
@@ -42,7 +45,7 @@ export class WorldRegistry {
       openBranchChatId: null,
       subjects: { subjects: [], protagonistId: null },
       sceneTags: [],
-      chronicleConfig: { ...DEFAULT_CHRONICLE_CONFIG, ...(opts.chronicleConfig ?? {}) },
+      chronicleConfig: { ...DEFAULT_CHRONICLE_CONFIG, ...this.getDefaults(), ...(opts.chronicleConfig ?? {}) },
       lockedBy: null,
     };
     const created = await this.serverApi.createWorld(meta);

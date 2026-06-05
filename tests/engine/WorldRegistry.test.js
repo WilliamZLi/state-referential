@@ -76,3 +76,13 @@ test('setMainlineChatId updates mainlineChatId on server', async () => {
   assert.strictEqual(reg.get('w1').mainlineChatId, 'chat-abc');
   assert.strictEqual(api._worlds.get('w1').mainlineChatId, 'chat-abc');
 });
+
+test('create merges getDefaults() over DEFAULT_CHRONICLE_CONFIG, under opts.chronicleConfig', async () => {
+  const api = mkServerApi();
+  const reg = new WorldRegistry(api, { getDefaults: () => ({ verbatimWindow: 9, injectBigPicture: false }) });
+  await reg.init();
+  const w = await reg.create({ name: 'W', chronicleConfig: { injectBigPicture: true } });
+  assert.strictEqual(w.chronicleConfig.verbatimWindow, 9, 'getDefaults applied over DEFAULT_CHRONICLE_CONFIG');
+  assert.strictEqual(w.chronicleConfig.injectBigPicture, true, 'opts.chronicleConfig wins over getDefaults');
+  assert.strictEqual(w.chronicleConfig.injectPosition, 'in-prompt', 'DEFAULT_CHRONICLE_CONFIG fills the rest');
+});
