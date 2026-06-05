@@ -7,6 +7,8 @@ const DEFAULT_CONFIG = {
   bigPictureTokenCap: 300,
   entryTokenCap: 200,
   maxActMessages: 60,
+  injectBigPicture: true,
+  injectPosition: 'in-prompt',
 };
 
 export class ChronicleStore {
@@ -41,6 +43,7 @@ export class ChronicleStore {
       title,
       body,
       createdByMessageId: msgId,
+      inject: false,
     };
     this._entries.push(entry);
     return entry;

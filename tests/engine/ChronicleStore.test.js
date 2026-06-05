@@ -120,3 +120,16 @@ test('serialize/hydrate round-trip', () => {
   assert.strictEqual(s2.getEntries()[0].title, 'A');
   assert.strictEqual(s2.getBigPicture(), 'big pic');
 });
+
+test('getConfig includes injection defaults', () => {
+  const c = new ChronicleStore({});
+  const cfg = c.getConfig();
+  assert.strictEqual(cfg.injectBigPicture, true);
+  assert.strictEqual(cfg.injectPosition, 'in-prompt');
+});
+
+test('appendEntry defaults inject to false', () => {
+  const c = new ChronicleStore({});
+  const e = c.appendEntry('Title', 'Body', null);
+  assert.strictEqual(e.inject, false);
+});
