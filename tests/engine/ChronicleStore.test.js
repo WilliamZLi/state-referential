@@ -133,3 +133,8 @@ test('appendEntry defaults inject to false', () => {
   const e = c.appendEntry('Title', 'Body', null);
   assert.strictEqual(e.inject, false);
 });
+
+test('getConfig includes injectDepth default', () => {
+  const c = new ChronicleStore({});
+  assert.strictEqual(c.getConfig().injectDepth, 4);
+});

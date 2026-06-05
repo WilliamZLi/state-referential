@@ -9,6 +9,7 @@ const DEFAULT_CHRONICLE_CONFIG = {
   maxActMessages: 60,
   injectBigPicture: true,
   injectPosition: 'in-prompt',
+  injectDepth: 4,
 };
 
 export class WorldRegistry {
