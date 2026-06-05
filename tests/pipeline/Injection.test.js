@@ -2,7 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { TrackerEngine } from '../../src/engine/TrackerEngine.js';
 import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
-import { Injection } from '../../src/pipeline/Injection.js';
+import { Injection, truncateDesc } from '../../src/pipeline/Injection.js';
+
+test('truncateDesc keeps descriptions up to the render cap (300) and trims longer ones', () => {
+  const short = 'A short identifier clause.';
+  assert.strictEqual(truncateDesc(short), short, 'short desc unchanged');
+  const med = 'x'.repeat(200);
+  assert.strictEqual(truncateDesc(med), med, '200 chars is under the cap and must not be truncated');
+  const long = 'y'.repeat(400);
+  const out = truncateDesc(long);
+  assert.ok(out.endsWith('…'), 'over-cap desc ends with ellipsis');
+  assert.strictEqual(out.length, 300, 'truncated to 299 chars + ellipsis');
+});
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 

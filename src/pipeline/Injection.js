@@ -7,9 +7,9 @@ import { activeEntries } from '../util/countdown.js';
  * (~15 words), but if a misbehaving template produces paragraphs we truncate
  * to keep the prompt sane.
  */
-const DESC_RENDER_CAP = 120;
+const DESC_RENDER_CAP = 300;
 
-function truncateDesc(text) {
+export function truncateDesc(text) {
   if (!text) return '';
   const trimmed = String(text).trim();
   if (trimmed.length <= DESC_RENDER_CAP) return trimmed;
