@@ -171,7 +171,7 @@ export function register(engine, deps) {
     if (!reg) return 'World model not available.';
     const worlds = reg.list();
     if (!worlds.length) return '(no worlds)';
-    return worlds.map(w => `${w.id.slice(0, 8)}… ${w.name}${w.mainlineChatId ? ' [has mainline]' : ''}`).join('\n');
+    return worlds.map(w => `${w.id.slice(0, 8)}… ${w.name}${w.mainlineChatId ? ' [linked]' : ''}`).join('\n');
   }, '/world-list — list all Worlds');
 
   reg('world-new', async (args, value) => {

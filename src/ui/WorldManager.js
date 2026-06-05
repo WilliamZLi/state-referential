@@ -34,8 +34,7 @@ export class WorldManager {
     }
     const world = this.registry.get(worldId);
     const name = world?.name ?? worldId;
-    const role = 'mainline'; // simplified — extend for branch when Layer 3 ships
-    $el.html(`Current chat: bound to <strong>${name}</strong> as ${role} &nbsp;`);
+    $el.html(`Current chat: bound to <strong>${name}</strong> &nbsp;`);
     const $unbind = $('<button class="menu_button strk-world-unbind">Unbind</button>');
     $unbind.on('click', async () => {
       if (!await this.deps.dialogs?.confirm?.(`Unbind this chat from "${name}"? Tracker state will be copied to the chat.`)) return;
@@ -52,10 +51,14 @@ export class WorldManager {
     for (const w of worlds) {
       const $row = $('<div class="strk-world-row"></div>');
       $row.append($('<span class="strk-world-name"></span>').text(w.name));
-      if (w.mainlineChatId) $row.append($('<span class="strk-world-badge">mainline</span>'));
+      if (w.mainlineChatId) $row.append($('<span class="strk-world-badge">linked</span>'));
 
       const $open = $('<button class="menu_button">Open</button>');
-      $open.on('click', () => this.deps.getWorldView?.(w.id));
+      if (this.deps.worldBinding?.currentWorldId === w.id) {
+        $open.on('click', () => this.deps.getWorldView?.(w.id));
+      } else {
+        $open.prop('disabled', true).attr('title', 'Open the chat bound to this world to view or edit it');
+      }
       $row.append($open);
 
       const $export = $('<button class="menu_button">Export</button>');
