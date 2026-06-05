@@ -29,18 +29,15 @@
     <label class="strk-inj-tag-row" title="Comma-separated scene tags. Tracker injects only when at least one tag is active.">
       Tags <input type="text" class="text_pole" id="strk-inj-tags" placeholder="e.g. combat, intimate" />
     </label>
-    <label title="Where this tracker is injected. Six labels, three real slots: in-prompt = system → main prompt body (after the system prompt, before chat history; Depth ignored). in-chat = author-note → inside the chat history at the Depth below (0 = just above the latest message). top = before-char-defs → above the entire prompt, before the system prompt.">
+    <label title="Where this tracker is injected. in-prompt = main prompt body (after the system prompt, before chat history; Depth ignored). in-chat = inside the chat history at the Depth below (0 = just above the latest message). top = above the entire prompt, before the system prompt.">
       Position
       <select class="text_pole" id="strk-inj-position">
         <option value="in-prompt">in-prompt</option>
         <option value="in-chat">in-chat</option>
         <option value="top">top</option>
-        <option value="system">system</option>
-        <option value="author-note">author-note</option>
-        <option value="before-char-defs">before-char-defs</option>
       </select>
     </label>
-    <label title="Depth = messages from the bottom of the chat. Only used when position is in-chat or author-note (0 = just above the latest message). Ignored for in-prompt / system / top / before-char-defs.">
+    <label title="Depth = messages from the bottom of the chat. Only used when position is in-chat (0 = just above the latest message). Ignored for in-prompt / top.">
       Depth <input type="number" class="text_pole" id="strk-inj-depth" min="0" value="4" />
     </label>
     <label class="strk-inj-template-row"
