@@ -39,19 +39,24 @@ export class WorldView {
       const $entries = $('#strk-wv-entries', $f).empty();
       const entries = chronicle?.getEntries() ?? [];
 
-      // Insert act button
-      const $insertBtn = $('<button class="menu_button" style="margin-bottom:8px">+ Insert act manually</button>');
-      $insertBtn.on('click', async () => {
-        const title = await (this.deps.dialogs?.prompt?.('Act title:') ?? Promise.resolve(prompt('Act title:')));
-        if (!title?.trim()) return;
-        const body = await (this.deps.dialogs?.prompt?.('Act body (summary):') ?? Promise.resolve(prompt('Act body:')));
-        if (body == null) return;
-        chronicle.appendEntry(title.trim(), body.trim(), null);
+      // Insert act — inline one-row form: [title] [summary] [+ Add]
+      const $insertForm = $('<div class="strk-insert-act" style="display:flex;gap:6px;align-items:center;margin-bottom:8px"></div>');
+      const $title = $('<input type="text" class="text_pole" placeholder="Act title" style="flex:0 0 30%;min-width:0" />');
+      const $body = $('<input type="text" class="text_pole" placeholder="Act summary (optional)" style="flex:1 1 auto;min-width:0" />');
+      const $add = $('<button class="menu_button" style="flex:0 0 auto">+ Add</button>');
+      const doAdd = async () => {
+        const title = ($title.val() ?? '').trim();
+        if (!title) { $title.trigger('focus'); return; }
+        chronicle.appendEntry(title, ($body.val() ?? '').trim(), null);
         await this.deps.persistChronicle?.();
         this.deps.chronicleInjection?.run?.();
         renderEntries();
-      });
-      $entries.append($insertBtn);
+      };
+      $add.on('click', doAdd);
+      $title.on('keydown', (e) => { if (e.key === 'Enter') $body.trigger('focus'); });
+      $body.on('keydown', (e) => { if (e.key === 'Enter') doAdd(); });
+      $insertForm.append($title).append($body).append($add);
+      $entries.append($insertForm);
 
       if (!entries.length) { $entries.append($('<div>(no acts yet)</div>')); return; }
 
