@@ -77,7 +77,8 @@ export class ChronicleOps {
       `${brief}` +
       `Summarize ONLY the NEW events below into ONE paragraph, continuing the chronicle from the context above. ` +
       `Do not restate facts already covered by the story-so-far or recent acts; cover only what is new here. ` +
-      `Focus on outcomes, decisions, relationships changed, items acquired or lost, world facts revealed. ` +
+      `Focus on what actually happened. ` +
+      `Write as flowing narrative prose, not a status report or a list of states. ` +
       `Aim for ${tokenCap} tokens. No dialogue. Third person.\n\nNew chat to summarize:\n${chatText}`;
     return await this.deps.generateQuietPrompt(prompt);
   }
