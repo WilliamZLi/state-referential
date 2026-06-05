@@ -268,6 +268,12 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   $('#strk-world-default-inject-pos', $worldDrawer)
     .val(_ws().defaultChronicleConfig?.injectPosition ?? 'in-prompt')
     .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.injectPosition = e.target.value; saveSettingsDebounced(); });
+  $('#strk-world-default-inject-depth', $worldDrawer)
+    .val(_ws().defaultChronicleConfig?.injectDepth ?? 4)
+    .on('change', e => { _ws().defaultChronicleConfig ??= {}; _ws().defaultChronicleConfig.injectDepth = Number(e.target.value); saveSettingsDebounced(); });
+  const _syncDefaultDepthVis = () => $('#strk-world-default-inject-depth-field', $worldDrawer).toggle($('#strk-world-default-inject-pos', $worldDrawer).val() === 'in-chat');
+  $('#strk-world-default-inject-pos', $worldDrawer).on('change', _syncDefaultDepthVis);
+  _syncDefaultDepthVis();
 
   // Binding prompt — shown on new chats
   const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
