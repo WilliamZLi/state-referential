@@ -40,7 +40,7 @@ export class WorldView {
       const entries = chronicle?.getEntries() ?? [];
 
       // Insert act — single popup with title + body fields
-      const $insertBtn = $('<button class="menu_button" style="margin-bottom:8px">+ Insert act manually</button>');
+      const $insertBtn = $('<button class="menu_button" style="margin-bottom:8px;white-space:nowrap">+ Insert act manually</button>');
       $insertBtn.on('click', async () => {
         const $form = $('<div style="padding:8px;display:flex;flex-direction:column;gap:10px;min-width:400px"></div>');
         $form.append($('<label style="display:flex;flex-direction:column;gap:4px;font-size:12px">Title<input type="text" class="text_pole" placeholder="Act title" /></label>'));
