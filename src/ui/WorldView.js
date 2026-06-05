@@ -30,6 +30,8 @@ export class WorldView {
     $('#strk-chron-bp-cap', $f).val(config.bigPictureTokenCap);
     $('#strk-chron-entry-cap', $f).val(config.entryTokenCap);
     $('#strk-chron-max-msgs', $f).val(config.maxActMessages ?? 60);
+    $('#strk-chron-inject-bp', $f).prop('checked', config.injectBigPicture !== false);
+    $('#strk-chron-inject-pos', $f).val(config.injectPosition ?? 'in-prompt');
 
     // Big picture display
     $('#strk-wv-bigpicture', $f).text(chronicle?.getBigPicture() || '(none yet)');
@@ -61,6 +63,16 @@ export class WorldView {
       for (const e of [...entries].reverse()) {
         const $row = $('<div class="strk-chronicle-entry"></div>');
         const $header = $('<div class="strk-entry-header"></div>');
+
+        const $injectChk = $('<input type="checkbox" class="strk-entry-inject" title="Inject this act into the prompt" />');
+        $injectChk.prop('checked', e.inject === true);
+        $injectChk.on('change', async () => {
+          chronicle.updateEntry(e.id, { inject: $injectChk.prop('checked') });
+          await this.deps.persistChronicle?.();
+          this.deps.chronicleInjection?.run?.();
+        });
+        $header.append($injectChk);
+
         $header.append($('<strong></strong>').text(e.title));
         $header.append($('<span class="strk-entry-date"></span>').text(` — ${new Date(e.createdAt).toLocaleDateString()}`));
 
@@ -105,10 +117,13 @@ export class WorldView {
         bigPictureTokenCap: parseInt($('#strk-chron-bp-cap', $f).val(), 10) || 300,
         entryTokenCap: parseInt($('#strk-chron-entry-cap', $f).val(), 10) || 200,
         maxActMessages: parseInt($('#strk-chron-max-msgs', $f).val(), 10) || 60,
+        injectBigPicture: $('#strk-chron-inject-bp', $f).prop('checked'),
+        injectPosition: $('#strk-chron-inject-pos', $f).val(),
       };
       chronicle?.setConfig(newConfig);
       // Persist config to server (world.json chronicleConfig)
       await this.registry.update(worldId, { chronicleConfig: newConfig });
+      this.deps.chronicleInjection?.run?.();
     });
 
     // Regenerate big picture

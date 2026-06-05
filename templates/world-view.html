@@ -34,6 +34,18 @@
         <label class="strk-wv-label" title="Maximum number of recent messages fed into an act summary. If an act runs longer than this, only the most recent N messages are summarized.">Max messages / act</label>
         <input type="number" class="text_pole" id="strk-chron-max-msgs" min="10" value="60" style="width:70px" />
       </div>
+      <div class="strk-wv-field">
+        <label class="strk-wv-label" title="Inject the big-picture summary into the prompt.">Inject big picture</label>
+        <input type="checkbox" id="strk-chron-inject-bp" checked />
+      </div>
+      <div class="strk-wv-field">
+        <label class="strk-wv-label" title="Where the chronicle lands in the prompt. in-prompt = after the system prompt, before chat history.">Injection position</label>
+        <select class="text_pole" id="strk-chron-inject-pos" style="width:120px">
+          <option value="in-prompt">in-prompt</option>
+          <option value="in-chat">in-chat</option>
+          <option value="top">top</option>
+        </select>
+      </div>
     </div>
     <div class="strk-drawer-actions">
       <button class="menu_button" id="strk-chron-save-config">Save config</button>
