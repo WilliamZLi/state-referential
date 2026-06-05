@@ -112,9 +112,34 @@ export class WorldView {
     $('#strk-chron-refresh-bp', $f).on('click', async () => {
       const ops = this.deps.chronicleOps;
       if (!ops) return;
-      await ops._regenerateAllBigPicture(chronicle.getConfig().bigPictureTokenCap);
+      const $btn = $('#strk-chron-refresh-bp', $f);
+      const label = $btn.text();
+      $btn.prop('disabled', true).text('Regenerating…');
+      try {
+        await ops._regenerateAllBigPicture(chronicle.getConfig().bigPictureTokenCap);
+        await this.deps.persistChronicle?.();
+        this.deps.chronicleInjection?.run?.();
+        $('#strk-wv-bigpicture', $f).text(chronicle.getBigPicture() || '(none)');
+      } catch (e) {
+        this.deps.dialogs?.alert?.(`Regenerate failed: ${e.message}`);
+      } finally {
+        $btn.prop('disabled', false).text(label);
+      }
+    });
+
+    // Edit big picture manually
+    $('#strk-wv-bp-edit', $f).on('click', async () => {
+      if (!chronicle) return;
+      const current = chronicle.getBigPicture() ?? '';
+      const $form = $('<div style="padding:8px;display:flex;flex-direction:column;gap:10px;min-width:420px"></div>');
+      $form.append($(`<label style="display:flex;flex-direction:column;gap:4px;font-size:12px">Big picture<textarea class="text_pole" rows="10" style="width:100%;box-sizing:border-box;resize:vertical">${$('<div>').text(current).html()}</textarea></label>`));
+      const confirmed = await this.deps.callGenericPopup($form[0], this.deps.POPUP_TYPE?.CONFIRM ?? 0, 'Edit big picture', {});
+      if (!confirmed) return;
+      const newText = ($('textarea', $form).val() ?? '').trim();
+      chronicle.setBigPicture(newText, chronicle.getBigPictureCoversThrough?.() ?? null);
+      await this.deps.persistChronicle?.();
       this.deps.chronicleInjection?.run?.();
-      $('#strk-wv-bigpicture', $f).text(chronicle.getBigPicture() || '(none)');
+      $('#strk-wv-bigpicture', $f).text(chronicle.getBigPicture() || '(none yet)');
     });
 
     // Save metadata

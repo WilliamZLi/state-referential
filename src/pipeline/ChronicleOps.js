@@ -88,8 +88,8 @@ export class ChronicleOps {
     const prior = this.chronicle.getBigPicture() ?? '';
     const entryText = allEntries.map(e => `${e.title}: ${e.body}`).join('\n\n');
     const prompt =
-      `Write a single paragraph (~${tokenCap} tokens) summarizing the campaign-to-date. ` +
-      `Cover the major arcs, evolving relationships, key world events, and current state of the protagonist. ` +
+      `Write a single paragraph (~${tokenCap} tokens) recounting the campaign so far. ` +
+      `Write as flowing narrative prose, not a status report or a list of states. ` +
       `Third person, present tense, no dialogue.\n\n` +
       `Prior big picture (if any):\n${prior}\n\nActs covered (oldest first):\n${entryText}`;
     const bigPicture = await this.deps.generateQuietPrompt(prompt);
@@ -103,7 +103,8 @@ export class ChronicleOps {
     const prior = this.chronicle.getBigPicture() ?? '';
     const entryText = toFold.map(e => `${e.title}: ${e.body}`).join('\n\n');
     const prompt =
-      `Write a single paragraph (~${tokenCap} tokens) summarizing the campaign-to-date. ` +
+      `Write a single paragraph (~${tokenCap} tokens) recounting the campaign so far. ` +
+      `Write as flowing narrative prose, not a status report or a list of states. ` +
       `Third person, present tense, no dialogue.\n\n` +
       `Prior big picture:\n${prior}\n\nActs being folded in:\n${entryText}`;
     const bigPicture = await this.deps.generateQuietPrompt(prompt);
