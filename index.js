@@ -495,7 +495,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     // Merge built-in defaults with user-added so the chips always include the
     // baseline set even when defaultTags setting is empty.
     getDefaultTags: () => {
-      const builtins = ['intimate', 'combat', 'social', 'exploration', 'wardrobe', 'dressing'];
+      const builtins = ['combat', 'exploration', 'social', 'fashion', 'sexual'];
       const user = _strkSettings().defaultTags ?? [];
       return [...new Set([...builtins, ...user])];
     },

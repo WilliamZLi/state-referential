@@ -237,7 +237,7 @@ export function register(engine, deps) {
           { name: 'mode', optional: true, type: 'string', description: 'on|off — gate the text by tag state' },
           { name: 'text', optional: true, type: 'string', description: 'text to emit when mode condition matches' },
         ],
-        description: 'Scene tag state: {{tracker-tag::intimate}} = "1"/"". {{tracker-tag::intimate::on::TEXT}} = TEXT if active.',
+        description: 'Scene tag state: {{tracker-tag::sexual}} = "1"/"". {{tracker-tag::sexual::on::TEXT}} = TEXT if active.',
         handler: (ctx) => tagHandler(ctx.unnamedArgs[0], ctx.unnamedArgs[1], ctx.unnamedArgs[2]),
       });
       registry.registerMacro('world', {

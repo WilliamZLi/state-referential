@@ -2,7 +2,7 @@ export class SceneTagsUI {
   constructor(engine, $container, opts = {}) {
     this.engine = engine;
     this.$el = $container;
-    this.defaults = opts.defaults ?? ['intimate','combat','social','exploration','wardrobe','dressing'];
+    this.defaults = opts.defaults ?? ['combat','exploration','social','fashion','sexual'];
     this._dialogs = opts.dialogs ?? null;
     // Re-render on tag toggles, and on events that reload active tags WITHOUT a
     // tag-changed emit: chat-switch / world-bind (backend-changed) and undo/redo

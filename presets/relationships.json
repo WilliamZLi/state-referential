@@ -6,7 +6,7 @@
   "injection": {
     "enabled": true,
     "trigger": "tag",
-    "tags": ["social","intimate"],
+    "tags": ["social","sexual"],
     "position": "in-chat",
     "depth": 3,
     "template": "<reference_injection>\n**{{subject}}'s relationships:**\n{{fields}}\n</reference_injection>"
