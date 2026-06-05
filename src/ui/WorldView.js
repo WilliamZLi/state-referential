@@ -32,6 +32,10 @@ export class WorldView {
     $('#strk-chron-max-msgs', $f).val(config.maxActMessages ?? 60);
     $('#strk-chron-inject-bp', $f).prop('checked', config.injectBigPicture !== false);
     $('#strk-chron-inject-pos', $f).val(config.injectPosition ?? 'in-prompt');
+    $('#strk-chron-inject-depth', $f).val(config.injectDepth ?? 4);
+    const syncDepthVis = () => $('#strk-chron-inject-depth-field', $f).toggle($('#strk-chron-inject-pos', $f).val() === 'in-chat');
+    $('#strk-chron-inject-pos', $f).on('change', syncDepthVis);
+    syncDepthVis();
 
     // Big picture display
     $('#strk-wv-bigpicture', $f).text(chronicle?.getBigPicture() || '(none yet)');
@@ -111,6 +115,7 @@ export class WorldView {
 
     // Save config
     $('#strk-chron-save-config', $f).on('click', async () => {
+      const depthRaw = parseInt($('#strk-chron-inject-depth', $f).val(), 10);
       const newConfig = {
         verbatimWindow: parseInt($('#strk-chron-window', $f).val(), 10) || 5,
         updateStrategy: $('#strk-chron-strategy', $f).val(),
@@ -119,6 +124,7 @@ export class WorldView {
         maxActMessages: parseInt($('#strk-chron-max-msgs', $f).val(), 10) || 60,
         injectBigPicture: $('#strk-chron-inject-bp', $f).prop('checked'),
         injectPosition: $('#strk-chron-inject-pos', $f).val(),
+        injectDepth: Number.isFinite(depthRaw) && depthRaw >= 0 ? depthRaw : 4,
       };
       chronicle?.setConfig(newConfig);
       // Persist config to server (world.json chronicleConfig)
