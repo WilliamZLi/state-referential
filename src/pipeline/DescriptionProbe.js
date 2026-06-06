@@ -10,6 +10,15 @@ Examples:
 
 {{label}} "{{value}}":`;
 
+export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below. Capture its nature and any concrete properties — effects, stat / sensitivity / base changes, and per-turn rules with EXACT numbers (e.g. "+5/turn") if it has them. This text is read by the state-tracker each turn to re-apply effects, so be specific and mechanical, not flowery. No preamble.
+
+Recent user input: {{lastInput}}
+Recent narration: {{lastReply}}
+
+{{label}} "{{value}}":`;
+
+const PROBE_PROFILES = { detailed: DETAILED_PROBE_TEMPLATE };
+
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>
     ctx.subjectHasTraits ? inner : '');
@@ -104,14 +113,18 @@ export class DescriptionProbe {
     this._inFlight.add(token);
     this.engine.bus.emit('tracker:probe-started', { subject: subjectId, tracker: trackerId, field: fieldId, value });
     const traits = subj.traits ?? {};
+    const probeCtx = this.deps.getProbeContext?.() ?? {};
     const ctx = {
       label: field.label,
       value,
       subjectName: subj.name,
       subjectHasTraits: Object.keys(traits).length > 0,
       traits,
+      lastInput: probeCtx.lastInput ?? '',
+      lastReply: probeCtx.lastReply ?? '',
     };
-    const prompt = renderTemplate(this.template, ctx);
+    const tpl = PROBE_PROFILES[field.probeProfile] ?? this.template;
+    const prompt = renderTemplate(tpl, ctx);
     let text;
     try {
       const prose = await this.deps.generateQuietPrompt(prompt);

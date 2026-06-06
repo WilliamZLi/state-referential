@@ -66,3 +66,28 @@ test('emits tracker:probe-completed', async () => {
   assert.strictEqual(events.length, 1);
   assert.strictEqual(events[0].prose, 'prose result');
 });
+
+test('detailed profile injects chat context; generic does not', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'state', label: 'State', fields: [
+    { id: 'conditions', label: 'Conditions', type: 'list', describable: true, descriptionScope: 'per-subject', probeProfile: 'detailed' },
+    { id: 'mood', label: 'Mood', type: 'text', describable: true, descriptionScope: 'per-subject' },
+  ]});
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.addListEntry(p.id, 'state', 'conditions', 'Dairy Cow Curse');
+  eng.setField(p.id, 'state', 'mood', 'merry');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, {
+    generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; },
+    getProbeContext: () => ({ lastInput: 'DIRECTIVE-XYZ +50 stamina base', lastReply: 'REPLY-ABC' }),
+  });
+  probe.enqueue([
+    { subjectId: p.id, trackerId: 'state', fieldId: 'conditions', value: 'Dairy Cow Curse' },
+    { subjectId: p.id, trackerId: 'state', fieldId: 'mood', value: 'merry' },
+  ]);
+  await probe.drain();
+  const detailedPrompt = calls.find(c => c.includes('Dairy Cow Curse'));
+  const genericPrompt = calls.find(c => c.includes('merry'));
+  assert.ok(detailedPrompt.includes('DIRECTIVE-XYZ +50 stamina base'), 'detailed profile injects the user directive');
+  assert.ok(!genericPrompt.includes('DIRECTIVE-XYZ'), 'generic profile carries no context');
+});
