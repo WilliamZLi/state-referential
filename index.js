@@ -101,6 +101,18 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const descProbe = new DescriptionProbe(engine, {
     generateQuietPrompt: generateProbePrompt, // isolated, no chat context
     template: _strkSettings().templates?.probe,
+    getProbeContext: () => {
+      const chat = getContext().chat ?? [];
+      let lastInput = '', lastReply = '';
+      for (let i = chat.length - 1; i >= 0; i--) {
+        const m = chat[i];
+        if (!m) continue;
+        if (!lastReply && !m.is_user) lastReply = m.mes ?? '';
+        if (!lastInput && m.is_user) lastInput = m.mes ?? '';
+        if (lastInput && lastReply) break;
+      }
+      return { lastInput, lastReply };
+    },
   });
   const proseStore = {};
   const standalone = new StandaloneProbe(engine, { generateQuietPrompt, insertSmallSysMessage, proseStore });
