@@ -21,7 +21,7 @@ export class ValueStore {
       if (field.min != null && value < field.min) return field.min;
       if (field.max != null && value > field.max) return field.max;
       if (field.maxFromField && s != null && t != null) {
-        const cap = this.getField(s, t, field.maxFromField);
+        const cap = this.getField(s, t, field.maxFromField) ?? this.defs.getField(t, field.maxFromField)?.default;
         if (cap != null && value > cap) return cap;
       }
       return value;

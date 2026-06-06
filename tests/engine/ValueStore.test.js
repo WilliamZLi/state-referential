@@ -204,9 +204,9 @@ test('raising the companion first lets the value climb higher', () => {
   assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 160);
 });
 
-test('maxFromField with an unset companion is not clamped at 100', () => {
+test('maxFromField with an unset companion clamps to the companion default', () => {
   const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
-  vs.setField('p1', 'rpg', 'stamina', 250);   // companion never set → no clamp
-  assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 250);
+  vs.setField('p1', 'rpg', 'stamina', 250);   // max_stamina value unset → falls back to its default (100)
+  assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 100);
 });
 

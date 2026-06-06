@@ -176,7 +176,8 @@ export function makeRenderers(engine, deps) {
       // Show "/ max" (or "%") right after the input, then the −/+ stepper:  [input] / max  − val +
       const extras = [];
       if (field.maxFromField) {
-        const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField);
+        const companion = engine.definitions.getField(field._trackerId, field.maxFromField);
+        const maxValue = engine.getField(subj.id, field._trackerId, field.maxFromField) ?? companion?.default;
         extras.push($('<span class="strk-field-ratio"></span>').text(`/ ${maxValue ?? '?'}`));
       } else if (field.displayAs === 'percent') {
         extras.push($('<span class="strk-field-ratio"></span>').text('%'));
