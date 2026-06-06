@@ -106,7 +106,8 @@ test('detailed profile scopes the description to the element only', async () => 
   await probe.drain();
   const prompt = calls[0];
   assert.match(prompt, /only this/i, 'tells the model to describe only this element');
-  assert.match(prompt, /separate tracked|belong to|tracked (in their|elsewhere)/i, 'warns against re-listing effects tracked elsewhere');
+  assert.match(prompt, /never invent|explicitly attributes/i, 'forbids inventing mechanical effects for an item');
+  assert.match(prompt, /set membership|separately-tracked|do not mention/i, 'forbids set/curse cross-references');
 });
 
 test('detailed profile injects chat context; generic does not', async () => {

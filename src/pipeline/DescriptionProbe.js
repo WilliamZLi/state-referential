@@ -10,11 +10,14 @@ Examples:
 
 {{label}} "{{value}}":`;
 
-export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below.
+export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below. Describe ONLY this element.
 
-Describe ONLY this one element. Cover its own nature and concrete properties: physical appearance and fit if it is a worn or held item, plus any effects, stat / sensitivity / base changes, or per-turn rules that are INTRINSIC to it (with EXACT numbers, e.g. "+5/turn"). Do NOT restate or attribute effects that belong to a separate tracked condition, curse, or set bonus — those are recorded in their own entries. If this element only triggers or is one piece of something tracked elsewhere, note that link in a few words and do not re-list its effects.
+- If it is a worn or held item: describe ONLY its physical nature — appearance, material, cut, coverage, and how it fits / sits on the body right now. Do NOT give it stat numbers or mechanical effects.
+- If it is a condition, status, or effect: describe its mechanical effects, stat / sensitivity / base changes, and per-turn rules, with EXACT numbers (e.g. "+5/turn").
 
-This text is read by the state-tracker each turn to re-apply THIS element's own effects, so be specific and mechanical, not flowery. No preamble.
+Include a mechanical effect ONLY when the context explicitly attributes it to THIS element — never invent, infer, or estimate one. Do NOT mention set membership, sets, curses, or other separately-tracked entries, do NOT restate effects recorded elsewhere, and do NOT speculate about how separately-tracked changes will alter this element over time.
+
+This text is read by the state-tracker each turn, so be specific and factual, not flowery. No preamble.
 
 Recent user input: {{lastInput}}
 Recent narration: {{lastReply}}
