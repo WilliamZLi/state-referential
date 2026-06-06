@@ -157,6 +157,16 @@ test('custom template without {{last_input}} still receives the user message', (
   assert.ok(prompt.includes('USERMSG-XYZ'), 'auto-appended');
 });
 
+test('buildPrompt instructs short bare names for describable list entries', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  const prompt = au.buildPrompt({ lastNarratorReply: '...' });
+  assert.match(prompt, /SHORT bare name/i, 'tells the AI to use a short name for list entries');
+  assert.match(prompt, /parentheticals/i, 'warns against packing details into the name');
+  assert.match(prompt, /description/i, 'explains effects live in the separate description');
+});
+
 test('number annotation reflects maxFromField and uncapped fields', () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'rpg', label: 'RPG', appliesToRoles: ['protagonist'], autoUpdate: true, fields: [

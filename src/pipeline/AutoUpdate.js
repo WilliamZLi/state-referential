@@ -18,6 +18,10 @@ export const DEFAULT_AUTOUPDATE_TEMPLATE = [
   'When raising a cap (a max_* field) AND its value in the same turn, raise the cap first,',
   'then set the value — values are clamped to their current cap.',
   '',
+  'For describable list fields (conditions, status effects, items), ADD only a SHORT bare name',
+  '(e.g. "Dairy Cow Curse"). Never pack effects, numbers, rules, or parentheticals into the name —',
+  'the effects are recorded separately as that entry description and read back each turn.',
+  '',
   '# Tracked entities',
   '(status effects and conditions show their description in parentheses — read these for recurring rules)',
   '',
@@ -39,7 +43,7 @@ export const DEFAULT_AUTOUPDATE_TEMPLATE = [
 const COMMANDS_HELP = [
   'SET <subject> <tracker>.<field> = "<value>"',
   'DELTA <subject> <tracker>.<field> <±N>',
-  'ADD <subject> <tracker>.<field> "<entry>"                       (list fields)',
+  'ADD <subject> <tracker>.<field> "<entry>"                       (list fields — entry is a SHORT name only)',
   'ADD <subject> <tracker>.<field> "<name>" = "<descriptor>"       (pair-list fields)',
   'REMOVE <subject> <tracker>.<field> "<entry-or-name>"',
   'NEW_SUBJECT <name> <role>',
@@ -47,6 +51,8 @@ const COMMANDS_HELP = [
   '',
   'Use ONLY commands shown. Subject names must match exactly. Output nothing else.',
   'For pair-list fields, ADD upserts: re-adding the same name replaces its descriptor.',
+  'For describable list fields, the entry must be a short bare name (no effects, numbers, or',
+  'parentheticals); its description is generated separately and read each turn to re-apply effects.',
 ].join('\n');
 
 function formatValue(field, value) {
