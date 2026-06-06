@@ -164,7 +164,7 @@
 .strk-def-row > :first-child { flex: 1; }
 
 /* Schema editor modal */
-.strk-schema-editor { padding: 8px; }
+.strk-schema-editor { padding: 8px; max-height: 75vh; overflow-y: auto; }
 .strk-schema-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -344,6 +344,8 @@
   padding: 8px 12px;
   min-width: 320px;
   max-width: 480px;
+  max-height: 75vh;
+  overflow-y: auto;
 }
 .strk-field-details h4.strk-field-details-title {
   margin: 0 0 10px 0;
@@ -456,7 +458,7 @@
 }
 
 /* World View modal */
-.strk-world-view { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.strk-world-view { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; max-height: 75vh; overflow-y: auto; }
 .strk-wv-section { display: flex; flex-direction: column; gap: 6px; }
 .strk-wv-heading { margin: 0; font-size: 13px; font-weight: bold; opacity: 0.85; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
 .strk-wv-field { display: flex; align-items: center; gap: 8px; }
