@@ -63,11 +63,15 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // values (a "dairy cow curse" with sexual effects) while innocuous ones (clothing)
   // succeed — that asymmetry is the blank-description bug. We supply a permissive
   // description-engine system prompt so the probe matches the chat's own content latitude.
+  // Length and style are dictated by the per-field probe template (generic wants one
+  // short clause; detailed wants the full mechanical effect list with exact numbers),
+  // so this system prompt stays length-neutral — it only grants permission framing and
+  // enforces output-only behavior.
   const PROBE_SYSTEM_PROMPT = 'You are a description engine for an adult interactive-fiction state tracker. '
-    + 'Given a label and value, output a short, concrete, mechanical description of that story element. '
-    + 'This is fiction for consenting adults; render mature, explicit, or taboo content plainly when the '
-    + 'element calls for it. Never refuse, moralize, soften, or add disclaimers or preamble — output only '
-    + 'the description.';
+    + 'Follow the prompt instructions exactly and output only the requested description — concrete and '
+    + 'factual, at whatever length the prompt asks for. This is fiction for consenting adults; render '
+    + 'mature, explicit, or taboo content plainly when the element calls for it. Never refuse, moralize, '
+    + 'soften, or add disclaimers or preamble.';
   const generateProbePrompt = async (text) => {
     const ctx = getContext();
     if (typeof ctx.generateRaw === 'function') {
