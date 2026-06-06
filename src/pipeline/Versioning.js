@@ -52,7 +52,11 @@ export class Versioning {
         snapshotBefore = this.engine.snapshot(msgId);
         this.engine.snapshots.save(msgId, snapshotBefore);
       }
-      const result = await this.deps.autoUpdate.run({ lastNarratorReply: msg.mes ?? '', msgId });
+      let lastUserMessage = '';
+      for (let i = index - 1; i >= 0; i--) {
+        if (chat[i]?.is_user) { lastUserMessage = chat[i].mes ?? ''; break; }
+      }
+      const result = await this.deps.autoUpdate.run({ lastNarratorReply: msg.mes ?? '', lastUserMessage, msgId });
       // descProbe queue is filled by AutoUpdate via tracker:value-changed listener wired in Phase 8;
       // for now, fire drain regardless — implementation can be a no-op if queue empty.
       await this.deps.descProbe.drain();
