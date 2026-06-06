@@ -324,6 +324,7 @@ export class SchemaEditor {
     $('.strk-fdet-incl-rule', $d).val(inclRule);
     $('.strk-fdet-incl-tags', $d).val(Array.isArray(orig.inclusion?.tags) ? orig.inclusion.tags.join(', ') : (orig.inclusion?.tags ?? ''));
     $('.strk-fdet-incl-active-window', $d).val(orig.inclusion?.activeWindow ?? 5);
+    $('.strk-fdet-probe-profile', $d).val(orig.probeProfile ?? 'generic');
 
     // Apply visibility for current type
     this._applyFieldDetailsVisibility($d, fieldType, inclRule);
@@ -391,6 +392,11 @@ export class SchemaEditor {
       };
       // Sync main-table inclusion select
       $('.f-inclusion', $tr).val(newInclRule);
+
+      // probe profile (describable fields)
+      const probeProfile = $('.strk-fdet-probe-profile', $d).val();
+      if (probeProfile && probeProfile !== 'generic') updatedOrig.probeProfile = probeProfile;
+      else delete updatedOrig.probeProfile;
 
       $tr.data('original', updatedOrig);
       detailsPopupClose?.();
