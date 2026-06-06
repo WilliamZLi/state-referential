@@ -22,6 +22,10 @@ function mkDefs() {
     { id: 'dyn', label: 'Dynamic', type: 'prose', default: '', describable: true },
     { id: 'bonds', label: 'Bonds', type: 'pair-list', default: [] },
   ]});
+  ds.define({ id: 'rpg', label: 'RPG', fields: [
+    { id: 'stamina', label: 'Stamina', type: 'number', min: 0, default: 100, allowDelta: true, maxFromField: 'max_stamina' },
+    { id: 'max_stamina', label: 'Max stamina', type: 'number', min: 0, default: 100, allowDelta: true },
+  ]});
   return ds;
 }
 
@@ -182,5 +186,27 @@ test('purgeField removes global descriptions for that field only', () => {
   vs.purgeField('outfit', 'items');
   assert.strictEqual(vs.getDescription('p1', 'outfit', 'items', 'sword'), null);
   assert.strictEqual(vs.getDescription('p1', 'outfit', 'items', 'potion'), null);
+});
+
+test('maxFromField clamps the value to the companion value', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setField('p1', 'rpg', 'max_stamina', 150);
+  vs.setField('p1', 'rpg', 'stamina', 200);   // over the cap
+  assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 150);
+});
+
+test('raising the companion first lets the value climb higher', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setField('p1', 'rpg', 'max_stamina', 100);
+  vs.setField('p1', 'rpg', 'stamina', 100);
+  vs.setField('p1', 'rpg', 'max_stamina', 180);
+  vs.setField('p1', 'rpg', 'stamina', 160);
+  assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 160);
+});
+
+test('maxFromField with an unset companion is not clamped at 100', () => {
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
+  vs.setField('p1', 'rpg', 'stamina', 250);   // companion never set → no clamp
+  assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 250);
 });
 

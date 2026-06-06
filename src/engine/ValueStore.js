@@ -15,11 +15,15 @@ export class ValueStore {
     if (!f) throw new Error(`field not found: ${trackerId}.${fieldId}`);
     return { ...f, _trackerId: trackerId };
   }
-  _validate(field, value) {
+  _validate(field, value, s, t) {
     if (field.type === 'number') {
       if (typeof value !== 'number' || Number.isNaN(value)) throw new Error(`number expected: ${field.id}`);
       if (field.min != null && value < field.min) return field.min;
       if (field.max != null && value > field.max) return field.max;
+      if (field.maxFromField && s != null && t != null) {
+        const cap = this.getField(s, t, field.maxFromField);
+        if (cap != null && value > cap) return cap;
+      }
       return value;
     }
     if (field.type === 'enum') {
@@ -59,7 +63,7 @@ export class ValueStore {
   getField(s, t, f) { return this.getStored(s, t, f)?.v; }
   setField(s, t, f, value, opts = {}) {
     const field = this._field(t, f);
-    const v = this._validate(field, value);
+    const v = this._validate(field, value, s, t);
     const oldValue = this.getField(s, t, f);
     if (!this._values[s]) this._values[s] = {};
     if (!this._values[s][t]) this._values[s][t] = {};
