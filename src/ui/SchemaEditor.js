@@ -284,7 +284,7 @@ export class SchemaEditor {
 
     await this.deps.callGenericPopup($form[0], this.deps.POPUP_TYPE?.DISPLAY ?? 1, '', {
       wide: true,
-      large: true,
+      large: false,
     });
   }
 

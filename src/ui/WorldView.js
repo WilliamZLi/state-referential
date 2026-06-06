@@ -188,6 +188,6 @@ export class WorldView {
 
     $('#strk-wv-close', $f).on('click', () => this.deps.closePopup?.($f));
 
-    await this.deps.callGenericPopup($f[0], this.deps.POPUP_TYPE?.DISPLAY ?? 1, '', { wide: true, large: true });
+    await this.deps.callGenericPopup($f[0], this.deps.POPUP_TYPE?.DISPLAY ?? 1, '', { wide: true, large: false });
   }
 }

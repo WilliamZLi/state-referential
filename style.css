@@ -164,7 +164,8 @@
 .strk-def-row > :first-child { flex: 1; }
 
 /* Schema editor modal */
-.strk-schema-editor { padding: 8px; max-height: 75vh; overflow-y: auto; }
+.strk-schema-editor { padding: 8px; }
+.strk-fields-scroll { max-height: 50vh; overflow-y: auto; }
 .strk-schema-meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
