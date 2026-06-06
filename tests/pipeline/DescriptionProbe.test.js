@@ -108,6 +108,8 @@ test('detailed profile scopes the description to the element only', async () => 
   assert.match(prompt, /only this/i, 'tells the model to describe only this element');
   assert.match(prompt, /never invent|explicitly attributes/i, 'forbids inventing mechanical effects for an item');
   assert.match(prompt, /set membership|separately-tracked|do not mention/i, 'forbids set/curse cross-references');
+  assert.match(prompt, /1-2 sentences/i, 'items get a bounded, medium-length physical description');
+  assert.ok(prompt.includes('curse effects...'), 'item description still receives current scene context');
 });
 
 test('detailed profile injects chat context; generic does not', async () => {

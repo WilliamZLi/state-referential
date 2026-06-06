@@ -12,7 +12,7 @@ Examples:
 
 export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below. Describe ONLY this element.
 
-- If it is a worn or held item: describe ONLY its physical nature — appearance, material, cut, coverage, and how it fits / sits on the body right now. Do NOT give it stat numbers or mechanical effects.
+- If it is a worn or held item: in 1-2 sentences (about 40 words), describe ONLY its physical nature — appearance, material, cut, coverage, and how it currently fits / sits on the body. Be concise: pick the most distinctive details rather than cataloguing everything. Do NOT give it stat numbers or mechanical effects.
 - If it is a condition, status, or effect: describe its mechanical effects, stat / sensitivity / base changes, and per-turn rules, with EXACT numbers (e.g. "+5/turn").
 
 Include a mechanical effect ONLY when the context explicitly attributes it to THIS element — never invent, infer, or estimate one. Do NOT mention set membership, sets, curses, or other separately-tracked entries, do NOT restate effects recorded elsewhere, and do NOT speculate about how separately-tracked changes will alter this element over time.
