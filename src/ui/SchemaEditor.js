@@ -123,6 +123,20 @@ export class SchemaEditor {
           .find('input').prop('checked', f.injection?.enabled !== false).end()
       );
 
+      // Probe profile quick-toggle (generic ⇄ detailed). Writes to the same row data
+      // the ⚙ modal uses, so Save (which spreads `original`) persists it.
+      const $probe = $('<button class="menu_button f-probe-toggle" style="min-width:64px" title="Description probe style: generic = short reusable clause; detailed = context-aware effects/rules. Click to toggle. Only matters for describable fields."></button>')
+        .text(f.probeProfile === 'detailed' ? 'detailed' : 'generic');
+      $probe.on('click', () => {
+        const next = $probe.text() === 'detailed' ? 'generic' : 'detailed';
+        $probe.text(next);
+        const data = $tr.data('original') ?? {};
+        if (next === 'detailed') data.probeProfile = 'detailed';
+        else delete data.probeProfile;
+        $tr.data('original', data);
+      });
+      $tr.append($('<td></td>').append($probe));
+
       // ⚙ edit button cell
       const $editBtn = $('<button class="menu_button strk-field-edit-btn" title="Edit full field config (default, options, number bounds, inclusion details)">⚙</button>');
       $editBtn.on('click', async () => {
