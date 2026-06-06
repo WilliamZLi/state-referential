@@ -98,7 +98,7 @@ export class SchemaEditor {
 
       // Describable
       $tr.append(
-        $('<td style="text-align:center"><input type="checkbox" class="f-describable" /></td>')
+        $('<td><input type="checkbox" class="f-describable" /></td>')
           .find('input').prop('checked', f.describable !== false).end()
       );
 
@@ -119,7 +119,7 @@ export class SchemaEditor {
 
       // Inject enabled (include this field in the tracker's injection block)
       $tr.append(
-        $('<td style="text-align:center"><input type="checkbox" class="f-inj" /></td>')
+        $('<td><input type="checkbox" class="f-inj" /></td>')
           .find('input').prop('checked', f.injection?.enabled !== false).end()
       );
 
@@ -144,9 +144,13 @@ export class SchemaEditor {
       });
       $tr.append($('<td></td>').append($editBtn));
 
-      // Delete button cell
-      const $del = $('<td><button class="menu_button" title="Remove this field">×</button></td>')
-        .find('button').on('click', () => $tr.remove()).end();
+      // Delete button cell (confirm — avoid accidental removal)
+      const $del = $('<td><button class="menu_button" title="Remove this field">×</button></td>');
+      $del.find('button').on('click', async () => {
+        const fid = $('.f-id', $tr).val() || 'this field';
+        const ok = await (deps.dialogs?.confirm?.(`Remove field "${fid}"?`) ?? Promise.resolve(confirm(`Remove field "${fid}"?`)));
+        if (ok) $tr.remove();
+      });
       $tr.append($del);
 
       // Prevent drag initiation when user clicks inside inputs/selects so text selection works
