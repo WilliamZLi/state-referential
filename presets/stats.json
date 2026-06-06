@@ -11,8 +11,10 @@
     "template": "<reference_injection>\n**{{subject}} stats:**\n{{fields}}\n</reference_injection>"
   },
   "fields": [
-    { "id": "health", "label": "Health", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
-    { "id": "stamina", "label": "Stamina", "type": "number", "min": 0, "max": 100, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
+    { "id": "health", "label": "Health", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false, "maxFromField": "max_health", "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
+    { "id": "max_health", "label": "Max health", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": false } },
+    { "id": "stamina", "label": "Stamina", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false, "maxFromField": "max_stamina", "inclusion": { "rule": "always" }, "injection": { "enabled": true } },
+    { "id": "max_stamina", "label": "Max stamina", "type": "number", "min": 0, "default": 100, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": false } },
     { "id": "arousal", "label": "Arousal", "type": "number", "min": 0, "max": 100, "default": 0, "allowDelta": true, "describable": false, "inclusion": { "rule": "always" }, "injection": { "enabled": true } }
   ]
 }
