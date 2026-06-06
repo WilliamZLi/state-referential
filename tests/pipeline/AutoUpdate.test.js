@@ -139,6 +139,24 @@ test('setTemplate switches the in-use template', () => {
   assert.doesNotMatch(customPrompt, /You are a state tracker/);
 });
 
+test('buildPrompt includes the last user message before the narrator reply', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  const prompt = au.buildPrompt({ lastNarratorReply: 'She nodded.', lastUserMessage: '<(curse: +50 stamina base)>' });
+  assert.match(prompt, /# Last user message/);
+  assert.ok(prompt.includes('+50 stamina base'));
+  assert.ok(prompt.indexOf('+50 stamina base') < prompt.indexOf('She nodded.'), 'user message before narrator reply');
+});
+
+test('custom template without {{last_input}} still receives the user message', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '', template: 'CUSTOM\n{{tracked_entities}}\n{{last_reply}}' });
+  const prompt = au.buildPrompt({ lastNarratorReply: 'reply', lastUserMessage: 'USERMSG-XYZ' });
+  assert.ok(prompt.includes('USERMSG-XYZ'), 'auto-appended');
+});
+
 test('number annotation reflects maxFromField and uncapped fields', () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'rpg', label: 'RPG', appliesToRoles: ['protagonist'], autoUpdate: true, fields: [

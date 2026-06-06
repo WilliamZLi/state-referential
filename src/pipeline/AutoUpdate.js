@@ -6,13 +6,17 @@ export const DEFAULT_AUTOUPDATE_TEMPLATE = [
   'You are a state tracker. Identify changes to the tracked entities below.',
   'Emit one command per line. If nothing changed, reply exactly: NONE',
   '',
-  'Apply TWO kinds of change:',
-  '1. Changes caused by the LAST narrator reply (new injuries, items gained/lost, mood shifts, etc.)',
-  '2. Recurring per-turn effects. This runs once every turn. For EACH currently-active status',
-  '   effect whose description states a per-turn change (e.g. "+5 arousal / turn",',
-  '   "lose 3 HP each turn"), you MUST emit that DELTA on THIS turn — every turn the effect is',
-  '   active, without exception. Do not skip it just because you applied it on a previous turn;',
-  '   the effect re-applies each turn it remains active. Only stop when the effect is gone.',
+  'Apply changes from these sources, in order of authority:',
+  '1. The last user message — both in-character actions AND out-of-character directives',
+  '   (e.g. parenthetical "<( … )>" notes). Treat such directives as AUTHORITATIVE: apply',
+  '   exactly the state changes they describe (new conditions, stat/base changes, etc.).',
+  '2. The last narrator reply (new injuries, items gained/lost, mood shifts…).',
+  '3. Recurring per-turn effects. For EACH currently-active status effect whose description',
+  '   states a per-turn change (e.g. "+5 arousal / turn", "lose 3 HP each turn"), you MUST emit',
+  '   that DELTA on THIS turn — every turn the effect is active, without exception.',
+  '',
+  'When raising a cap (a max_* field) AND its value in the same turn, raise the cap first,',
+  'then set the value — values are clamped to their current cap.',
   '',
   '# Tracked entities',
   '(status effects and conditions show their description in parentheses — read these for recurring rules)',
@@ -22,6 +26,10 @@ export const DEFAULT_AUTOUPDATE_TEMPLATE = [
   '# Commands',
   '',
   '{{commands_help}}',
+  '',
+  '# Last user message',
+  '',
+  '{{last_input}}',
   '',
   '# Last narrator reply',
   '',
@@ -112,7 +120,7 @@ export class AutoUpdate {
     return false;
   }
 
-  buildPrompt({ lastNarratorReply }) {
+  buildPrompt({ lastNarratorReply, lastUserMessage }) {
     const subjects = this.engine.listSubjects().filter(s => this.engine.isSubjectActive(s.id));
     const blocks = [];
     for (const subj of subjects) {
@@ -145,22 +153,24 @@ export class AutoUpdate {
 
     const trackedEntities = blocks.join('\n\n');
     const reply = lastNarratorReply ?? '';
+    const userMsg = lastUserMessage ?? '';
 
-    // Use custom template if set, otherwise use the default template
+    // Use custom template if set, otherwise the default
     const tpl = this._template ?? DEFAULT_AUTOUPDATE_TEMPLATE;
 
-    // If template lacks {{last_reply}}, append it automatically
-    const haslastReply = tpl.includes('{{last_reply}}');
-    const effectiveTpl = haslastReply ? tpl : tpl + '\n\n{{last_reply}}';
+    // If a custom template lacks a slot, auto-append it so nothing is silently dropped.
+    let effectiveTpl = tpl.includes('{{last_reply}}') ? tpl : tpl + '\n\n{{last_reply}}';
+    if (!effectiveTpl.includes('{{last_input}}')) effectiveTpl += '\n\n# Last user message\n\n{{last_input}}';
 
     return effectiveTpl
       .replace(/\{\{tracked_entities\}\}/g, trackedEntities)
       .replace(/\{\{commands_help\}\}/g, COMMANDS_HELP)
+      .replace(/\{\{last_input\}\}/g, userMsg)
       .replace(/\{\{last_reply\}\}/g, reply);
   }
 
-  async run({ lastNarratorReply, msgId }) {
-    const prompt = this.buildPrompt({ lastNarratorReply });
+  async run({ lastNarratorReply, lastUserMessage, msgId }) {
+    const prompt = this.buildPrompt({ lastNarratorReply, lastUserMessage });
     if (this.deps.debug) {
       console.groupCollapsed('[state-referential] auto-update prompt');
       console.log(prompt);
