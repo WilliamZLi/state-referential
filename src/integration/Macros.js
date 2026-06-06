@@ -144,7 +144,8 @@ export function resolveMacro(engine, path) {
   // For paired-max lookup we need the partner field's current value too.
   const fieldValues = {};
   if (fdef.maxFromField) {
-    fieldValues[fdef.maxFromField] = engine.getField(subj.id, p.tracker, fdef.maxFromField);
+    fieldValues[fdef.maxFromField] = engine.getField(subj.id, p.tracker, fdef.maxFromField)
+      ?? engine.definitions.getField(p.tracker, fdef.maxFromField)?.default;
   }
   return formatValue(value, fdef, fieldValues);
 }

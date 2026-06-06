@@ -13,6 +13,17 @@ function mkEngine() {
   return eng;
 }
 
+test('maxFromField macro falls back to the companion default when unset', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'rpg', label: 'RPG', fields: [
+    { id: 'stamina', label: 'Stamina', type: 'number', min: 0, default: 100, maxFromField: 'max_stamina' },
+    { id: 'max_stamina', label: 'Max stamina', type: 'number', min: 0, default: 100 },
+  ]});
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'rpg', 'stamina', 75);   // max_stamina value left unset → default 100
+  assert.strictEqual(resolveMacro(eng, 'Lyra.rpg.stamina'), '75/100');
+});
+
 test('tracker::<subject>.<tracker>.<field> value', () => {
   const eng = mkEngine();
   const p = eng.addSubject('Lyra', { role: 'protagonist' });
