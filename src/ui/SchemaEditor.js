@@ -125,7 +125,7 @@ export class SchemaEditor {
 
       // Probe profile quick-toggle (generic ⇄ detailed). Writes to the same row data
       // the ⚙ modal uses, so Save (which spreads `original`) persists it.
-      const $probe = $('<button class="menu_button f-probe-toggle" style="min-width:64px" title="Description probe style: generic = short reusable clause; detailed = context-aware effects/rules. Click to toggle. Only matters for describable fields."></button>')
+      const $probe = $('<button class="menu_button f-probe-toggle" style="min-width:92px;text-align:center" title="Description probe style: generic = short reusable clause; detailed = context-aware effects/rules. Click to toggle. Only matters for describable fields."></button>')
         .text(f.probeProfile === 'detailed' ? 'detailed' : 'generic');
       $probe.on('click', () => {
         const next = $probe.text() === 'detailed' ? 'generic' : 'detailed';
