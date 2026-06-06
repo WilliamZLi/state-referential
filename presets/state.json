@@ -16,10 +16,10 @@
       "default": "neutral", "describable": true, "descriptionScope": "per-subject",
       "inclusion": { "rule": "always" },
       "injection": { "enabled": true } },
-    { "id": "temporary_status_effects", "label": "Temporary status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
+    { "id": "temporary_status_effects", "label": "Temporary status effects", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject", "probeProfile": "detailed",
       "inclusion": { "rule": "active", "activeWindow": 5 },
       "injection": { "enabled": true } },
-    { "id": "permanent_conditions", "label": "Permanent conditions", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject",
+    { "id": "permanent_conditions", "label": "Permanent conditions", "type": "list", "default": [], "describable": true, "descriptionScope": "per-subject", "probeProfile": "detailed",
       "inclusion": { "rule": "always" },
       "injection": { "enabled": true } }
   ]
