@@ -28,6 +28,7 @@ export class SettingsDrawer {
     $('#strk-enable').prop('checked', s.enabled !== false).on('change', e => { s.enabled = e.target.checked; this.deps.saveSettingsDebounced(); });
     $('#strk-auto-update').prop('checked', s.autoUpdate !== false).on('change', e => { s.autoUpdate = e.target.checked; this.deps.saveSettingsDebounced(); });
     $('#strk-probe-desc').prop('checked', s.probeDesc !== false).on('change', e => { s.probeDesc = e.target.checked; this.deps.saveSettingsDebounced(); });
+    $('#strk-reprobe-profile').val(s.reprobeProfile ?? 'field').on('change', e => { s.reprobeProfile = e.target.value; this.deps.saveSettingsDebounced(); });
     $('#strk-active-window').val(s.activeWindow ?? 5).on('change', e => { s.activeWindow = Number(e.target.value); this.deps.saveSettingsDebounced(); });
     $('#strk-new-tracker').on('click', () => this.deps.schemaEditor.open(null));
     $('#strk-install-presets').on('click', () => this._installPresets());

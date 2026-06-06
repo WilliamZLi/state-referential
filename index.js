@@ -499,7 +499,9 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     openSubjectAddModal,
     openSceneRosterModal,
     requestProbe: (subjId, trackerId, fieldId, value) => {
-      descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value }]);
+      const rp = _strkSettings().reprobeProfile;
+      const profile = (rp && rp !== 'field') ? rp : undefined;
+      descProbe.enqueue([{ subjectId: subjId, trackerId, fieldId, value, profile }]);
       return descProbe.drain();
     },
     runManualProbe: (trackerId, subject) => standalone.runOne(trackerId, subject),

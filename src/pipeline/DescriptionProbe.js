@@ -93,7 +93,7 @@ export class DescriptionProbe {
     }
   }
 
-  async _runOne({ subjectId, trackerId, fieldId, value }) {
+  async _runOne({ subjectId, trackerId, fieldId, value, profile }) {
     const field = this.engine.definitions.getField(trackerId, fieldId);
     if (!field || !field.describable) return;
     // pair-list carries its descriptor inline — never probe.
@@ -101,7 +101,7 @@ export class DescriptionProbe {
     if (value === '' || value == null) return;
     if (Array.isArray(value)) {
       // list — probe each entry separately
-      for (const entry of value) await this._runOne({ subjectId, trackerId, fieldId, value: entry });
+      for (const entry of value) await this._runOne({ subjectId, trackerId, fieldId, value: entry, profile });
       return;
     }
     const existing = this.engine.getDescription(subjectId, trackerId, fieldId, value);
@@ -123,7 +123,7 @@ export class DescriptionProbe {
       lastInput: probeCtx.lastInput ?? '',
       lastReply: probeCtx.lastReply ?? '',
     };
-    const tpl = PROBE_PROFILES[field.probeProfile] ?? this.template;
+    const tpl = PROBE_PROFILES[profile ?? field.probeProfile] ?? this.template;
     const prompt = renderTemplate(tpl, ctx);
     let text;
     try {

@@ -15,6 +15,29 @@ function mkEngine() {
   return eng;
 }
 
+test('reprobe profile override forces a profile regardless of the field', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'wardrobe', label: 'Wardrobe', fields: [
+    { id: 'cloak', label: 'Cloak', type: 'text', describable: true, descriptionScope: 'per-subject' },
+    { id: 'curse', label: 'Curse', type: 'text', describable: true, descriptionScope: 'per-subject', probeProfile: 'detailed' },
+  ]});
+  const p = eng.addSubject('Lyra', { role: 'protagonist' });
+  eng.setField(p.id, 'wardrobe', 'cloak', 'Moonpetal Cloak');
+  eng.setField(p.id, 'wardrobe', 'curse', 'Hex');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, {
+    generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; },
+    getProbeContext: () => ({ lastInput: 'CTX-INPUT', lastReply: 'CTX-REPLY' }),
+  });
+  probe.enqueue([{ subjectId: p.id, trackerId: 'wardrobe', fieldId: 'cloak', value: 'Moonpetal Cloak', profile: 'detailed' }]);
+  probe.enqueue([{ subjectId: p.id, trackerId: 'wardrobe', fieldId: 'curse', value: 'Hex', profile: 'generic' }]);
+  await probe.drain();
+  const cloakPrompt = calls.find(c => c.includes('Moonpetal Cloak'));
+  const cursePrompt = calls.find(c => c.includes('Hex'));
+  assert.ok(cloakPrompt.includes('CTX-INPUT'), 'profile:detailed forces detailed on a generic field');
+  assert.ok(!cursePrompt.includes('CTX-INPUT'), 'profile:generic forces generic on a detailed field');
+});
+
 test('enqueue then drain calls probe sequentially with rendered template', async () => {
   const eng = mkEngine();
   const p = eng.addSubject('Lyra', { role: 'protagonist', traits: { height: 'tall', hair: 'red' } });
