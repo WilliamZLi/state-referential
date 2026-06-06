@@ -90,6 +90,25 @@ test('emits tracker:probe-completed', async () => {
   assert.strictEqual(events[0].prose, 'prose result');
 });
 
+test('detailed profile scopes the description to the element only', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'outfit', label: 'Outfit', fields: [
+    { id: 'heels', label: 'Heels', type: 'text', describable: true, descriptionScope: 'per-subject', probeProfile: 'detailed' },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'heels', 'stiletto heels');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, {
+    generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; },
+    getProbeContext: () => ({ lastInput: 'curse effects...', lastReply: '...' }),
+  });
+  probe.enqueue([{ subjectId: p.id, trackerId: 'outfit', fieldId: 'heels', value: 'stiletto heels' }]);
+  await probe.drain();
+  const prompt = calls[0];
+  assert.match(prompt, /only this/i, 'tells the model to describe only this element');
+  assert.match(prompt, /separate tracked|belong to|tracked (in their|elsewhere)/i, 'warns against re-listing effects tracked elsewhere');
+});
+
 test('detailed profile injects chat context; generic does not', async () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'state', label: 'State', fields: [

@@ -10,7 +10,11 @@ Examples:
 
 {{label}} "{{value}}":`;
 
-export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below. Capture its nature and any concrete properties — effects, stat / sensitivity / base changes, and per-turn rules with EXACT numbers (e.g. "+5/turn") if it has them. This text is read by the state-tracker each turn to re-apply effects, so be specific and mechanical, not flowery. No preamble.
+export const DETAILED_PROBE_TEMPLATE = `Describe what {{label}} "{{value}}" is for {{subjectName}}, using the context below.
+
+Describe ONLY this one element. Cover its own nature and concrete properties: physical appearance and fit if it is a worn or held item, plus any effects, stat / sensitivity / base changes, or per-turn rules that are INTRINSIC to it (with EXACT numbers, e.g. "+5/turn"). Do NOT restate or attribute effects that belong to a separate tracked condition, curse, or set bonus — those are recorded in their own entries. If this element only triggers or is one piece of something tracked elsewhere, note that link in a few words and do not re-list its effects.
+
+This text is read by the state-tracker each turn to re-apply THIS element's own effects, so be specific and mechanical, not flowery. No preamble.
 
 Recent user input: {{lastInput}}
 Recent narration: {{lastReply}}
