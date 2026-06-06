@@ -138,3 +138,17 @@ test('setTemplate switches the in-use template', () => {
   assert.match(customPrompt, /custom reply/);
   assert.doesNotMatch(customPrompt, /You are a state tracker/);
 });
+
+test('number annotation reflects maxFromField and uncapped fields', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'rpg', label: 'RPG', appliesToRoles: ['protagonist'], autoUpdate: true, fields: [
+    { id: 'stamina', label: 'Stamina', type: 'number', min: 0, default: 100, allowDelta: true, maxFromField: 'max_stamina', inclusion: { rule: 'always' } },
+    { id: 'max_stamina', label: 'Max stamina', type: 'number', min: 0, default: 100, allowDelta: true, inclusion: { rule: 'always' }, injection: { enabled: false } },
+  ]});
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  const prompt = au.buildPrompt({ lastNarratorReply: '...' });
+  assert.ok(prompt.includes('cap tracked in max_stamina'), 'stamina shows its companion as the cap');
+  assert.ok(prompt.includes('no fixed cap'), 'uncapped companion is not falsely 0-100');
+  assert.ok(!/stamina \(number, 0-100\)/.test(prompt), 'must not claim a static 0-100 for stamina');
+});

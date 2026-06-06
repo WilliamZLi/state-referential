@@ -60,7 +60,12 @@ function formatValue(field, value) {
 }
 
 function fieldTypeAnnotation(field) {
-  if (field.type === 'number') return `number, ${field.min ?? 0}-${field.max ?? 100}`;
+  if (field.type === 'number') {
+    const min = field.min ?? 0;
+    if (field.maxFromField) return `number (min ${min}; cap tracked in ${field.maxFromField})`;
+    if (field.max != null) return `number, ${min}-${field.max}`;
+    return `number, ${min}+ (no fixed cap)`;
+  }
   if (field.type === 'enum') return `enum: ${field.options.join('|')}`;
   if (field.type === 'pair-list') return 'pair-list (entries are "name = descriptor")';
   return field.type;
