@@ -167,6 +167,16 @@ test('buildPrompt instructs short bare names for describable list entries', () =
   assert.match(prompt, /description/i, 'explains effects live in the separate description');
 });
 
+test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  const prompt = au.buildPrompt({ lastNarratorReply: '...' });
+  assert.match(prompt, /REPLACE <subject> <tracker>\.<field> "<old>" WITH "<new>"/);
+  assert.match(prompt, /existing item or value changes state/i);
+  assert.match(prompt, /NEW item, a DIFFERENT item, or an empty field, use ADD \/ SET/i);
+});
+
 test('number annotation reflects maxFromField and uncapped fields', () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'rpg', label: 'RPG', appliesToRoles: ['protagonist'], autoUpdate: true, fields: [

@@ -46,6 +46,7 @@ const COMMANDS_HELP = [
   'ADD <subject> <tracker>.<field> "<entry>"                       (list fields — entry is a SHORT name only)',
   'ADD <subject> <tracker>.<field> "<name>" = "<descriptor>"       (pair-list fields)',
   'REMOVE <subject> <tracker>.<field> "<entry-or-name>"',
+  'REPLACE <subject> <tracker>.<field> "<old>" WITH "<new>"        (state change of an existing entry/value)',
   'NEW_SUBJECT <name> <role>',
   'NONE',
   '',
@@ -53,6 +54,9 @@ const COMMANDS_HELP = [
   'For pair-list fields, ADD upserts: re-adding the same name replaces its descriptor.',
   'For describable list fields, the entry must be a short bare name (no effects, numbers, or',
   'parentheticals); its description is generated separately and read each turn to re-apply effects.',
+  'Use REPLACE only when an existing item or value changes state or condition — it is still the same',
+  'thing (breaks, tears, upgrades, intensifies); its prior description is carried forward.',
+  'For a NEW item, a DIFFERENT item, or an empty field, use ADD / SET instead so it gets a fresh description.',
 ].join('\n');
 
 function formatValue(field, value) {
