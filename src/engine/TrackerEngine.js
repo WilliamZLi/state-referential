@@ -105,6 +105,39 @@ export class TrackerEngine {
   setDescription(s, t, f, v, p) { this.values.setDescription(s, t, f, v, p); }
   invalidateDescription(s, t, f, v) { this.values.invalidateDescription(s, t, f, v); }
 
+  /**
+   * Delete cached descriptions for values no longer referenced by any current field
+   * value across all subjects (worn fields, or entries in any list such as a wardrobe).
+   * Manual, deliberate cleanup — descriptions are otherwise kept as a cache so reverts
+   * and re-encountered values reuse existing prose. Returns the number removed.
+   */
+  pruneOrphanDescriptions() {
+    const referenced = { global: new Map(), perSubject: new Map() };
+    for (const subj of this.listSubjects()) {
+      for (const tracker of this.listTrackers()) {
+        for (const field of tracker.fields) {
+          if (!field.describable || field.type === 'prose') continue;
+          const val = this.getField(subj.id, tracker.id, field.id);
+          if (val == null) continue;
+          const key = `${tracker.id}.${field.id}` + (field.type === 'list' || field.type === 'pair-list' ? '[]' : '');
+          const values = Array.isArray(val)
+            ? val.map(e => (e && typeof e === 'object' ? e.name : e)).filter(v => v != null).map(String)
+            : [String(val)];
+          if (field.descriptionScope === 'global') {
+            if (!referenced.global.has(key)) referenced.global.set(key, new Set());
+            for (const v of values) referenced.global.get(key).add(v);
+          } else {
+            if (!referenced.perSubject.has(subj.id)) referenced.perSubject.set(subj.id, new Map());
+            const m = referenced.perSubject.get(subj.id);
+            if (!m.has(key)) m.set(key, new Set());
+            for (const v of values) m.get(key).add(v);
+          }
+        }
+      }
+    }
+    return this.values.pruneOrphanDescriptions(referenced);
+  }
+
   // Tags
   setSceneTag(tag, on) { this.tags.set(tag, on); }
   toggleSceneTag(tag) { this.tags.toggle(tag); }

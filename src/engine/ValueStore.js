@@ -229,6 +229,37 @@ export class ValueStore {
     }
     this._persist();
   }
+  /**
+   * Remove cached descriptions whose value is no longer referenced by any current
+   * field value. `referenced` is built by the engine (which knows subjects/fields):
+   *   { global: Map(descKey -> Set(value)), perSubject: Map(subjId -> Map(descKey -> Set(value))) }
+   * Prose descriptions (stored under __prose__) are tied to the field+subject, not a
+   * value, so they are never pruned here (deletion happens via purgeField/clearSubject).
+   * Returns the number of entries removed.
+   */
+  pruneOrphanDescriptions(referenced) {
+    let removed = 0;
+    for (const [key, vmap] of Object.entries(this._desc.global ?? {})) {
+      const keep = referenced.global.get(key);
+      for (const value of Object.keys(vmap)) {
+        if (!keep || !keep.has(value)) { delete vmap[value]; removed++; }
+      }
+      if (Object.keys(vmap).length === 0) delete this._desc.global[key];
+    }
+    for (const [subjId, keys] of Object.entries(this._desc.perSubject ?? {})) {
+      const subjRef = referenced.perSubject.get(subjId);
+      for (const [key, vmap] of Object.entries(keys ?? {})) {
+        const keep = subjRef?.get(key);
+        for (const value of Object.keys(vmap)) {
+          if (value === '__prose__') continue; // tied to the field, not a value
+          if (!keep || !keep.has(value)) { delete vmap[value]; removed++; }
+        }
+        if (Object.keys(vmap).length === 0) delete this._desc.perSubject[subjId][key];
+      }
+    }
+    if (removed > 0) this._persist();
+    return removed;
+  }
   serialize() { return { values: this._values, descriptions: this._desc }; }
   hydrate({ values, descriptions }) {
     this._values = values ?? {};
