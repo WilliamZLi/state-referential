@@ -45,3 +45,27 @@ test('entry-replaced respects the probeDesc master toggle', () => {
   eng.bus.emit('tracker:entry-replaced', { subject: 's', tracker: 't', field: 'f', oldValue: 'old', newValue: 'new', priorDescription: 'd' });
   assert.strictEqual(enqueued.length, 0);
 });
+
+test('end-to-end: a REPLACE via applyCommands yields exactly one prior-context probe', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'inv', label: 'Inventory', appliesToRoles: ['protagonist'], fields: [
+    { id: 'items', label: 'Items', type: 'list', default: [], describable: true, descriptionScope: 'per-subject' },
+  ]});
+  const enqueued = [];
+  register(eng, {
+    versioning: { register() {} },
+    descProbe: { enqueue: (items) => enqueued.push(...items) },
+    getSettings: () => ({ probeDesc: true }),
+    injection: { run() {} },
+    hasActiveChat: () => false,
+  });
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'inv', 'items', ['magic staff']);
+  eng.setDescription(p.id, 'inv', 'items', 'magic staff', 'a carved oak staff with a glowing gem');
+  enqueued.length = 0; // ignore anything from the setup writes above
+  eng.applyCommands('REPLACE Cersia inv.items "magic staff" WITH "magic staff (broken)"');
+  assert.strictEqual(enqueued.length, 1, 'exactly one probe enqueued for the REPLACE');
+  assert.strictEqual(enqueued[0].value, 'magic staff (broken)');
+  assert.strictEqual(enqueued[0].priorValue, 'magic staff');
+  assert.strictEqual(enqueued[0].priorDescription, 'a carved oak staff with a glowing gem');
+});
