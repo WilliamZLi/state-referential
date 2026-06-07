@@ -43,6 +43,21 @@ test('ADD pair-list without descriptor still parses (legacy list path)', () => {
   ]);
 });
 
+test('SET unescapes an escaped inner quote (inch mark) in the value', () => {
+  const r = parseCommands(`SET Cersia outfit.footwear = "3\\" stiletto high heels"`);
+  assert.deepStrictEqual(r, [{ op: 'SET', subject: 'Cersia', tracker: 'outfit', field: 'footwear', value: '3" stiletto high heels' }]);
+});
+
+test('ADD list entry unescapes an escaped inner quote', () => {
+  const r = parseCommands(`ADD Cersia inv.items "3\\" dagger"`);
+  assert.deepStrictEqual(r, [{ op: 'ADD', subject: 'Cersia', tracker: 'inv', field: 'items', entry: '3" dagger' }]);
+});
+
+test('ADD pair-list with an escaped quote in the name still finds the = descriptor', () => {
+  const r = parseCommands(`ADD Cersia rel.bonds "the 6\\" knife" = "trusty"`);
+  assert.deepStrictEqual(r, [{ op: 'ADD', subject: 'Cersia', tracker: 'rel', field: 'bonds', entry: 'the 6" knife', descriptor: 'trusty' }]);
+});
+
 test('NEW_SUBJECT with role', () => {
   const r = parseCommands(`NEW_SUBJECT "Cult Priest" npc`);
   assert.deepStrictEqual(r, [{ op: 'NEW_SUBJECT', name: 'Cult Priest', role: 'npc' }]);

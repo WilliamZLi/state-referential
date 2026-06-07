@@ -1,9 +1,17 @@
 const SMART = /[""]/g;
 
+// Reverse the AI's JSON-style escaping of a quote char inside a value:
+// \" -> ", \' -> ', \\ -> \. Other backslashes (e.g. \n in prose) are left
+// untouched. Without this, a value like "3\" stiletto heels" stores the literal
+// backslash and renders as 3\" in the prompt.
+function unescapeQuoted(s) {
+  return s.replace(/\\(["'\\])/g, '$1');
+}
+
 function stripQuotes(s) {
   s = s.replace(SMART, '"').trim();
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    return s.slice(1, -1);
+    return unescapeQuoted(s.slice(1, -1));
   }
   return s;
 }
@@ -11,9 +19,14 @@ function stripQuotes(s) {
 function tokenizeQuoted(rest) {
   rest = rest.replace(SMART, '"').trim();
   if (rest.startsWith('"')) {
-    const end = rest.indexOf('"', 1);
-    if (end < 0) return [rest.slice(1), ''];
-    return [rest.slice(1, end), rest.slice(end + 1).trim()];
+    // Find the first UNescaped closing quote so the value may itself contain \"
+    // (e.g. an inch mark: "3\" stiletto heels").
+    let end = -1;
+    for (let i = 1; i < rest.length; i++) {
+      if (rest[i] === '"' && rest[i - 1] !== '\\') { end = i; break; }
+    }
+    if (end < 0) return [unescapeQuoted(rest.slice(1)), ''];
+    return [unescapeQuoted(rest.slice(1, end)), rest.slice(end + 1).trim()];
   }
   const sp = rest.indexOf(' ');
   if (sp < 0) return [rest, ''];
