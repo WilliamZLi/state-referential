@@ -342,22 +342,25 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // Robust popup dismissal — ST's popup markup varies across versions.
   // Try native <dialog>.close(), then various known close-button selectors, then Escape.
   const _closePopup = ($contentJq) => {
-    // Strategy 1: <dialog> ancestor with native close()
-    const $dialog = $contentJq.closest('dialog');
-    if ($dialog.length && typeof $dialog[0].close === 'function') {
-      $dialog[0].close();
-      return;
-    }
-    // Strategy 2: known close-button selectors
+    // Strategy 1: click ST's own close button so the Popup teardown runs (close
+    // animation, DOM removal, promise resolution). The native <dialog>.close()
+    // bypasses that bookkeeping and leaves the dialog lingering in the background
+    // (you'd see just its circular ✕ peeking at the screen edge), so prefer this.
     const $popup = $contentJq.closest('.popup, .popup_container, .dialogue_popup');
     const closeSelectors = [
-      '.popup_cross', '.popup_close', '.popup-button-close',
-      '.menu_button.popup_button_cancel', '.popup_button_cancel',
-      '.fa-times', '.fa-xmark',
+      '.popup-button-close', '.popup_cross', '.popup_close',
+      '.menu_button.popup_button_cancel', '.popup_button_cancel', '.popup-button-cancel',
+      '.fa-times', '.fa-xmark', '.fa-circle-xmark',
     ];
     for (const sel of closeSelectors) {
       const $btn = $popup.find(sel).first();
       if ($btn.length) { $btn.trigger('click'); return; }
+    }
+    // Strategy 2: native <dialog> close (only if no ST close button is present).
+    const $dialog = $contentJq.closest('dialog');
+    if ($dialog.length && typeof $dialog[0].close === 'function') {
+      $dialog[0].close();
+      return;
     }
     // Strategy 3: Escape key dispatched on document
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
