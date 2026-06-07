@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { TrackerEngine } from '../../src/engine/TrackerEngine.js';
 import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
 
-export function mkEngine() {
+function mkEngine() {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'outfit', label: 'Outfit', appliesToRoles: ['protagonist'], fields: [
     { id: 'topwear', label: 'Topwear', type: 'text', describable: true, descriptionScope: 'per-subject' },
@@ -58,4 +58,19 @@ test('replaceListEntry throws on a non-list field', () => {
   const eng = mkEngine();
   const p = eng.addSubject('Cersia', { role: 'protagonist' });
   assert.throws(() => eng.values.replaceListEntry(p.id, 'outfit', 'topwear', 'x', 'y', {}));
+});
+
+test('replaceListEntry stamps fresh itemMeta on a timed list field and drops the old', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'state', label: 'State', appliesToRoles: ['protagonist'], fields: [
+    { id: 'effects', label: 'Effects', type: 'list', default: [], describable: true, descriptionScope: 'per-subject', inclusion: { rule: 'active', activeWindow: 3 } },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.addListEntry(p.id, 'state', 'effects', 'mild curse', { msgId: 'm1' });
+  eng.values.replaceListEntry(p.id, 'state', 'effects', 'mild curse', 'intense curse', { source: 'replace', msgId: 'm5' });
+  const meta = eng.getListMeta(p.id, 'state', 'effects');
+  assert.ok(meta['intense curse'], 'new entry has itemMeta');
+  assert.strictEqual(meta['intense curse'].addedAtMsg, 'm5', 'new entry stamped with the replace msgId');
+  assert.ok(!meta['mild curse'], 'old entry itemMeta dropped');
+  assert.deepStrictEqual(eng.getField(p.id, 'state', 'effects'), ['intense curse']);
 });

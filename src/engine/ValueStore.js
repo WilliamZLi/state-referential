@@ -125,10 +125,11 @@ export class ValueStore {
     this.setField(s, t, f, cur.filter(x => x !== entry), opts);
   }
   /**
-   * Swap an existing list entry for a new one IN PLACE (same index, so order is
-   * stable). If oldEntry isn't present, newEntry is appended. De-dups if newEntry
-   * already exists. Timed list fields stamp newEntry as freshly touched (resets its
-   * countdown). Used by REPLACE — fires a single tracker:value-changed.
+   * Swap an existing list entry for a new one at the old entry's index (order is
+   * preserved when newEntry isn't already in the list; if it is, the existing
+   * occurrence is kept and the duplicate dropped). If oldEntry isn't present,
+   * newEntry is appended. Timed list fields stamp newEntry as freshly touched
+   * (resets its countdown). Used by REPLACE — fires a single tracker:value-changed.
    */
   replaceListEntry(s, t, f, oldEntry, newEntry, opts = {}) {
     const field = this._field(t, f);
