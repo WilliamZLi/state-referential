@@ -125,6 +125,33 @@ export class ValueStore {
     this.setField(s, t, f, cur.filter(x => x !== entry), opts);
   }
   /**
+   * Swap an existing list entry for a new one IN PLACE (same index, so order is
+   * stable). If oldEntry isn't present, newEntry is appended. De-dups if newEntry
+   * already exists. Timed list fields stamp newEntry as freshly touched (resets its
+   * countdown). Used by REPLACE — fires a single tracker:value-changed.
+   */
+  replaceListEntry(s, t, f, oldEntry, newEntry, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'list') throw new Error('replaceListEntry requires list');
+    const cur = this.getField(s, t, f) ?? [];
+    const idx = cur.indexOf(oldEntry);
+    let next = idx >= 0 ? cur.map((v, i) => (i === idx ? newEntry : v)) : [...cur, newEntry];
+    next = next.filter((v, i) => next.indexOf(v) === i); // de-dup
+    if (field.inclusion?.activeWindow != null) {
+      if (!this._values[s]) this._values[s] = {};
+      if (!this._values[s][t]) this._values[s][t] = {};
+      if (!this._values[s][t][f]) this._values[s][t][f] = { v: cur, lastTouchedMsg: null };
+      const rec = this._values[s][t][f];
+      if (!rec.itemMeta) rec.itemMeta = {};
+      rec.itemMeta[newEntry] = {
+        addedAtMsg: opts.msgId ?? null,
+        addedAtSnapCount: opts.addedAtSnapCount ?? null,
+        expiresAtSnapCount: opts.expiresAtSnapCount ?? null,
+      };
+    }
+    this.setField(s, t, f, next, opts);
+  }
+  /**
    * Upsert a pair-list entry by name. If the name exists, replace its descriptor
    * (preserving order); otherwise append. Empty/blank name is a no-op.
    */
