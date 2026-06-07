@@ -15,8 +15,22 @@ export function register(engine, deps) {
     const s = deps.getSettings();
     if (s.probeDesc === false) return;
     if (e.source === 'manual') return;
+    // REPLACE-driven changes are probed via tracker:entry-replaced (with prior
+    // context), so skip the context-free probe here to avoid a duplicate.
+    if (e.source === 'replace') return;
     deps.descProbe.enqueue([{
       subjectId: e.subject, trackerId: e.tracker, fieldId: e.field, value: e.newValue,
+    }]);
+  });
+
+  // REPLACE: probe the new value WITH the prior value's description as context so
+  // a state change evolves the prior prose instead of being probed from scratch.
+  engine.on('tracker:entry-replaced', (e) => {
+    const s = deps.getSettings();
+    if (s.probeDesc === false) return;
+    deps.descProbe.enqueue([{
+      subjectId: e.subject, trackerId: e.tracker, fieldId: e.field,
+      value: e.newValue, priorValue: e.oldValue, priorDescription: e.priorDescription,
     }]);
   });
 
