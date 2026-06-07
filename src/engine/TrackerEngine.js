@@ -306,6 +306,25 @@ export class TrackerEngine {
         } else if (c.op === 'REMOVE') {
           if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
           else this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
+        } else if (c.op === 'REPLACE') {
+          if (field.type === 'number' || field.type === 'pair-list' || field.type === 'prose') {
+            errors.push(`REPLACE unsupported for ${field.type} field: ${c.tracker}.${c.field}`);
+            continue; // skip applied++ for an unsupported op
+          }
+          // Capture the prior description BEFORE mutating; keep it (revert-safe).
+          const priorDescription = this.values.getDescription(subj.id, c.tracker, c.field, c.oldEntry) ?? null;
+          // source:'replace' so the generic auto-probe skips it — the contextual
+          // probe is enqueued from tracker:entry-replaced instead.
+          const replaceOpts = { source: 'replace', msgId: opts.msgId ?? null };
+          if (field.type === 'list') {
+            this.values.replaceListEntry(subj.id, c.tracker, c.field, c.oldEntry, c.newEntry, replaceOpts);
+          } else {
+            this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.newEntry), replaceOpts);
+          }
+          this.bus.emit('tracker:entry-replaced', {
+            subject: subj.id, tracker: c.tracker, field: c.field,
+            oldValue: c.oldEntry, newValue: c.newEntry, priorDescription,
+          });
         }
         applied++;
       } catch (e) {
