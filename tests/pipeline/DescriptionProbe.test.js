@@ -174,3 +174,21 @@ test('no prior-context block when the job has no prior description', async () =>
   await probe.drain();
   assert.ok(!/state change of an existing/i.test(calls[0]), 'no prior block for a normal probe');
 });
+
+test('prior-context block also prepends for the generic (default) profile', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'inv', label: 'Items', fields: [
+    { id: 'items', label: 'Items', type: 'list', describable: true, descriptionScope: 'per-subject' },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.addListEntry(p.id, 'inv', 'items', 'torch (snuffed)');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, { generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; } });
+  probe.enqueue([{ subjectId: p.id, trackerId: 'inv', fieldId: 'items', value: 'torch (snuffed)',
+    priorValue: 'torch', priorDescription: 'a burning pine torch' }]);
+  await probe.drain();
+  const prompt = calls[0];
+  assert.match(prompt, /state change of an existing/i, 'prior block present for the generic profile');
+  assert.ok(prompt.includes('a burning pine torch'), 'includes the prior description');
+  assert.match(prompt, /ONE short clause/i, 'still uses the generic template body');
+});

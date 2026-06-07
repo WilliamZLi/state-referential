@@ -121,6 +121,8 @@ export class DescriptionProbe {
       for (const entry of value) await this._runOne({ subjectId, trackerId, fieldId, value: entry, profile });
       return;
     }
+    // If the value already has a cached description (e.g. a REPLACE to a value that
+    // was described earlier), reuse it rather than regenerating with prior context.
     const existing = this.engine.getDescription(subjectId, trackerId, fieldId, value);
     if (existing != null && existing !== '') return;
     const subj = this.engine.subjects.get(subjectId);
