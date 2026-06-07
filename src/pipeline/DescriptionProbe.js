@@ -26,6 +26,16 @@ Recent narration: {{lastReply}}
 
 const PROBE_PROFILES = { detailed: DETAILED_PROBE_TEMPLATE };
 
+// Prepended to the chosen profile template when a probe job carries a prior
+// description (from a REPLACE). The final line keeps the main template's
+// format/length/scoping rules in force so the prior text can't bloat the output.
+const PRIOR_CONTEXT_PREFIX = `This is a state change of an existing {{label}}. It was previously "{{priorValue}}", described as:
+{{priorDescription}}
+
+Keep the enduring, unchanged details consistent with the above and reflect ONLY what changed in the new state. Produce the new description in the same form and length instructed below.
+
+`;
+
 function renderTemplate(tpl, ctx) {
   let out = tpl.replace(/\{\{#if subjectHasTraits\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, inner) =>
     ctx.subjectHasTraits ? inner : '');
@@ -100,7 +110,7 @@ export class DescriptionProbe {
     }
   }
 
-  async _runOne({ subjectId, trackerId, fieldId, value, profile }) {
+  async _runOne({ subjectId, trackerId, fieldId, value, profile, priorValue, priorDescription }) {
     const field = this.engine.definitions.getField(trackerId, fieldId);
     if (!field || !field.describable) return;
     // pair-list carries its descriptor inline — never probe.
@@ -129,8 +139,11 @@ export class DescriptionProbe {
       traits,
       lastInput: probeCtx.lastInput ?? '',
       lastReply: probeCtx.lastReply ?? '',
+      priorValue: priorValue ?? '',
+      priorDescription: priorDescription ?? '',
     };
-    const tpl = PROBE_PROFILES[profile ?? field.probeProfile] ?? this.template;
+    let tpl = PROBE_PROFILES[profile ?? field.probeProfile] ?? this.template;
+    if (priorDescription) tpl = PRIOR_CONTEXT_PREFIX + tpl;
     const prompt = renderTemplate(tpl, ctx);
     let text;
     try {

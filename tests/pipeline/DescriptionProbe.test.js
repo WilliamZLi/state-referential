@@ -136,3 +136,41 @@ test('detailed profile injects chat context; generic does not', async () => {
   assert.ok(detailedPrompt.includes('DIRECTIVE-XYZ +50 stamina base'), 'detailed profile injects the user directive');
   assert.ok(!genericPrompt.includes('DIRECTIVE-XYZ'), 'generic profile carries no context');
 });
+
+test('prior-context block is prepended when a job carries a prior description', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'inv', label: 'Items', fields: [
+    { id: 'items', label: 'Items', type: 'list', describable: true, descriptionScope: 'per-subject', probeProfile: 'detailed' },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.addListEntry(p.id, 'inv', 'items', 'magic staff (broken)');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, {
+    generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; },
+    getProbeContext: () => ({ lastInput: 'IN', lastReply: 'OUT' }),
+  });
+  probe.enqueue([{ subjectId: p.id, trackerId: 'inv', fieldId: 'items', value: 'magic staff (broken)',
+    priorValue: 'magic staff', priorDescription: 'a carved oak staff with a glowing gem' }]);
+  await probe.drain();
+  const prompt = calls[0];
+  assert.match(prompt, /state change of an existing/i, 'has the prior-context block');
+  assert.ok(prompt.includes('magic staff'), 'mentions the prior value');
+  assert.ok(prompt.includes('a carved oak staff with a glowing gem'), 'includes the prior description');
+  assert.ok(prompt.includes('magic staff (broken)'), 'includes the new value');
+  assert.ok(prompt.indexOf('state change of an existing') < prompt.indexOf('Describe what'),
+    'prior block precedes the detailed template body');
+});
+
+test('no prior-context block when the job has no prior description', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'inv', label: 'Items', fields: [
+    { id: 'items', label: 'Items', type: 'list', describable: true, descriptionScope: 'per-subject' },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.addListEntry(p.id, 'inv', 'items', 'torch');
+  const calls = [];
+  const probe = new DescriptionProbe(eng, { generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; } });
+  probe.enqueue([{ subjectId: p.id, trackerId: 'inv', fieldId: 'items', value: 'torch' }]);
+  await probe.drain();
+  assert.ok(!/state change of an existing/i.test(calls[0]), 'no prior block for a normal probe');
+});
