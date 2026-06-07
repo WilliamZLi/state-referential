@@ -175,6 +175,8 @@ test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
   assert.match(prompt, /REPLACE <subject> <tracker>\.<field> "<old>" WITH "<new>"/);
   assert.match(prompt, /existing item or value changes state/i);
   assert.match(prompt, /NEW item, a DIFFERENT item, or an empty field, use ADD \/ SET/i);
+  assert.match(prompt, /short bare name \(same as ADD\)/i);
+  assert.match(prompt, /list and text\/enum fields only/i);
 });
 
 test('number annotation reflects maxFromField and uncapped fields', () => {

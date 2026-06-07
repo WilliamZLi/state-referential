@@ -55,8 +55,10 @@ const COMMANDS_HELP = [
   'For describable list fields, the entry must be a short bare name (no effects, numbers, or',
   'parentheticals); its description is generated separately and read each turn to re-apply effects.',
   'Use REPLACE only when an existing item or value changes state or condition — it is still the same',
-  'thing (breaks, tears, upgrades, intensifies); its prior description is carried forward.',
-  'For a NEW item, a DIFFERENT item, or an empty field, use ADD / SET instead so it gets a fresh description.',
+  'thing (breaks, tears, worsens, upgrades); its prior description is carried forward. The new name must',
+  'still be a short bare name (same as ADD). REPLACE is for list and text/enum fields only — for numeric',
+  'changes use DELTA or SET. For a NEW item, a DIFFERENT item, or an empty field, use ADD / SET instead',
+  'so it gets a fresh description.',
 ].join('\n');
 
 function formatValue(field, value) {
