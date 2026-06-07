@@ -17,6 +17,9 @@ function mkEngine() {
   eng.defineTracker({ id: 'rel', label: 'Rel', appliesToRoles: ['protagonist'], fields: [
     { id: 'bonds', label: 'Bonds', type: 'pair-list', default: [] },
   ]});
+  eng.defineTracker({ id: 'mind', label: 'Mind', appliesToRoles: ['protagonist'], fields: [
+    { id: 'mood', label: 'Mood', type: 'enum', options: ['calm', 'angry', 'feral'], default: 'calm', describable: true, descriptionScope: 'per-subject' },
+  ]});
   return eng;
 }
 
@@ -137,4 +140,27 @@ test('REPLACE is rejected for number and pair-list fields', () => {
   const r2 = eng.applyCommands('REPLACE Cersia rel.bonds "Marcus" WITH "Marcus (rival)"');
   assert.strictEqual(r2.applied, 0);
   assert.ok(r2.errors.some(e => /REPLACE unsupported/i.test(e)));
+});
+
+test('REPLACE on an enum field with a valid option sets the new value and emits prior desc', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'mind', 'mood', 'calm');
+  eng.setDescription(p.id, 'mind', 'mood', 'calm', 'serene and composed');
+  const events = [];
+  eng.on('tracker:entry-replaced', e => events.push(e));
+  const res = eng.applyCommands('REPLACE Cersia mind.mood "calm" WITH "angry"');
+  assert.strictEqual(res.applied, 1);
+  assert.strictEqual(eng.getField(p.id, 'mind', 'mood'), 'angry');
+  assert.strictEqual(events[0].priorDescription, 'serene and composed');
+});
+
+test('REPLACE on an enum field with an invalid option is reported as an error, value unchanged', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'mind', 'mood', 'calm');
+  const res = eng.applyCommands('REPLACE Cersia mind.mood "calm" WITH "ecstatic"');
+  assert.strictEqual(res.applied, 0);
+  assert.ok(res.errors.length >= 1, 'invalid enum value produces an error');
+  assert.strictEqual(eng.getField(p.id, 'mind', 'mood'), 'calm');
 });

@@ -313,8 +313,9 @@ export class TrackerEngine {
           }
           // Capture the prior description BEFORE mutating; keep it (revert-safe).
           const priorDescription = this.values.getDescription(subj.id, c.tracker, c.field, c.oldEntry) ?? null;
-          // source:'replace' so the generic auto-probe skips it — the contextual
-          // probe is enqueued from tracker:entry-replaced instead.
+          // Mark the write source:'replace' and carry the prior description on the
+          // tracker:entry-replaced event; EventHooks routes these to a prior-context
+          // probe for the new value and skips the generic probe for replace writes.
           const replaceOpts = { source: 'replace', msgId: opts.msgId ?? null };
           if (field.type === 'list') {
             this.values.replaceListEntry(subj.id, c.tracker, c.field, c.oldEntry, c.newEntry, replaceOpts);
