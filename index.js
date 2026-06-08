@@ -118,7 +118,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     template: _strkSettings().templates?.probe,
     getProbeContext: () => {
       const chat = getContext().chat ?? [];
-      const CTX = 2; // last N user inputs + last N narrator replies for probe context
+      const CTX = _strkSettings().probeContextTurns ?? 2; // last N user inputs + N narrator replies
       const inputs = [], replies = [];
       for (let i = chat.length - 1; i >= 0; i--) {
         const m = chat[i];
