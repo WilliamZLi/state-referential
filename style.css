@@ -48,11 +48,7 @@
 .strk-chip { padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,0.08); font-size: 12px; cursor: pointer; }
 .strk-chip-expired { opacity: 0.35; text-decoration: line-through; }
 
-.strk-pair-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-.strk-pair-row { display: flex; gap: 4px; align-items: center; }
-.strk-pair-row .strk-pair-name { flex: 0 0 35%; min-width: 0; }
-.strk-pair-row .strk-pair-desc { flex: 1 1 auto; min-width: 0; }
-.strk-pair-add { align-self: flex-start; }
+/* (pair-list now renders as chips via .strk-chip-cluster — see FieldRenderers) */
 
 .strk-panel-footer { padding: 6px 8px; display: flex; gap: 6px; border-top: 1px solid var(--SmartThemeBorderColor, #333); }
 
@@ -273,9 +269,13 @@
   width: auto;
 }
 
-/* Prose edit modal */
+/* Prose / detail edit modal */
 .strk-prose-modal { padding: 8px 12px; min-width: 400px; }
 .strk-prose-modal > h3 { margin: 0 0 8px 0; font-size: 14px; }
+.strk-prose-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: 12px; }
+.strk-prose-field > span { opacity: 0.75; }
+.strk-prose-field > input.text_pole,
+.strk-prose-field > textarea { width: 100%; box-sizing: border-box; }
 .strk-prose-modal > textarea {
   width: 100%;
   box-sizing: border-box;

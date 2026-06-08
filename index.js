@@ -423,12 +423,37 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     cleanup();
   };
 
-  const openProseModal = async ({ title, text, onSave, onRefresh }) => {
+  const openProseModal = async ({ title, text, name, turns, textLabel, onSave, onRefresh }) => {
     const html = await loadTemplate('prose-edit-modal');
     const $f = $(html);
     $('#strk-prose-title', $f).text(title);
-    $('#strk-prose-text', $f).val(text);
-    $('#strk-prose-save', $f).on('click', () => { onSave?.($('#strk-prose-text', $f).val()); _closePopup($f); });
+    // Description / text box — hidden when text is explicitly undefined (e.g. renaming
+    // a non-describable entry, where there's no prose to edit).
+    if (text === undefined) {
+      $('#strk-prose-text-row', $f).hide();
+    } else {
+      $('#strk-prose-text', $f).val(text ?? '');
+      if (textLabel) $('#strk-prose-text-label', $f).text(textLabel);
+    }
+    // Optional Name field (enables rename from the detail popup).
+    const hasName = name !== undefined && name !== null;
+    if (hasName) { $('#strk-prose-name-row', $f).show(); $('#strk-prose-name', $f).val(name); }
+    // Optional Turns field (countdown list entries).
+    const hasTurns = turns && Number.isFinite(turns.value);
+    if (hasTurns) {
+      $('#strk-prose-turns-row', $f).show();
+      $('#strk-prose-turns', $f).val(turns.value);
+      if (turns.max != null) $('#strk-prose-turns', $f).attr('max', turns.max);
+    }
+    // Re-probe only makes sense for AI-described values; hide it otherwise.
+    if (!onRefresh) $('#strk-prose-refresh', $f).hide();
+    $('#strk-prose-save', $f).on('click', () => {
+      const extra = {};
+      if (hasName) extra.name = String($('#strk-prose-name', $f).val() ?? '').trim();
+      if (hasTurns) { const n = parseInt($('#strk-prose-turns', $f).val(), 10); extra.turns = Number.isFinite(n) ? n : undefined; }
+      onSave?.($('#strk-prose-text', $f).val(), extra);
+      _closePopup($f);
+    });
     $('#strk-prose-refresh', $f).on('click', async () => {
       if (!onRefresh) return;
       const $btn = $('#strk-prose-refresh', $f);

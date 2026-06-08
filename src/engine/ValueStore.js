@@ -153,6 +153,36 @@ export class ValueStore {
     this.setField(s, t, f, next, opts);
   }
   /**
+   * Manually rename a list entry IN PLACE, carrying its cached description AND its
+   * countdown (itemMeta) to the new name and dropping the old. Unlike replaceListEntry
+   * (REPLACE — resets the countdown and triggers a re-probe), rename preserves
+   * everything: "the same thing, just fixing its name." No-op if the old entry is
+   * absent or the name is unchanged/blank.
+   */
+  renameListEntry(s, t, f, oldEntry, newEntry, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'list') throw new Error('renameListEntry requires list');
+    const next = String(newEntry ?? '').trim();
+    if (!next || next === oldEntry) return;
+    const cur = this.getField(s, t, f) ?? [];
+    const idx = cur.indexOf(oldEntry);
+    if (idx < 0) return;
+    // Carry the description (move it, don't duplicate).
+    const desc = this.getDescription(s, t, f, oldEntry);
+    // Carry the countdown/itemMeta under the new key BEFORE setField — its
+    // carry-forward keeps meta for entries present in the new array and drops the rest.
+    const rec = this._values[s]?.[t]?.[f];
+    if (rec?.itemMeta?.[oldEntry] != null && rec.itemMeta[next] == null) {
+      rec.itemMeta[next] = rec.itemMeta[oldEntry];
+    }
+    const arr = cur.map((v, i) => (i === idx ? next : v)).filter((v, i, a) => a.indexOf(v) === i);
+    this.setField(s, t, f, arr, opts);
+    if (desc != null && desc !== '') {
+      this.setDescription(s, t, f, next, desc);
+      this.invalidateDescription(s, t, f, oldEntry);
+    }
+  }
+  /**
    * Upsert a pair-list entry by name. If the name exists, replace its descriptor
    * (preserving order); otherwise append. Empty/blank name is a no-op.
    */

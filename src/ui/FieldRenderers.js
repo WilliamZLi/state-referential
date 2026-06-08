@@ -206,103 +206,76 @@ export function makeRenderers(engine, deps) {
       return row(field, subj, $sel, [descBtn(field, subj, cur), reprobeBtn(field, subj, cur)].filter(Boolean));
     },
     list(field, subj) {
-      const cur = engine.getField(subj.id, field._trackerId, field.id) ?? [];
+      const t = field._trackerId, f = field.id;
+      const cur = engine.getField(subj.id, t, f) ?? [];
       const activeWindow = field.inclusion?.activeWindow;
-      const itemMeta = activeWindow != null ? engine.getListMeta(subj.id, field._trackerId, field.id) : {};
+      const itemMeta = activeWindow != null ? engine.getListMeta(subj.id, t, f) : {};
       const snapshots = activeWindow != null ? engine.listSnapshots() : [];
       const $cluster = $('<div class="strk-chip-cluster"></div>');
-      for (const entry of cur) {
-        let label = entry;
-        let expired = false;
-        if (activeWindow != null) {
-          const meta = itemMeta[entry];
-          if (meta) {
-            let remaining;
-            if (meta.expiresAtSnapCount != null) {
-              remaining = meta.expiresAtSnapCount - snapshots.length;
-            } else {
-              let turnsSince;
-              if (meta.addedAtMsg) {
-                const touchIdx = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
-                turnsSince = touchIdx >= 0 ? snapshots.length - touchIdx - 1 : snapshots.length;
-              } else if (meta.addedAtSnapCount != null) {
-                turnsSince = snapshots.length - meta.addedAtSnapCount;
-              } else {
-                turnsSince = 0;
-              }
-              remaining = activeWindow - turnsSince;
-            }
-            expired = remaining <= 0;
-            label = expired ? entry : `${entry} (${remaining})`;
-          }
+
+      // Turns remaining for a countdown entry (null if not a countdown field / no meta).
+      const remainingFor = (entry) => {
+        if (activeWindow == null) return null;
+        const meta = itemMeta[entry];
+        if (!meta) return null;
+        if (meta.expiresAtSnapCount != null) return meta.expiresAtSnapCount - snapshots.length;
+        let turnsSince;
+        if (meta.addedAtMsg) {
+          const ti = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
+          turnsSince = ti >= 0 ? snapshots.length - ti - 1 : snapshots.length;
+        } else if (meta.addedAtSnapCount != null) {
+          turnsSince = snapshots.length - meta.addedAtSnapCount;
+        } else {
+          turnsSince = 0;
         }
+        return activeWindow - turnsSince;
+      };
+
+      // Chip click → unified detail popup: rename, edit description, set turns.
+      const openDetail = (entry) => {
+        const rem = remainingFor(entry);
+        const currentRemaining = rem == null ? null : Math.max(0, rem);
+        deps.openProseModal({
+          title: `${field.label}: ${entry}`,
+          name: entry,
+          text: field.describable ? (engine.getDescription(subj.id, t, f, entry) ?? '') : undefined,
+          turns: activeWindow != null ? { value: currentRemaining ?? 0, max: activeWindow } : undefined,
+          onSave: (newText, extra) => {
+            const newName = extra?.name;
+            const newTurns = extra?.turns;
+            let current = entry;
+            if (newName && newName !== entry) {
+              engine.renameListEntry(subj.id, t, f, entry, newName, { source: 'manual' });
+              current = newName;
+            }
+            if (field.describable && newText !== undefined) {
+              engine.setDescription(subj.id, t, f, current, newText);
+            }
+            if (activeWindow != null && Number.isFinite(newTurns) && newTurns !== currentRemaining) {
+              const clamped = Math.min(activeWindow, Math.max(0, newTurns));
+              const nowSnap = engine.listSnapshots().length;
+              engine.removeListEntry(subj.id, t, f, current, { source: 'manual' });
+              engine.addListEntry(subj.id, t, f, current, { source: 'manual', expiresAtSnapCount: nowSnap + clamped });
+            }
+          },
+          onRefresh: field.describable ? (async () => {
+            engine.invalidateDescription(subj.id, t, f, entry);
+            await deps.requestProbe(subj.id, t, f, entry);
+            return engine.getDescription(subj.id, t, f, entry) ?? '';
+          }) : undefined,
+        });
+      };
+
+      for (const entry of cur) {
+        const rem = remainingFor(entry);
+        const expired = rem != null && rem <= 0;
+        const label = (rem != null && !expired) ? `${entry} (${rem})` : entry;
         const $chip = $('<span class="strk-chip"></span>').text(label);
         if (expired) $chip.addClass('strk-chip-expired');
-        $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' }); });
-        if (activeWindow != null) {
-          // Left-click on countdown chip → set remaining turns
-          $chip.attr('title', 'Click to set turns remaining; right-click to remove');
-          $chip.on('click', async () => {
-            const currentRemaining = expired ? 0 : Math.max(0, activeWindow - (
-              (() => {
-                const meta = itemMeta[entry];
-                if (!meta) return 0;
-                if (meta.addedAtMsg) {
-                  const ti = snapshots.findIndex(s => s.msgId === meta.addedAtMsg);
-                  return ti >= 0 ? snapshots.length - ti - 1 : snapshots.length;
-                }
-                if (meta.addedAtSnapCount != null) return snapshots.length - meta.addedAtSnapCount;
-                return 0;
-              })()
-            ));
-            const raw = deps.dialogs
-              ? await deps.dialogs.prompt(`Turns remaining for "${entry}" (0–${activeWindow}):`, String(currentRemaining))
-              : prompt(`Turns remaining for "${entry}" (0–${activeWindow}):`, String(currentRemaining));
-            if (raw == null || raw.trim() === '') return;
-            const newRemaining = Math.min(activeWindow, Math.max(0, parseInt(raw, 10)));
-            if (isNaN(newRemaining)) return;
-            const nowSnapCount = engine.listSnapshots().length;
-            engine.removeListEntry(subj.id, field._trackerId, field.id, entry, { source: 'manual' });
-            engine.addListEntry(subj.id, field._trackerId, field.id, entry, {
-              source: 'manual',
-              expiresAtSnapCount: nowSnapCount + newRemaining,
-            });
-          });
-        } else {
-          $chip.on('click', () => {
-            if (field.describable) {
-              const prose = engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
-              deps.openProseModal({
-                title: `${field.label}: ${entry}`,
-                text: prose,
-                onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
-                onRefresh: async () => {
-                  engine.invalidateDescription(subj.id, field._trackerId, field.id, entry);
-                  await deps.requestProbe(subj.id, field._trackerId, field.id, entry);
-                  return engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
-                },
-              });
-            }
-          });
-        }
-        // For countdown chips, inline pencil scoped to the specific entry (not the whole list)
-        const $descBtn = (activeWindow != null && field.describable)
-          ? $('<button class="strk-field-icon" title="Edit description">🖉</button>').on('click', () => {
-              const prose = engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
-              deps.openProseModal({
-                title: `${field.label}: ${entry}`,
-                text: prose,
-                onSave: (p) => engine.setDescription(subj.id, field._trackerId, field.id, entry, p),
-                onRefresh: async () => {
-                  engine.invalidateDescription(subj.id, field._trackerId, field.id, entry);
-                  await deps.requestProbe(subj.id, field._trackerId, field.id, entry);
-                  return engine.getDescription(subj.id, field._trackerId, field.id, entry) ?? '';
-                },
-              });
-            })
-          : null;
+        $chip.attr('title', 'Click to edit; right-click to remove');
+        $chip.on('click', () => openDetail(entry));
+        $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeListEntry(subj.id, t, f, entry, { source: 'manual' }); });
         $cluster.append($chip);
-        if ($descBtn) $cluster.append($descBtn);
       }
       const $add = $('<button class="strk-field-icon">+</button>').on('click', async () => {
         const v = deps.dialogs
@@ -310,7 +283,7 @@ export function makeRenderers(engine, deps) {
           : prompt(`Add entry to ${field.label}:`);
         if (v) {
           const addMsgId = activeWindow != null ? (snapshots[snapshots.length - 1]?.msgId ?? null) : null;
-          engine.addListEntry(subj.id, field._trackerId, field.id, v, {
+          engine.addListEntry(subj.id, t, f, v, {
             source: 'manual',
             msgId: addMsgId,
             addedAtSnapCount: activeWindow != null ? snapshots.length : undefined,
@@ -321,47 +294,40 @@ export function makeRenderers(engine, deps) {
       return row(field, subj, $cluster, []);
     },
     'pair-list': (field, subj) => {
-      const cur = engine.getField(subj.id, field._trackerId, field.id) ?? [];
-      const $cluster = $('<div class="strk-pair-list"></div>');
+      const t = field._trackerId, f = field.id;
+      const cur = engine.getField(subj.id, t, f) ?? [];
+      const $cluster = $('<div class="strk-chip-cluster"></div>');
 
-      const renderPairRow = (pair, idx) => {
-        const $r = $('<div class="strk-pair-row"></div>');
-        const $name = $('<input class="text_pole strk-pair-name" type="text" />').val(pair.name);
-        const $desc = $('<input class="text_pole strk-pair-desc" type="text" />').val(pair.descriptor ?? '');
-        $name.attr('placeholder', 'Name');
-        $desc.attr('placeholder', 'Descriptor (e.g. childhood friend)');
-        // Commit on blur or Enter; rename does an upsert under the new name + remove of old.
-        let lastName = pair.name;
-        const commitName = () => {
-          const next = String($name.val() ?? '').trim();
-          if (next === lastName) return;
-          if (lastName) engine.removePair(subj.id, field._trackerId, field.id, lastName, { source: 'manual' });
-          if (next) engine.setPair(subj.id, field._trackerId, field.id, next, String($desc.val() ?? ''), { source: 'manual' });
-          lastName = next;
-        };
-        const commitDesc = () => {
-          const name = String($name.val() ?? '').trim();
-          if (!name) return;
-          engine.setPair(subj.id, field._trackerId, field.id, name, String($desc.val() ?? ''), { source: 'manual' });
-        };
-        $name.on('change', commitName).on('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitName(); } });
-        $desc.on('change', commitDesc).on('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitDesc(); } });
-        const $rm = $('<button class="strk-field-icon" title="Remove">×</button>').on('click', () => {
-          if (pair.name) engine.removePair(subj.id, field._trackerId, field.id, pair.name, { source: 'manual' });
+      // Chip click → detail popup: rename + edit the (often long) descriptor in a big box.
+      const openDetail = (pair) => {
+        deps.openProseModal({
+          title: field.label,
+          name: pair.name,
+          text: pair.descriptor ?? '',
+          textLabel: 'Descriptor',
+          onSave: (newDesc, extra) => {
+            const finalName = (extra?.name && extra.name.trim()) ? extra.name.trim() : pair.name;
+            if (finalName !== pair.name) engine.removePair(subj.id, t, f, pair.name, { source: 'manual' });
+            engine.setPair(subj.id, t, f, finalName, String(newDesc ?? ''), { source: 'manual' });
+          },
+          // No onRefresh — pair-list descriptors are inline, never AI-probed.
         });
-        $r.append($name).append($desc).append($rm);
-        return $r;
       };
 
-      for (let i = 0; i < cur.length; i++) {
-        $cluster.append(renderPairRow(cur[i], i));
+      for (const pair of cur) {
+        if (!pair?.name) continue;
+        const $chip = $('<span class="strk-chip"></span>').text(pair.name);
+        $chip.attr('title', 'Click to edit; right-click to remove');
+        $chip.on('click', () => openDetail(pair));
+        $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removePair(subj.id, t, f, pair.name, { source: 'manual' }); });
+        $cluster.append($chip);
       }
-      const $add = $('<button class="strk-field-icon strk-pair-add">+ Add</button>').on('click', async () => {
+      const $add = $('<button class="strk-field-icon">+</button>').on('click', async () => {
         const name = deps.dialogs
           ? await deps.dialogs.prompt(`Name for new ${field.label} entry:`)
           : prompt(`Name for new ${field.label} entry:`);
         if (!name || !String(name).trim()) return;
-        engine.setPair(subj.id, field._trackerId, field.id, String(name).trim(), '', { source: 'manual' });
+        engine.setPair(subj.id, t, f, String(name).trim(), '', { source: 'manual' });
       });
       $cluster.append($add);
       return row(field, subj, $cluster, []);

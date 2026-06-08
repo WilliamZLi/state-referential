@@ -1,6 +1,17 @@
 <div class="strk-prose-modal">
   <h3 id="strk-prose-title"></h3>
-  <textarea id="strk-prose-text" rows="14" style="width: 100%;"></textarea>
+  <label id="strk-prose-name-row" class="strk-prose-field" style="display:none">
+    <span>Name</span>
+    <input type="text" class="text_pole" id="strk-prose-name" />
+  </label>
+  <label id="strk-prose-text-row" class="strk-prose-field">
+    <span id="strk-prose-text-label">Description</span>
+    <textarea id="strk-prose-text" rows="12"></textarea>
+  </label>
+  <label id="strk-prose-turns-row" class="strk-prose-field" style="display:none">
+    <span>Turns remaining</span>
+    <input type="number" class="text_pole" id="strk-prose-turns" min="0" />
+  </label>
   <div class="strk-modal-actions">
     <button class="menu_button" id="strk-prose-save">Save</button>
     <button class="menu_button" id="strk-prose-refresh">Re-probe</button>
