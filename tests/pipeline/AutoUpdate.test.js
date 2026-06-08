@@ -179,6 +179,15 @@ test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
   assert.match(prompt, /list and text\/enum fields only/i);
 });
 
+test('short-bare-name guidance covers scalar SET (describable text), not just list ADD', () => {
+  const eng = mkEngine();
+  eng.addSubject('Lyra', { role: 'protagonist' });
+  const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+  const prompt = au.buildPrompt({ lastNarratorReply: '...' });
+  assert.match(prompt, /SET or ADD only a SHORT bare name/i, 'template tells the AI to keep SET values short');
+  assert.match(prompt, /SET a text value OR ADD a list entry/i, 'commands help covers scalar SET too');
+});
+
 test('number annotation reflects maxFromField and uncapped fields', () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'rpg', label: 'RPG', appliesToRoles: ['protagonist'], autoUpdate: true, fields: [
