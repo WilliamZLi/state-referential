@@ -197,14 +197,15 @@ test('MESSAGE_EDITED on a middle AI message (trailing user msg) does NOT re-run 
   assert.ok(v === undefined || v === '', `editing a middle AI message must not change state, got: ${JSON.stringify(v)}`);
 });
 
-test('MESSAGE_EDITED on the tail message DOES re-derive (like a regenerate)', async () => {
+test('MESSAGE_EDITED on the tail message does NOT re-derive (editing is a prose tweak)', async () => {
   const r = mkRig();
   r.set(`NONE`);
   await r.emit('MR', 0); // process the only/tail message m-1
-  // Edit the tail message; new content sets a dress → should be applied.
+  // Editing the tail message must NOT re-derive, even though its content now sets a dress.
   r.set(`SET Lyra outfit.topwear = "red dress"`);
   await r.emit('MED', 0); // index 0 IS the tail (chat length 1)
-  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'red dress');
+  const v = r.eng.getField(r.p.id, 'outfit', 'topwear');
+  assert.ok(v === undefined || v === '', `editing the tail must not change state, got: ${JSON.stringify(v)}`);
 });
 
 test('CHAT_CHANGED clears IS_BUSY', async () => {

@@ -85,16 +85,13 @@ export class Versioning {
     await this._onReceived(index);
   }
 
-  async _onEdited(index) {
-    const chat = this.deps.getChat();
-    const msg = chat[index];
-    if (!msg || msg.is_user) return; // user edits don't drive auto-update
-    // Only re-derive when the LATEST message is edited (equivalent to a regenerate).
-    // Editing an EARLIER message must not roll state back to that point and re-extract
-    // changes from it — that discards all later state and spuriously re-adds items.
-    // (A trailing user message makes an older AI message non-tail, so it's skipped too.)
-    if (index < chat.length - 1) return;
-    await this._onSwiped(index);
+  _onEdited(_index) {
+    // Editing an AI message is a manual prose tweak — the user is keeping the
+    // generation and just adjusting wording — so we deliberately do NOT re-run the
+    // pipeline: no state re-extraction, no re-probe. The state already reflects this
+    // message from when it was first received. New AI content still re-derives via
+    // its own events: a fresh reply / regenerate (♻️) fires MESSAGE_RECEIVED, and a
+    // swipe fires MESSAGE_SWIPED.
   }
 
   _onDeleted(index) {
