@@ -67,9 +67,14 @@ test('NONE produces empty result', () => {
   assert.deepStrictEqual(parseCommands(`NONE`), []);
 });
 
-test('smart quotes accepted', () => {
-  const r = parseCommands(`SET Lyra outfit.topwear = "red dress"`);
+test('smart (curly) double quotes are normalized in a SET value', () => {
+  const r = parseCommands('SET Lyra outfit.topwear = “red dress”');
   assert.strictEqual(r[0].value, 'red dress');
+});
+
+test('smart (curly) double quotes are normalized in an ADD entry', () => {
+  const r = parseCommands('ADD Lyra inv.items “obsidian amulet”');
+  assert.deepStrictEqual(r, [{ op: 'ADD', subject: 'Lyra', tracker: 'inv', field: 'items', entry: 'obsidian amulet' }]);
 });
 
 test('unknown lines ignored', () => {

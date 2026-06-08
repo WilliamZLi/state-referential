@@ -1,4 +1,7 @@
-const SMART = /[""]/g;
+// Normalize curly/smart double quotes (U+201C/U+201D) to straight " so the
+// quote-stripping below works on values the AI emits with smart quotes. Only
+// doubles — leaving single curly quotes alone avoids mangling apostrophes.
+const SMART = /[“”]/g;
 
 // Reverse the AI's JSON-style escaping of a quote char inside a value:
 // \" -> ", \' -> ', \\ -> \. Other backslashes (e.g. \n in prose) are left
