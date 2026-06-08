@@ -15,11 +15,11 @@ export class Versioning {
 
   register() {
     const { eventSource, event_types } = this.deps;
-    eventSource.on(event_types.MESSAGE_RECEIVED, (i) => { this._dbg('MESSAGE_RECEIVED', i, '→ _onReceived (will re-derive)'); this._onReceived(i); });
-    eventSource.on(event_types.MESSAGE_SWIPED, (i) => { this._dbg('MESSAGE_SWIPED', i, '→ _onSwiped (restore + re-derive)'); this._onSwiped(i); });
-    eventSource.on(event_types.MESSAGE_EDITED, (i) => { this._dbg('MESSAGE_EDITED', i, '→ _onEdited (NO-OP, state left alone)'); this._onEdited(i); });
-    eventSource.on(event_types.MESSAGE_DELETED, (i) => { this._dbg('MESSAGE_DELETED', i, '→ _onDeleted (snapshot restore)'); this._onDeleted(i); });
-    eventSource.on(event_types.CHAT_CHANGED, () => { this._dbg('CHAT_CHANGED', null, '→ _onChatChanged (backend swap)'); this._onChatChanged(); });
+    eventSource.on(event_types.MESSAGE_RECEIVED, (i) => { this._dbg('MESSAGE_RECEIVED', i, '→ _onReceived (will re-derive)'); return this._onReceived(i); });
+    eventSource.on(event_types.MESSAGE_SWIPED, (i) => { this._dbg('MESSAGE_SWIPED', i, '→ _onSwiped (restore + re-derive)'); return this._onSwiped(i); });
+    eventSource.on(event_types.MESSAGE_EDITED, (i) => { this._dbg('MESSAGE_EDITED', i, '→ _onEdited (NO-OP, state left alone)'); return this._onEdited(i); });
+    eventSource.on(event_types.MESSAGE_DELETED, (i) => { this._dbg('MESSAGE_DELETED', i, '→ _onDeleted (snapshot restore)'); return this._onDeleted(i); });
+    eventSource.on(event_types.CHAT_CHANGED, () => { this._dbg('CHAT_CHANGED', null, '→ _onChatChanged (backend swap)'); return this._onChatChanged(); });
   }
 
   _dbg(event, index, note) {
