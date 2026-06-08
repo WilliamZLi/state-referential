@@ -99,20 +99,34 @@ export function makeRenderers(engine, deps) {
       return $b;
     }
     return $b.on('click', () => {
-      const liveValue = engine.getField(subj.id, field._trackerId, field.id);
+      const t = field._trackerId, f = field.id;
+      const liveValue = engine.getField(subj.id, t, f);
       if (liveValue === undefined || liveValue === '' || liveValue === null) {
         deps.dialogs?.alert?.('Set a value first, then click the pencil to edit its description.');
         return;
       }
-      const prose = engine.getDescription(subj.id, field._trackerId, field.id, liveValue) ?? '';
+      const prose = engine.getDescription(subj.id, t, f, liveValue) ?? '';
+      // Free-text fields can be renamed in place: changing the Name keeps the SAME
+      // value's description (rename), instead of becoming a new value that loses it.
+      // Enum values are constrained to options, so they aren't renamable here.
+      const canRename = field.type === 'text';
       deps.openProseModal({
-        title: `${field.label} = ${liveValue}`,
+        title: field.label,
+        name: canRename ? liveValue : undefined,
         text: prose,
-        onSave: (newProse) => engine.setDescription(subj.id, field._trackerId, field.id, liveValue, newProse),
+        onSave: (newProse, extra) => {
+          let current = liveValue;
+          const newName = extra?.name;
+          if (canRename && newName && newName !== liveValue) {
+            engine.renameFieldValue(subj.id, t, f, liveValue, newName, { source: 'manual' });
+            current = newName;
+          }
+          engine.setDescription(subj.id, t, f, current, newProse);
+        },
         onRefresh: async () => {
-          engine.invalidateDescription(subj.id, field._trackerId, field.id, liveValue);
-          await deps.requestProbe(subj.id, field._trackerId, field.id, liveValue);
-          return engine.getDescription(subj.id, field._trackerId, field.id, liveValue) ?? '';
+          engine.invalidateDescription(subj.id, t, f, liveValue);
+          await deps.requestProbe(subj.id, t, f, liveValue);
+          return engine.getDescription(subj.id, t, f, liveValue) ?? '';
         },
       });
     });

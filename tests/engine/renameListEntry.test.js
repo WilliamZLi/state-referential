@@ -12,10 +12,36 @@ function mkEngine() {
     { id: 'effects', label: 'Effects', type: 'list', default: [], describable: true, descriptionScope: 'per-subject', inclusion: { rule: 'active', activeWindow: 5 } },
   ]});
   eng.defineTracker({ id: 'outfit', label: 'Outfit', appliesToRoles: ['protagonist'], fields: [
-    { id: 'topwear', label: 'Topwear', type: 'text' },
+    { id: 'topwear', label: 'Topwear', type: 'text', describable: true, descriptionScope: 'per-subject' },
   ]});
   return eng;
 }
+
+test('renameFieldValue renames a scalar text value and carries its description (drops the old)', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red dress');
+  eng.setDescription(p.id, 'outfit', 'topwear', 'red dress', 'a slinky red silk dress');
+  eng.renameFieldValue(p.id, 'outfit', 'topwear', 'red dress', 'crimson gown', { source: 'manual' });
+  assert.strictEqual(eng.getField(p.id, 'outfit', 'topwear'), 'crimson gown');
+  assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'crimson gown'), 'a slinky red silk dress');
+  assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'red dress'), null);
+});
+
+test('renameFieldValue is a no-op when the value is unchanged', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'outfit', 'topwear', 'red dress');
+  eng.setDescription(p.id, 'outfit', 'topwear', 'red dress', 'desc');
+  eng.renameFieldValue(p.id, 'outfit', 'topwear', 'red dress', 'red dress', { source: 'manual' });
+  assert.strictEqual(eng.getDescription(p.id, 'outfit', 'topwear', 'red dress'), 'desc');
+});
+
+test('renameFieldValue throws for list and pair-list fields', () => {
+  const eng = mkEngine();
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  assert.throws(() => eng.renameFieldValue(p.id, 'inv', 'items', 'a', 'b', {}));
+});
 
 test('renameListEntry renames in place and carries the description (drops the old)', () => {
   const eng = mkEngine();

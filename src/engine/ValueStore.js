@@ -183,6 +183,25 @@ export class ValueStore {
     }
   }
   /**
+   * Manually rename a SCALAR field's value (text/enum/number), carrying its cached
+   * description to the new value and dropping the old. "Same thing, fix the name" —
+   * e.g. an outfit slot "red dress" -> "crimson gown" keeps its description instead of
+   * becoming a new garment that loses/re-probes its prose. No-op if unchanged.
+   */
+  renameFieldValue(s, t, f, oldVal, newVal, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type === 'list' || field.type === 'pair-list' || field.type === 'prose') {
+      throw new Error('renameFieldValue is for scalar text/enum/number fields');
+    }
+    if (newVal === oldVal) return;
+    const desc = this.getDescription(s, t, f, oldVal);
+    this.setField(s, t, f, newVal, opts);
+    if (desc != null && desc !== '') {
+      this.setDescription(s, t, f, newVal, desc);
+      this.invalidateDescription(s, t, f, oldVal);
+    }
+  }
+  /**
    * Upsert a pair-list entry by name. If the name exists, replace its descriptor
    * (preserving order); otherwise append. Empty/blank name is a no-op.
    */

@@ -97,6 +97,7 @@ export class TrackerEngine {
   addListEntry(s, t, f, e, opts) { this.values.addListEntry(s, t, f, e, opts); }
   removeListEntry(s, t, f, e, opts) { this.values.removeListEntry(s, t, f, e, opts); }
   renameListEntry(s, t, f, oldVal, newVal, opts) { this.values.renameListEntry(s, t, f, oldVal, newVal, opts); }
+  renameFieldValue(s, t, f, oldVal, newVal, opts) { this.values.renameFieldValue(s, t, f, oldVal, newVal, opts); }
   getListMeta(s, t, f) { return this.values.getListMeta(s, t, f); }
   setPair(s, t, f, name, descriptor, opts) { this.values.setPair(s, t, f, name, descriptor, opts); }
   removePair(s, t, f, name, opts) { this.values.removePair(s, t, f, name, opts); }
