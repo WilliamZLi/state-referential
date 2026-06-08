@@ -157,14 +157,14 @@ test('custom template without {{last_input}} still receives the user message', (
   assert.ok(prompt.includes('USERMSG-XYZ'), 'auto-appended');
 });
 
-test('buildPrompt instructs short bare names for describable list entries', () => {
+test('buildPrompt instructs short, succinct names for describable entries', () => {
   const eng = mkEngine();
   eng.addSubject('Lyra', { role: 'protagonist' });
   const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
-  assert.match(prompt, /SHORT bare name/i, 'tells the AI to use a short name for list entries');
-  assert.match(prompt, /parentheticals/i, 'warns against packing details into the name');
-  assert.match(prompt, /description/i, 'explains effects live in the separate description');
+  assert.match(prompt, /SHORT, succinct name/i, 'tells the AI to use a short, succinct name');
+  assert.match(prompt, /minimal parentheticals/i, 'allows brief qualifiers but minimal parentheticals');
+  assert.match(prompt, /description/i, 'explains the full description lives separately');
 });
 
 test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
@@ -184,8 +184,9 @@ test('short-bare-name guidance covers scalar SET (describable text), not just li
   eng.addSubject('Lyra', { role: 'protagonist' });
   const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
-  assert.match(prompt, /SET or ADD only a SHORT bare name/i, 'template tells the AI to keep SET values short');
+  assert.match(prompt, /SET or ADD a SHORT, succinct name/i, 'template tells the AI to keep SET values short');
   assert.match(prompt, /SET a text value OR ADD a list entry/i, 'commands help covers scalar SET too');
+  assert.match(prompt, /brief qualifier is fine/i, 'short qualifier parentheticals are still allowed');
 });
 
 test('number annotation reflects maxFromField and uncapped fields', () => {
