@@ -75,13 +75,16 @@ export class Panel {
       'tracker:subject-renamed', 'tracker:tag-changed', 'tracker:schema-changed',
       'tracker:probe-started', 'tracker:probe-completed', 'tracker:backend-changed', 'tracker:state-restored',
       'tracker:outfit-set-saved', 'tracker:outfit-set-deleted', 'tracker:outfit-set-applied',
-      'tracker:subject-active-changed', 'tracker:auto-update-completed',
+      'tracker:subject-active-changed',
     ]) this.engine.on(ev, safeRender);
-    // pipeline-completed always re-renders regardless of focus — countdowns need to tick
-    // and the AI just responded so no in-panel edit is in progress
-    this.engine.on('tracker:pipeline-completed', () => {
-      if (this.$el?.is(':visible')) this.render();
-    });
+    // These force a re-render regardless of focus — the AI just applied changes (or the
+    // turn finished), so there's no in-panel edit to protect, and new values must appear
+    // immediately. auto-update-completed fires the instant commands are applied, BEFORE the
+    // (possibly slow / stalling) description-probe drain, so the panel no longer waits on
+    // probing — or a manual tab switch — to show new items.
+    const forceRender = () => { if (this.$el?.is(':visible')) this.render(); };
+    this.engine.on('tracker:auto-update-completed', forceRender);
+    this.engine.on('tracker:pipeline-completed', forceRender);
 
     this.render();
   }
