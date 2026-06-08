@@ -118,14 +118,18 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     template: _strkSettings().templates?.probe,
     getProbeContext: () => {
       const chat = getContext().chat ?? [];
-      let lastInput = '', lastReply = '';
+      const CTX = 2; // last N user inputs + last N narrator replies for probe context
+      const inputs = [], replies = [];
       for (let i = chat.length - 1; i >= 0; i--) {
         const m = chat[i];
-        if (!m) continue;
-        if (!lastReply && !m.is_user) lastReply = m.mes ?? '';
-        if (!lastInput && m.is_user) lastInput = m.mes ?? '';
-        if (lastInput && lastReply) break;
+        if (!m || m.extra?.from === 'state-referential') continue; // skip our own inserts
+        if (m.is_user) { if (inputs.length < CTX) inputs.push(m.mes ?? ''); }
+        else { if (replies.length < CTX) replies.push(m.mes ?? ''); }
+        if (inputs.length >= CTX && replies.length >= CTX) break;
       }
+      // Collected newest-first → reverse to chronological order, drop blanks, join.
+      const lastInput = inputs.reverse().filter(Boolean).join('\n\n');
+      const lastReply = replies.reverse().filter(Boolean).join('\n\n');
       return { lastInput, lastReply };
     },
   });
