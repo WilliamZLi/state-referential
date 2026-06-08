@@ -89,6 +89,11 @@ export class Versioning {
     const chat = this.deps.getChat();
     const msg = chat[index];
     if (!msg || msg.is_user) return; // user edits don't drive auto-update
+    // Only re-derive when the LATEST message is edited (equivalent to a regenerate).
+    // Editing an EARLIER message must not roll state back to that point and re-extract
+    // changes from it — that discards all later state and spuriously re-adds items.
+    // (A trailing user message makes an older AI message non-tail, so it's skipped too.)
+    if (index < chat.length - 1) return;
     await this._onSwiped(index);
   }
 

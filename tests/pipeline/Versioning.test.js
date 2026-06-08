@@ -162,6 +162,51 @@ test('MESSAGE_DELETED restores state to before the deleted message ran', async (
   assert.ok(v === undefined || v === '', `expected thing cleared after delete, got: ${JSON.stringify(v)}`);
 });
 
+test('MESSAGE_EDITED on a non-tail (older) message does NOT re-run auto-update', async () => {
+  // Editing a past generation must not roll state back to that point or re-extract
+  // changes from it (which spuriously re-adds clothing/items). Only the latest
+  // message re-derives.
+  const r = mkRig();
+  r.chat.push({ extra: { trackerMsgId: 'm-2' }, mes: 'second', is_user: false });
+  r.set(`NONE`);
+  await r.emit('MR', 0); // process m-1
+  await r.emit('MR', 1); // process m-2 (the tail)
+  // User edits the OLDER message (index 0, not the tail). Its content would set a
+  // dress if processed — but an older-message edit must not run auto-update.
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MED', 0);
+  const v = r.eng.getField(r.p.id, 'outfit', 'topwear');
+  assert.ok(v === undefined || v === '', `editing a non-tail message must not change state, got: ${JSON.stringify(v)}`);
+});
+
+test('MESSAGE_EDITED on a middle AI message (trailing user msg) does NOT re-run auto-update', async () => {
+  // Exact user repro: layout <user> <AI gen> <user> (a later generation was deleted).
+  // Editing the middle AI generation must not re-run the pipeline — that was leaking
+  // re-extracted state from the edited message.
+  const r = mkRig();
+  r.chat.length = 0;
+  r.chat.push({ mes: 'I walk in.', is_user: true });
+  r.chat.push({ extra: { trackerMsgId: 'm-1' }, mes: 'The room is quiet.', is_user: false });
+  r.chat.push({ mes: 'I look around.', is_user: true });
+  r.set(`NONE`);
+  await r.emit('MR', 1); // process the AI message at index 1
+  // Edit that AI message (index 1) — NOT the tail (index 2 is a user message).
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MED', 1);
+  const v = r.eng.getField(r.p.id, 'outfit', 'topwear');
+  assert.ok(v === undefined || v === '', `editing a middle AI message must not change state, got: ${JSON.stringify(v)}`);
+});
+
+test('MESSAGE_EDITED on the tail message DOES re-derive (like a regenerate)', async () => {
+  const r = mkRig();
+  r.set(`NONE`);
+  await r.emit('MR', 0); // process the only/tail message m-1
+  // Edit the tail message; new content sets a dress → should be applied.
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MED', 0); // index 0 IS the tail (chat length 1)
+  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'red dress');
+});
+
 test('CHAT_CHANGED clears IS_BUSY', async () => {
   const r = mkRig();
   r.v._busy = true;
