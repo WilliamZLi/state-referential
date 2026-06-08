@@ -4,6 +4,15 @@ export function register(engine, deps) {
   // deps: { versioning, descProbe, getSettings, panel, injection }
   deps.versioning.register();
 
+  // Debug: log every tracker-state write with its trigger source. With debug on,
+  // editing a generation should produce NO write lines (only a MESSAGE_EDITED no-op);
+  // any 'auto-update'-sourced write here means the pipeline ran. Helps trace leakage.
+  engine.on('tracker:value-changed', (e) => {
+    if (deps.getSettings?.()?.debug) {
+      console.debug(`[state-referential][stateflow] WRITE ${e.tracker}.${e.field} = ${JSON.stringify(e.newValue)} (source: ${e.source})`);
+    }
+  });
+
   // Debounced injection refresh — rapid value edits collapse into one run().
   const refreshInjection = debounce(() => deps.injection?.run?.(), 50);
 

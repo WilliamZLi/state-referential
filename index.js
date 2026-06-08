@@ -147,6 +147,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     worldBinding,
     autoUpdate, descProbe, standalone, injection,
     throttleMs: 500,
+    get debug() { return _strkSettings().debug === true; },
   });
 
   // PRE-GENERATION: detect regenerate/swipe BEFORE the LLM call so we can

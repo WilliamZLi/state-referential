@@ -35,6 +35,7 @@ export class SettingsDrawer {
       s.probeContextTurns = Number.isFinite(n) ? Math.max(0, Math.min(10, n)) : 2;
       this.deps.saveSettingsDebounced();
     });
+    $('#strk-debug').prop('checked', s.debug === true).on('change', e => { s.debug = e.target.checked; this.deps.saveSettingsDebounced(); });
     $('#strk-new-tracker').on('click', () => this.deps.schemaEditor.open(null));
     $('#strk-install-presets').on('click', () => this._installPresets());
     $('#strk-uninstall-presets').on('click', () => this._uninstallPresets());

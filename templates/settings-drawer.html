@@ -16,6 +16,7 @@
     </label>
     <label title="Default value for fields with inclusion rule 'active'. Larger = more verbose prompts. Smaller = stale fields drop off the auto-update prompt sooner.">Active window (turns) <input type="number" class="text_pole" id="strk-active-window" min="1" max="50" value="5" /></label>
     <label title="How many recent turns of chat the DETAILED description probe sees as context — the last N user inputs and N narrator replies. 0 = no chat context. Generic probes never use chat context.">Probe context (turns) <input type="number" class="text_pole" id="strk-probe-context" min="0" max="10" value="2" /></label>
+    <label title="Logs stateflow to the browser console (F12): which chat events fire and every tracker write with its trigger source. Use it to diagnose unexpected state changes — e.g. editing a message should log a MESSAGE_EDITED no-op and NO writes."><input type="checkbox" id="strk-debug" /> Debug logging (console)</label>
     <h4>Tracker definitions</h4>
     <div id="strk-defs-list"></div>
     <div class="strk-drawer-actions">
