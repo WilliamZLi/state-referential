@@ -117,7 +117,14 @@ export class DescriptionProbe {
     if (field.type === 'pair-list') return;
     if (value === '' || value == null) return;
     if (Array.isArray(value)) {
-      // list — probe each entry separately
+      // Prior context describes the evolution of ONE entry, so it can't apply to a
+      // whole-array probe — a single prior description can't map onto N entries. A
+      // job should never combine the two; surface it loudly and drop the prior
+      // context (not via throw — that would abort the whole drain queue).
+      if (priorValue != null || priorDescription != null) {
+        console.warn('[state-referential] DescriptionProbe: prior context was enqueued with an array value; ignoring it. Enqueue one entry per REPLACE.');
+      }
+      // list — probe each entry separately (no prior context on a multi-entry job)
       for (const entry of value) await this._runOne({ subjectId, trackerId, fieldId, value: entry, profile });
       return;
     }

@@ -137,6 +137,31 @@ test('detailed profile injects chat context; generic does not', async () => {
   assert.ok(!genericPrompt.includes('DIRECTIVE-XYZ'), 'generic profile carries no context');
 });
 
+test('an array-valued job never smears prior context onto its entries (warns instead)', async () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({ id: 'inv', label: 'Items', fields: [
+    { id: 'items', label: 'Items', type: 'list', describable: true, descriptionScope: 'per-subject', probeProfile: 'detailed' },
+  ]});
+  const p = eng.addSubject('Cersia', { role: 'protagonist' });
+  eng.setField(p.id, 'inv', 'items', ['torch', 'rope']);
+  const calls = [];
+  const probe = new DescriptionProbe(eng, { generateQuietPrompt: async (prompt) => { calls.push(prompt); return 'x'; } });
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...a) => warnings.push(a.join(' '));
+  try {
+    probe.enqueue([{ subjectId: p.id, trackerId: 'inv', fieldId: 'items', value: ['torch', 'rope'],
+      priorValue: 'old item', priorDescription: 'PRIOR-DESC-XYZ' }]);
+    await probe.drain();
+  } finally {
+    console.warn = origWarn;
+  }
+  assert.strictEqual(calls.length, 2, 'each entry is still probed');
+  assert.ok(!calls.some(c => c.includes('PRIOR-DESC-XYZ')), 'no entry received the prior description');
+  assert.ok(!calls.some(c => /state change of an existing/i.test(c)), 'no prior-context block on any entry');
+  assert.ok(warnings.some(w => /prior context/i.test(w)), 'surfaces the misuse with a warning');
+});
+
 test('prior-context block is prepended when a job carries a prior description', async () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'inv', label: 'Items', fields: [
