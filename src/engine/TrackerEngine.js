@@ -19,25 +19,6 @@ function mkBus() {
   };
 }
 
-/**
- * Collapse a bloated trailing parenthetical on a describable value down to the bare
- * name. The AI keeps cramming appearance/state lists into names (e.g. "Womb-Filler
- * (inserted, through cervix, active, vibrating)") despite prompt guidance; that detail
- * belongs in the description. A SINGLE short state qualifier (e.g. "staff (broken)") is
- * kept. "Bloated" = the parenthetical contains a comma (a list) or exceeds 5 words.
- * Only the final parenthetical is considered; mid-string parens are left alone.
- */
-export function normalizeDescribableValue(raw) {
-  if (typeof raw !== 'string') return raw;
-  const m = raw.match(/^(.+?)\s*\(([^()]*)\)\s*$/);
-  if (!m) return raw;
-  const name = m[1].trim();
-  const qual = m[2].trim();
-  if (!name) return raw; // parenthetical-only — leave it
-  const words = qual ? qual.split(/\s+/).length : 0;
-  return (qual.includes(',') || words > 5) ? name : raw;
-}
-
 export class TrackerEngine {
   constructor(backend, opts = {}) {
     this.bus = mkBus();
@@ -319,14 +300,11 @@ export class TrackerEngine {
         const field = this.definitions.getField(c.tracker, c.field);
         if (!field) { errors.push(`unknown field: ${c.tracker}.${c.field}`); continue; }
         const writeOpts = { source: opts.source ?? 'auto-update', msgId: opts.msgId ?? null };
-        // For describable fields, strip AI-crammed parentheticals (appearance/state lists)
-        // down to the bare name — the description holds that detail.
-        const norm = (v) => (field.describable ? normalizeDescribableValue(v) : v);
-        if (c.op === 'SET') this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, norm(c.value)), writeOpts);
+        if (c.op === 'SET') this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.value), writeOpts);
         else if (c.op === 'DELTA') this.values.applyDelta(subj.id, c.tracker, c.field, c.delta, writeOpts);
         else if (c.op === 'ADD') {
           if (field.type === 'pair-list') this.values.setPair(subj.id, c.tracker, c.field, c.entry, c.descriptor ?? '', writeOpts);
-          else this.values.addListEntry(subj.id, c.tracker, c.field, norm(c.entry), writeOpts);
+          else this.values.addListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
         } else if (c.op === 'REMOVE') {
           if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
           else this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
@@ -335,21 +313,20 @@ export class TrackerEngine {
             errors.push(`REPLACE unsupported for ${field.type} field: ${c.tracker}.${c.field}`);
             continue; // skip applied++ for an unsupported op
           }
-          const oldVal = norm(c.oldEntry), newVal = norm(c.newEntry);
           // Capture the prior description BEFORE mutating; keep it (revert-safe).
-          const priorDescription = this.values.getDescription(subj.id, c.tracker, c.field, oldVal) ?? null;
+          const priorDescription = this.values.getDescription(subj.id, c.tracker, c.field, c.oldEntry) ?? null;
           // Mark the write source:'replace' and carry the prior description on the
           // tracker:entry-replaced event; EventHooks routes these to a prior-context
           // probe for the new value and skips the generic probe for replace writes.
           const replaceOpts = { source: 'replace', msgId: opts.msgId ?? null };
           if (field.type === 'list') {
-            this.values.replaceListEntry(subj.id, c.tracker, c.field, oldVal, newVal, replaceOpts);
+            this.values.replaceListEntry(subj.id, c.tracker, c.field, c.oldEntry, c.newEntry, replaceOpts);
           } else {
-            this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, newVal), replaceOpts);
+            this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.newEntry), replaceOpts);
           }
           this.bus.emit('tracker:entry-replaced', {
             subject: subj.id, tracker: c.tracker, field: c.field,
-            oldValue: oldVal, newValue: newVal, priorDescription,
+            oldValue: c.oldEntry, newValue: c.newEntry, priorDescription,
           });
         }
         applied++;
