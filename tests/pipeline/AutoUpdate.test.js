@@ -163,9 +163,8 @@ test('buildPrompt instructs short, succinct names for describable entries', () =
   const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
   assert.match(prompt, /SHORT, succinct name/i, 'tells the AI to use a short, succinct name');
-  assert.match(prompt, /brief STATE \/ CONDITION/i, 'parentheticals are limited to state/condition');
-  assert.match(prompt, /never appearance/i, 'appearance must not go in the value');
-  assert.match(prompt, /description/i, 'explains appearance/effects live in the separate description');
+  assert.match(prompt, /Appearance, composition, effects and other descriptors/i, 'descriptors are called out');
+  assert.match(prompt, /belong in the description/i, 'descriptors belong in the separate description');
 });
 
 test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
@@ -187,7 +186,7 @@ test('short-bare-name guidance covers scalar SET (describable text), not just li
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
   assert.match(prompt, /SET or ADD a SHORT, succinct name/i, 'template tells the AI to keep SET values short');
   assert.match(prompt, /SET a text value OR ADD a list entry/i, 'commands help covers scalar SET too');
-  assert.match(prompt, /brief STATE \/ CONDITION/i, 'parentheticals limited to state/condition (not appearance)');
+  assert.match(prompt, /descriptors belong in the description/i, 'descriptors go in the description');
 });
 
 test('number annotation reflects maxFromField and uncapped fields', () => {
