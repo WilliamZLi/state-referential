@@ -120,6 +120,14 @@ export class Versioning {
       .filter(s => !liveIds.has(s.msgId))
       .sort((a, b) => a.takenAt - b.takenAt);
 
+    if (this.deps.debug) {
+      console.debug('[state-referential][stateflow] _onDeleted index=', index,
+        'liveIds=', [...liveIds],
+        'allSnapshots=', this.engine.listSnapshots().map(s => s.msgId),
+        'orphans=', orphans.map(s => s.msgId),
+        '→', orphans.length ? `restore from ${orphans[0].msgId}` : 'NO ORPHANS (fallback)');
+    }
+
     if (orphans.length) {
       const snap = this.engine.loadSnapshot(orphans[0].msgId);
       if (snap) this.engine.restoreSnapshot(snap);
