@@ -128,6 +128,11 @@ export class Versioning {
       // restoreSnapshot already fired tracker:backend-changed before the drop, so
       // countdown badges would show stale counts without this second signal.
       this.engine.bus.emit('tracker:state-restored', {});
+      // Refresh the injected itemization. restoreSnapshot emits tracker:state-restored,
+      // not tracker:value-changed, so EventHooks' injection refresh never fires — the
+      // prompt block would otherwise still list the deleted gens' values. Mirrors the
+      // injection.run() in _onReceived and _onChatChanged.
+      this.deps.injection?.run?.();
       return;
     }
     // Pre-splice fallback: chat[index] may still hold the message being deleted.
@@ -135,7 +140,10 @@ export class Versioning {
     if (atIndex) {
       const id = readTrackerMsgId(atIndex);
       const snap = id ? this.engine.loadSnapshot(id) : null;
-      if (snap) this.engine.restoreSnapshot(snap);
+      if (snap) {
+        this.engine.restoreSnapshot(snap);
+        this.deps.injection?.run?.();
+      }
     }
   }
 

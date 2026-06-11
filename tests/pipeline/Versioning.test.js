@@ -15,7 +15,13 @@ function mkRig() {
   const autoUpdate = { run: async ({ msgId }) => { return eng.applyCommands(autoUpdateResult, { source: 'auto-update', msgId }); } };
   const descProbe = { enqueue: () => {}, drain: async () => {} };
   const standalone = { run: async () => {} };
-  const injection = { run: () => {} };
+  // Injection spy: records how many times run() fired and captures a snapshot of
+  // engine state at each run, mirroring how the real Injection renders the
+  // itemized block from current state. Lets tests assert the *injected* prompt
+  // reflects the live (post-restore) state, not just the engine state.
+  let injectionRuns = 0;
+  let lastInjected = null;
+  const injection = { run: () => { injectionRuns++; lastInjected = eng.snapshot(); } };
 
   const events = [];
   const emit = async (name, ...args) => {
@@ -37,7 +43,11 @@ function mkRig() {
     throttleMs: 0,
   });
   v.register();
-  return { eng, p, chat, emit, set: (cmd) => { autoUpdateResult = cmd; }, v };
+  return {
+    eng, p, chat, emit, set: (cmd) => { autoUpdateResult = cmd; }, v,
+    injectionRuns: () => injectionRuns,
+    lastInjected: () => lastInjected,
+  };
 }
 
 test('MESSAGE_RECEIVED snapshots, runs auto-update, then probes/injection', async () => {
@@ -160,6 +170,38 @@ test('MESSAGE_DELETED restores state to before the deleted message ran', async (
   await r.emit('MDEL', 0);
   const v = r.eng.getField(r.p.id, 'extra', 'thing');
   assert.ok(v === undefined || v === '', `expected thing cleared after delete, got: ${JSON.stringify(v)}`);
+});
+
+test('MESSAGE_DELETED refreshes the injected itemization after restoring state', async () => {
+  // User repro: delete the last N generations; engine state reverts via snapshot
+  // restore, but the *injected* state block (setExtensionPrompt) was never
+  // refreshed, so the prompt itemization still listed the deleted gens' values.
+  // ST bulk delete truncates chat THEN emits MESSAGE_DELETED once (post-splice).
+  const r = mkRig();
+  r.eng.defineTracker({ id: 'extra', label: 'Extra', autoUpdate: true, fields: [
+    { id: 'thing', label: 'Thing', type: 'text', inclusion: { rule: 'always' } },
+  ]});
+  // Two AI generations, each adds to the field.
+  r.chat.push({ extra: { trackerMsgId: 'm-2' }, mes: 'second', is_user: false });
+  r.set(`SET Lyra extra.thing = "bra"`);
+  await r.emit('MR', 0);   // m-1
+  r.set(`SET Lyra extra.thing = "corset"`);
+  await r.emit('MR', 1);   // m-2
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'thing'), 'corset');
+  const runsBefore = r.injectionRuns();
+  // Bulk delete both generations: ST truncates chat, then fires MDEL once.
+  r.chat.length = 0;
+  await r.emit('MDEL', 0);
+  // Engine state reverted to before m-1 ran.
+  const v = r.eng.getField(r.p.id, 'extra', 'thing');
+  assert.ok(v === undefined || v === '', `expected thing cleared after delete, got: ${JSON.stringify(v)}`);
+  // The injection must have re-run so the itemized prompt reflects the revert.
+  assert.ok(r.injectionRuns() > runsBefore, 'injection.run() must fire after a delete restore');
+  const injectedThing = r.lastInjected()?.values?.[r.p.id]?.extra?.thing?.v;
+  assert.ok(
+    injectedThing === undefined || injectedThing === '',
+    `injected itemization must not still list the deleted value, got: ${JSON.stringify(injectedThing)}`,
+  );
 });
 
 test('MESSAGE_EDITED on a non-tail (older) message does NOT re-run auto-update', async () => {
