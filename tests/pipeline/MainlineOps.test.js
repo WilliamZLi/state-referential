@@ -51,8 +51,8 @@ test('actCompleteMarker summarizes over the chat, persists before inserting, and
   const marker = chat[chat.length - 1];
   assert.equal(marker.extra.l3Kind, 'act-complete');
   assert.equal(marker.extra.l3Title, 'Act I');
-  // Terse in-chat beat; the full summary lives in the chronicle (and on extra.l3Body).
-  assert.equal(marker.mes, '✓ Act complete: Act I');
+  // Header + the summary, shown inline; summary also kept on extra.l3Body.
+  assert.equal(marker.mes, '✓ Act complete: Act I\n\nChronicle body.');
   assert.equal(marker.extra.l3Body, 'Chronicle body.');
   // Normal message (NOT small-sys) so ST keeps the hide/edit/delete controls.
   assert.equal(marker.extra.isSmallSys, undefined);

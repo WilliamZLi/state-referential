@@ -31,14 +31,15 @@ export async function actCompleteMarker({ shell, chronicleOps, persistChronicle,
   const latestId = readTrackerMsgId(chat[chat.length - 1]);
   const entry = await chronicleOps.actComplete(title, { messages: chat, msgId: latestId });
   await persistChronicle?.();
+  const body = entry?.body ?? '';
   await insertSyntheticAfter(shell, {
     afterTrackerMsgId: latestId,
     kind: 'act-complete',
-    // Terse in-chat beat; the full summary lives in the chronicle and on extra.l3Body.
+    // Header + the summary shown inline; summary also kept on extra.l3Body.
     // smallSys:false → a normal, manageable message (ST keeps hide/edit/delete).
-    mes: `✓ Act complete: ${title}`,
+    mes: body ? `✓ Act complete: ${title}\n\n${body}` : `✓ Act complete: ${title}`,
     smallSys: false,
-    extra: { l3Title: title, l3Body: entry?.body ?? '' },
+    extra: { l3Title: title, l3Body: body },
   });
   chronicleInjection?.run?.();
   return entry;
