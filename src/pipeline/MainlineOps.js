@@ -48,7 +48,7 @@ export async function actCompleteMarker({ shell, chronicleOps, persistChronicle,
 /** Splice a compaction-block's archived originals back into the chat. */
 export async function restoreArchive(shell, archiveId) {
   const chat = shell.getChat();
-  const archive = getArchive(chat, archiveId);
+  const archive = getArchive(shell.getMeta(), archiveId);
   const blockIndex = chat.findIndex(
     m => m?.extra?.l3Kind === 'compaction' && m?.extra?.l3ArchiveId === archiveId,
   );

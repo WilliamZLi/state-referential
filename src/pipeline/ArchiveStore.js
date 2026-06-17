@@ -1,17 +1,22 @@
 import { readTrackerMsgId } from '../util/id.js';
 
-function bag(chat) {
-  chat.extra ??= {};
-  chat.extra.l3Archives ??= {};
-  return chat.extra.l3Archives;
+// Archives live in chat_metadata (the persisted `meta` object), NOT on the chat
+// array. A property set on the array (chat.extra) is dropped when ST serializes
+// the chat, which would silently lose every compacted message after a reload.
+function bag(meta) {
+  meta.l3Archives ??= {};
+  return meta.l3Archives;
 }
 
-/** Snapshot chat[startIndex..endIndex] into the archive bag. Returns archiveId. */
-export function saveArchive(chat, range, { genId, now }) {
+/**
+ * Snapshot chat[startIndex..endIndex] into the archive bag on `meta` (chat_metadata).
+ * `chat` is only the slice source; storage goes to `meta`. Returns archiveId.
+ */
+export function saveArchive(meta, chat, range, { genId, now }) {
   const { startIndex, endIndex } = range;
   const slice = chat.slice(startIndex, endIndex + 1);
   const archiveId = genId();
-  bag(chat)[archiveId] = {
+  bag(meta)[archiveId] = {
     archiveId,
     messages: structuredClone(slice),
     compactedAt: now,
@@ -21,10 +26,10 @@ export function saveArchive(chat, range, { genId, now }) {
   return archiveId;
 }
 
-export function getArchive(chat, archiveId) {
-  return bag(chat)[archiveId];
+export function getArchive(meta, archiveId) {
+  return bag(meta)[archiveId];
 }
 
-export function listArchives(chat) {
-  return Object.keys(bag(chat));
+export function listArchives(meta) {
+  return Object.keys(bag(meta));
 }

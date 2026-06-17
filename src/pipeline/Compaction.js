@@ -18,11 +18,11 @@ export class Compaction {
     });
     if (!range) return { compacted: false, reason: 'no-eligible-range' };
 
-    // 1. Archive the verbatim slice.
+    // 1. Archive the verbatim slice into chat_metadata (persisted), NOT the chat array.
     // NOTE: if generateSummary throws below, this archive entry is abandoned
     // (harmless unreferenced storage; the chat is left unchanged).
     // now() is injected (not inlined Date.now()) so tests get deterministic timestamps.
-    const archiveId = saveArchive(chat, range, { genId: d.genId, now: d.now() });
+    const archiveId = saveArchive(d.getMeta(), chat, range, { genId: d.genId, now: d.now() });
 
     // 2. Summarize via the AI (range messages only).
     const rangeMessages = chat.slice(range.startIndex, range.endIndex + 1);

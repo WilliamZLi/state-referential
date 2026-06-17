@@ -13,10 +13,12 @@ function mkChat() {
 function mkDeps(chat) {
   const emitted = [];
   const dropped = [];
+  const meta = {};
   let n = 0;
   return {
     deps: {
       getChat: () => chat,
+      getMeta: () => meta,
       saveChat: async () => {},
       reloadChat: async () => {},
       emit: async (name, ...a) => { emitted.push([name, ...a]); },
@@ -27,13 +29,13 @@ function mkDeps(chat) {
       settings: () => ({ recentWindow: 2, minSize: 2, tokenCap: 400 }),
       now: () => 1700,
     },
-    emitted, dropped,
+    emitted, dropped, meta,
   };
 }
 
 test('compacts the oldest run into a single compaction-block and drops their snapshots', async () => {
   const chat = mkChat();
-  const { deps, dropped } = mkDeps(chat);
+  const { deps, dropped, meta } = mkDeps(chat);
   const res = await new Compaction(deps).run();
 
   assert.equal(res.compacted, true);
@@ -45,8 +47,8 @@ test('compacts the oldest run into a single compaction-block and drops their sna
   assert.equal(chat[0].extra.isSmallSys, undefined);
   assert.equal(chat[1].mes, 'line 4');
   assert.deepEqual(dropped, ['m0', 'm1', 'm2', 'm3']);
-  // The archive must actually hold the verbatim pre-compaction messages.
-  const archive = getArchive(chat, res.archiveId);
+  // The archive must actually hold the verbatim pre-compaction messages (in meta).
+  const archive = getArchive(meta, res.archiveId);
   assert.equal(archive.messages.length, 4);
   assert.equal(archive.messages[0].mes, 'line 0');
   assert.equal(archive.messages[3].mes, 'line 3');

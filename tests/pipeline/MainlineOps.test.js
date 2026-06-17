@@ -3,12 +3,14 @@ import assert from 'node:assert';
 import { insertSyntheticAfter, actCompleteMarker, restoreArchive } from '../../src/pipeline/MainlineOps.js';
 import { readTrackerMsgId } from '../../src/util/id.js';
 
-function mkShell(chat) {
+function mkShell(chat, meta = {}) {
   const calls = [];
   return {
     calls,
+    meta,
     shell: {
       getChat: () => chat,
+      getMeta: () => meta,
       saveChat: async () => calls.push(['save']),
       reloadChat: async () => calls.push(['reload']),
       emit: async (name, i) => calls.push(['emit', name, i]),
@@ -59,15 +61,16 @@ test('actCompleteMarker summarizes over the chat, persists before inserting, and
 });
 
 test('restoreArchive replaces the compaction-block with its archived messages', async () => {
-  const chat = Object.assign([
+  const chat = [
     { state_referential_msgId: 'k', mes: 'keep', extra: {} },
     { state_referential_msgId: 'blk', mes: 'summary', extra: { from: 'state-referential', l3Kind: 'compaction', l3ArchiveId: 'arch-1' } },
     { state_referential_msgId: 'tail', mes: 'tail', extra: {} },
-  ], { extra: { l3Archives: { 'arch-1': { archiveId: 'arch-1', messages: [
+  ];
+  const meta = { l3Archives: { 'arch-1': { archiveId: 'arch-1', messages: [
     { state_referential_msgId: 'o1', mes: 'orig 1', extra: {} },
     { state_referential_msgId: 'o2', mes: 'orig 2', extra: {} },
-  ] } } } });
-  const { shell } = mkShell(chat);
+  ] } } };
+  const { shell } = mkShell(chat, meta);
 
   const res = await restoreArchive(shell, 'arch-1');
 
@@ -77,19 +80,19 @@ test('restoreArchive replaces the compaction-block with its archived messages', 
 });
 
 test('restoreArchive returns {restored:false} for an unknown id', async () => {
-  const chat = Object.assign([], { extra: { l3Archives: {} } });
-  const { shell } = mkShell(chat);
+  const { shell } = mkShell([], { l3Archives: {} });
   const res = await restoreArchive(shell, 'nope');
   assert.equal(res.restored, false);
 });
 
 test('restoreArchive saves and reloads but does NOT emit MESSAGE_RECEIVED', async () => {
-  const chat = Object.assign([
+  const chat = [
     { state_referential_msgId: 'blk', mes: 'summary', extra: { l3Kind: 'compaction', l3ArchiveId: 'arch-2' } },
-  ], { extra: { l3Archives: { 'arch-2': { archiveId: 'arch-2', messages: [
+  ];
+  const meta = { l3Archives: { 'arch-2': { archiveId: 'arch-2', messages: [
     { state_referential_msgId: 'x1', mes: 'x1', extra: {} },
-  ] } } } });
-  const { shell, calls } = mkShell(chat);
+  ] } } };
+  const { shell, calls } = mkShell(chat, meta);
   await restoreArchive(shell, 'arch-2');
   assert.deepEqual(calls, [['save'], ['reload']]);
 });

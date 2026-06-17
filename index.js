@@ -132,6 +132,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
   const stShell = {
     getChat: () => getContext().chat,
+    getMeta: () => getContext().chatMetadata, // chat_metadata — persisted; archives live here
     saveChat: () => saveChatConditional(),
     reloadChat: () => getContext().reloadCurrentChat(),
     emit: (name, ...a) => eventSource.emit(name, ...a),
@@ -153,6 +154,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
   const compaction = new Compaction({
     getChat: stShell.getChat,
+    getMeta: stShell.getMeta,
     saveChat: stShell.saveChat,
     reloadChat: stShell.reloadChat,
     generateSummary: l3GenerateSummary,
