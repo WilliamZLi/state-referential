@@ -20,7 +20,7 @@ import { SettingsDrawer } from './src/ui/SettingsDrawer.js';
 import { makePopup } from './src/ui/Popup.js';
 import { makeDialogs } from './src/ui/dialogs.js';
 import { loadTemplate } from './src/ui/shared.js';
-import { readTrackerMsgId } from './src/util/id.js';
+import { newId, readTrackerMsgId } from './src/util/id.js';
 
 import * as Macros from './src/integration/Macros.js';
 import * as SlashCommands from './src/integration/SlashCommands.js';
@@ -32,6 +32,10 @@ import { WorldBinder } from './src/pipeline/WorldBinder.js';
 import { ChronicleInjection } from './src/pipeline/ChronicleInjection.js';
 import { ChronicleOps } from './src/pipeline/ChronicleOps.js';
 import { WorldLock } from './src/pipeline/WorldLock.js';
+import { Compaction } from './src/pipeline/Compaction.js';
+import { insertSyntheticAfter, actCompleteMarker, restoreArchive } from './src/pipeline/MainlineOps.js';
+import { toggleAnchor, countAnchors } from './src/pipeline/Anchors.js';
+import { register as registerL3Commands } from './src/integration/L3SlashCommands.js';
 import { WorldManager } from './src/ui/WorldManager.js';
 import { WorldView } from './src/ui/WorldView.js';
 import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
@@ -98,6 +102,38 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     extension_settings['state-referential'] ??= {};
     return extension_settings['state-referential'];
   };
+
+  // ── Layer 3 — Mainline mechanics ──────────────────────────────────────────────
+  const L3_DEFAULTS = { recentWindow: 50, minSize: 10, tokenCap: 400 };
+  const l3Settings = () => ({ ...L3_DEFAULTS, ...(_strkSettings().compaction ?? {}) });
+
+  const stShell = {
+    getChat: () => getContext().chat,
+    saveChat: () => saveChatConditional(),
+    reloadChat: () => getContext().reloadCurrentChat(),
+    emit: (name, ...a) => eventSource.emit(name, ...a),
+    eventTypes: event_types,
+  };
+
+  const l3GenerateSummary = async (messages, tokenCap) => {
+    const body = messages.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
+    const prompt =
+      'Summarize these messages into a brief block that preserves sensory anchors '
+      + '(locations, smells, colors), significant dialogue beats (quote sparingly), '
+      + `decisions made, and relationship dynamics. Target ~${tokenCap} tokens.\n\n${body}`;
+    return (await generateQuietPrompt(prompt) ?? '').trim();
+  };
+
+  const compaction = new Compaction({
+    getChat: stShell.getChat,
+    saveChat: stShell.saveChat,
+    reloadChat: stShell.reloadChat,
+    generateSummary: l3GenerateSummary,
+    dropSnapshots: (ids) => engine.dropSnapshots(ids),
+    genId: newId,
+    settings: l3Settings,
+    now: () => Date.now(),
+  });
 
   const autoUpdate = new AutoUpdate(engine, {
     generateQuietPrompt,
@@ -616,6 +652,39 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       return chat?.length ? (readTrackerMsgId(chat[chat.length - 1]) ?? null) : null;
     },
   });
+
+  // Layer 3 slash commands.
+  registerL3Commands({
+    SlashCommandParser: getContext().SlashCommandParser,
+    SlashCommand: getContext().SlashCommand,
+    compaction,
+    restore: (id) => restoreArchive(stShell, id),
+    actComplete: (title) => actCompleteMarker({ shell: stShell, chronicleOps, persistChronicle, chronicleInjection }, { title }),
+    toggleAnchorAtSlash: (reason) => {
+      const chat = getContext().chat ?? [];
+      const msg = chat[chat.length - 1];
+      if (!msg) return false;
+      const on = toggleAnchor(msg, reason, Date.now());
+      saveChatConditional();
+      return on;
+    },
+    gotoMainline: async () => {
+      // worldBinding exposes only currentWorldId; the world object (with
+      // mainlineChatId) lives in the registry. Resolve the id reliably, then
+      // best-effort switch via ST's chat-open API (signature varies by version).
+      const worldId = worldBinding.currentWorldId;
+      const mainlineId = worldId ? worldRegistry.get(worldId)?.mainlineChatId : null;
+      if (!mainlineId) return;
+      try {
+        const c = getContext();
+        if (typeof c.openCharacterChat === 'function') await c.openCharacterChat(mainlineId);
+        else console.warn('[state-referential] /mainline-go: no openCharacterChat on context; cannot switch to', mainlineId);
+      } catch (e) {
+        console.warn('[state-referential] /mainline-go: failed to open mainline chat', mainlineId, e?.message);
+      }
+    },
+  });
+
   EventHooks.register(engine, {
     versioning,
     descProbe,
@@ -678,6 +747,13 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     worldBinder,
     getChronicle,
     chronicleOps,
+
+    // Layer 3
+    compactNow: (count) => compaction.run(count ? { count } : {}),
+    restoreArchive: (id) => restoreArchive(stShell, id),
+    actComplete: (title) => actCompleteMarker({ shell: stShell, chronicleOps, persistChronicle, chronicleInjection }, { title }),
+    insertSyntheticAfter: (opts) => insertSyntheticAfter(stShell, opts),
+    countAnchors: () => countAnchors(getContext().chat ?? []),
 
     on: (e, fn) => engine.on(e, fn),
     off: (e, fn) => engine.off(e, fn),
