@@ -144,7 +144,11 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       'Summarize these messages into a brief block that preserves sensory anchors '
       + '(locations, smells, colors), significant dialogue beats (quote sparingly), '
       + `decisions made, and relationship dynamics. Target ~${tokenCap} tokens.\n\n${body}`;
-    return (await generateQuietPrompt(prompt) ?? '').trim();
+    // Use the ISOLATED summarizer (generateRaw), not the in-story generateQuietPrompt —
+    // otherwise the compaction block comes back as a story continuation rather than a
+    // summary (the same issue fixed for the chronicle). generateChronicleSummary is the
+    // shared isolated path (generateRaw + a permissive summarizer system prompt).
+    return (await generateChronicleSummary(prompt) ?? '').trim();
   };
 
   const compaction = new Compaction({
