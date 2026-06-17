@@ -141,12 +141,19 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
   const l3GenerateSummary = async (messages, tokenCap) => {
     const body = messages.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
+    // Transcript FIRST, instruction LAST. With a long transcript, an instruction
+    // placed up top gets drowned out and the model just CONTINUES the story
+    // (it ends mid-scene). Putting the recap instruction after the transcript
+    // makes it the model's last/strongest signal so it summarizes instead.
     const prompt =
-      'Write a brief, factual PAST-TENSE recap of what happened in the messages below: '
-      + 'key events, actions, decisions, outcomes, and changes to the situation, locations, items, or relationships. '
-      + 'CONDENSE it. Do NOT re-narrate the scene, do NOT continue the story, do NOT add new prose, dialogue, '
-      + 'or moment-by-moment sensory description. This is a log entry, not a story passage. Third person. '
-      + `At most ~${tokenCap} tokens.\n\nMessages to summarize:\n${body}`;
+      'TRANSCRIPT OF EVENTS THAT ALREADY HAPPENED:\n\n'
+      + body
+      + '\n\n=== END OF TRANSCRIPT ===\n\n'
+      + 'The transcript above is finished. Write a brief, factual, PAST-TENSE recap of what '
+      + 'happened across ALL of it: key events, actions, decisions, outcomes, and changes to the '
+      + 'situation, locations, items, or relationships. Do NOT continue the story, do NOT add anything '
+      + 'beyond the transcript, do NOT re-narrate it scene-by-scene. '
+      + `Recap only, third person, at most ~${tokenCap} tokens.`;
     // Use the ISOLATED summarizer (generateRaw), not the in-story generateQuietPrompt —
     // otherwise the compaction block comes back as a story continuation rather than a
     // summary (the same issue fixed for the chronicle). generateChronicleSummary is the
@@ -794,5 +801,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-17-recap');
+  console.log('[state-referential] ready — build 2026-06-17-recap2');
 })();
