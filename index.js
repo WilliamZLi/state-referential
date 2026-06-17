@@ -142,9 +142,11 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const l3GenerateSummary = async (messages, tokenCap) => {
     const body = messages.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
     const prompt =
-      'Summarize these messages into a brief block that preserves sensory anchors '
-      + '(locations, smells, colors), significant dialogue beats (quote sparingly), '
-      + `decisions made, and relationship dynamics. Target ~${tokenCap} tokens.\n\n${body}`;
+      'Write a brief, factual PAST-TENSE recap of what happened in the messages below: '
+      + 'key events, actions, decisions, outcomes, and changes to the situation, locations, items, or relationships. '
+      + 'CONDENSE it. Do NOT re-narrate the scene, do NOT continue the story, do NOT add new prose, dialogue, '
+      + 'or moment-by-moment sensory description. This is a log entry, not a story passage. Third person. '
+      + `At most ~${tokenCap} tokens.\n\nMessages to summarize:\n${body}`;
     // Use the ISOLATED summarizer (generateRaw), not the in-story generateQuietPrompt —
     // otherwise the compaction block comes back as a story continuation rather than a
     // summary (the same issue fixed for the chronicle). generateChronicleSummary is the
