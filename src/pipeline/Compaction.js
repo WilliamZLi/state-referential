@@ -33,6 +33,7 @@ export class Compaction {
       kind: 'compaction',
       name: `Compacted (${range.msgIds.length} msgs)`,
       mes: summary,
+      smallSys: false, // normal, manageable message (ST keeps hide/edit/delete)
       extra: { l3ArchiveId: archiveId },
     });
     const count = range.endIndex - range.startIndex + 1;

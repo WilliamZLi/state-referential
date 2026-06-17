@@ -41,6 +41,8 @@ test('compacts the oldest run into a single compaction-block and drops their sna
   assert.equal(chat[0].extra.l3Kind, 'compaction');
   assert.equal(chat[0].mes, 'A terse summary.');
   assert.equal(chat[0].extra.l3ArchiveId, res.archiveId);
+  // Block is a normal, manageable message (NOT small-sys) so ST keeps hide/edit/delete.
+  assert.equal(chat[0].extra.isSmallSys, undefined);
   assert.equal(chat[1].mes, 'line 4');
   assert.deepEqual(dropped, ['m0', 'm1', 'm2', 'm3']);
   // The archive must actually hold the verbatim pre-compaction messages.
