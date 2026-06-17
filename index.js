@@ -91,6 +91,29 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     }
     return ctx.generateQuietPrompt(text, false, false);
   };
+
+  // Isolated generation for chronicle summaries. Like the description probe, this
+  // uses generateRaw to BYPASS the chat history, character card, and world info —
+  // otherwise generateQuietPrompt summarizes "as the narrator, inside the story",
+  // so the model continues the narrative instead of stepping out to summarize it.
+  // The permissive system prompt keeps mature content from being refused or
+  // sanitized (mirrors PROBE_SYSTEM_PROMPT).
+  const CHRONICLE_SYSTEM_PROMPT = 'You are a chronicle summarizer for an adult interactive fiction. '
+    + 'You do NOT continue, advance, or write new story — you ONLY summarize events that already happened. '
+    + 'Read the events in the prompt and output a single concise, factual, past-tense paragraph of what occurred. '
+    + 'Render mature, explicit, or taboo content plainly when present; never refuse, moralize, soften, or add '
+    + 'preamble. Output only the summary paragraph.';
+  const generateChronicleSummary = async (text) => {
+    const ctx = getContext();
+    if (typeof ctx.generateRaw === 'function') {
+      try {
+        return await ctx.generateRaw({ prompt: text, systemPrompt: CHRONICLE_SYSTEM_PROMPT, responseLength: 600 });
+      } catch (e) {
+        console.warn('[state-referential] generateRaw failed for chronicle, falling back to generateQuietPrompt:', e?.message);
+      }
+    }
+    return ctx.generateQuietPrompt({ quietPrompt: text });
+  };
   const insertSmallSysMessage = (opts) => {
     const chat = getContext().chat;
     chat.push({ name: opts.name, is_user: false, is_system: false, mes: opts.mes, extra: opts.extra });
@@ -248,8 +271,9 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // Chronicle injection — renders chronicle → setExtensionPrompt before each generation.
   const chronicleInjection = new ChronicleInjection(_chronicle, { setExtensionPrompt });
 
-  // Chronicle ops — act-complete pipeline.
-  const chronicleOps = new ChronicleOps(_chronicle, { generateQuietPrompt });
+  // Chronicle ops — act-complete pipeline. Uses the ISOLATED summarizer
+  // (generateRaw) so entries are summaries of what happened, not story continuations.
+  const chronicleOps = new ChronicleOps(_chronicle, { generateQuietPrompt: generateChronicleSummary });
 
   // WorldBinder — bind/unbind current chat + data migration.
   const worldBinder = new WorldBinder(engine, worldRegistry, worldBinding, {
