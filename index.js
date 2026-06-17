@@ -801,5 +801,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-17-recap2');
+  console.log('[state-referential] ready — build 2026-06-17-recap3');
 })();

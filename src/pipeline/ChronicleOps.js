@@ -73,13 +73,19 @@ export class ChronicleOps {
     }
     const brief = briefParts.length ? briefParts.join('\n\n') + '\n\n' : '';
 
+    // Transcript FIRST, instruction LAST. With a long act, an instruction placed
+    // before the transcript gets drowned out and the model CONTINUES the story
+    // instead of summarizing it (same trap fixed in compaction). The recap
+    // instruction must be the model's last/strongest signal.
     const prompt =
-      `${brief}` +
-      `Summarize ONLY the NEW events below into ONE paragraph, continuing the chronicle from the context above. ` +
-      `Do not restate facts already covered by the story-so-far or recent acts; cover only what is new here. ` +
-      `Focus on what actually happened. ` +
-      `Write as flowing narrative prose, not a status report or a list of states. ` +
-      `Aim for ${tokenCap} tokens. No dialogue. Third person.\n\nNew chat to summarize:\n${chatText}`;
+      brief +
+      'NEW EVENTS TRANSCRIPT (these already happened):\n\n' +
+      chatText +
+      '\n\n=== END OF TRANSCRIPT ===\n\n' +
+      'The transcript above is finished. Write ONE paragraph recapping ONLY the NEW events in it — ' +
+      'the events already covered by the story-so-far / recent acts above are context only; do not restate them. ' +
+      'State what actually happened: factual, past-tense, third person. ' +
+      `Do NOT continue the story, do NOT add anything beyond the transcript, no dialogue. Aim for ~${tokenCap} tokens.`;
     return await this.deps.generateQuietPrompt(prompt);
   }
 
