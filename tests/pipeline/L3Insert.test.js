@@ -113,3 +113,15 @@ test('spliceAtIndex inserts at the head of the chat (index 0)', () => {
   assert.equal(chat[0].mes, 'head');
   assert.equal(chat[1].mes, 'a');
 });
+
+test('buildSyntheticMessage omits isSmallSys when smallSys:false (so ST keeps the message controls)', () => {
+  const m = buildSyntheticMessage({ kind: 'act-complete', mes: 'x', smallSys: false });
+  assert.equal(m.extra.isSmallSys, undefined);
+  assert.equal(m.extra.from, 'state-referential');
+  assert.equal(m.extra.l3Kind, 'act-complete');
+});
+
+test('buildSyntheticMessage still sets isSmallSys by default', () => {
+  const m = buildSyntheticMessage({ kind: 'compaction', mes: 'x' });
+  assert.equal(m.extra.isSmallSys, true);
+});

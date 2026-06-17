@@ -34,9 +34,11 @@ export async function actCompleteMarker({ shell, chronicleOps, persistChronicle,
   await insertSyntheticAfter(shell, {
     afterTrackerMsgId: latestId,
     kind: 'act-complete',
-    name: `Act complete: ${title}`,
-    mes: entry?.body ?? title,
-    extra: { l3Title: title },
+    // Terse in-chat beat; the full summary lives in the chronicle and on extra.l3Body.
+    // smallSys:false → a normal, manageable message (ST keeps hide/edit/delete).
+    mes: `✓ Act complete: ${title}`,
+    smallSys: false,
+    extra: { l3Title: title, l3Body: entry?.body ?? '' },
   });
   chronicleInjection?.run?.();
   return entry;

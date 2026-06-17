@@ -19,13 +19,16 @@ import { ensureTrackerMsgId, readTrackerMsgId } from '../util/id.js';
  * Build (but do not insert) a stamped Layer 3 small-system message.
  * @param {{kind:'fold-back'|'compaction'|'act-complete', mes:string, name?:string, id?:string, extra?:object}} opts
  */
-export function buildSyntheticMessage({ kind, mes, name, id, extra }) {
+export function buildSyntheticMessage({ kind, mes, name, id, extra, smallSys = true }) {
   const message = {
     name: name ?? 'State',
     is_user: false,
-    is_system: false, // kept in AI history (spec §3.3); collapsed via CSS in Plan 2
+    is_system: false, // kept in AI history (spec §3.3)
     mes,
-    extra: { isSmallSys: true, from: 'state-referential', l3Kind: kind, ...extra },
+    // isSmallSys gives the collapsed/centered "system notice" look — but ST also
+    // hides the per-message control row (.ch_name) for it. Pass smallSys:false for
+    // a normal, manageable message (keeps hide/edit/delete).
+    extra: { from: 'state-referential', l3Kind: kind, ...(smallSys ? { isSmallSys: true } : {}), ...extra },
   };
   if (id) message.state_referential_msgId = id;
   ensureTrackerMsgId(message);

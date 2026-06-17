@@ -51,8 +51,11 @@ test('actCompleteMarker summarizes over the chat, persists before inserting, and
   const marker = chat[chat.length - 1];
   assert.equal(marker.extra.l3Kind, 'act-complete');
   assert.equal(marker.extra.l3Title, 'Act I');
-  assert.equal(marker.mes, 'Chronicle body.');
-  assert.equal(marker.name, 'Act complete: Act I');
+  // Terse in-chat beat; the full summary lives in the chronicle (and on extra.l3Body).
+  assert.equal(marker.mes, '✓ Act complete: Act I');
+  assert.equal(marker.extra.l3Body, 'Chronicle body.');
+  // Normal message (NOT small-sys) so ST keeps the hide/edit/delete controls.
+  assert.equal(marker.extra.isSmallSys, undefined);
 });
 
 test('restoreArchive replaces the compaction-block with its archived messages', async () => {
