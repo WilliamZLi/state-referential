@@ -503,7 +503,8 @@
 
 /* Layer 3 — anchored message accent (compaction-exempt) */
 .mes.l3-anchored {
-  border-left: 3px solid var(--SmartThemeQuoteColor, #c0a062);
+  /* inset shadow, not a border — a real border takes layout space and shifts the message text */
+  box-shadow: inset 3px 0 0 0 var(--SmartThemeQuoteColor, #c0a062);
 }
 .mes_button.l3-anchor-btn.active {
   color: var(--SmartThemeQuoteColor, #c0a062);
