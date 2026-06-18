@@ -34,6 +34,23 @@
       <h4>Storage backend</h4>
       <select class="text_pole" id="strk-backend"><option value="chat-scoped">Chat-scoped (default)</option></select>
     </div>
+    <h4>Mainline &amp; Compaction</h4>
+    <label title="Auto-compaction mode. Nudge: a toast offers to compact when context fills. Silent: compacts automatically. Off: manual only.">Auto-compaction
+      <select class="text_pole" id="strk-compact-auto">
+        <option value="off">Off</option>
+        <option value="nudge">Nudge me</option>
+        <option value="silent">Silent (auto)</option>
+      </select>
+    </label>
+    <label title="Trigger compaction when the chat exceeds this percentage of the model's context size.">Trigger at (% of context) <input type="number" class="text_pole" id="strk-compact-threshold" min="1" max="99" value="80" /></label>
+    <label title="How many of the oldest messages each compaction folds into one recap block.">Fold batch size <input type="number" class="text_pole" id="strk-compact-batch" min="2" max="200" value="25" /></label>
+    <label title="How many recent messages are protected from compaction.">Recent window (protected) <input type="number" class="text_pole" id="strk-compact-recent" min="0" max="500" value="50" /></label>
+    <label title="Minimum number of compactable messages before a fold runs.">Min compaction size <input type="number" class="text_pole" id="strk-compact-min" min="1" max="100" value="10" /></label>
+    <label title="Target length (in tokens) for each compaction recap block.">Summary token cap <input type="number" class="text_pole" id="strk-compact-tokencap" min="50" max="2000" value="400" /></label>
+    <div class="strk-drawer-actions">
+      <button class="menu_button" id="strk-compact-now">Compact now</button>
+      <button class="menu_button" id="strk-act-complete">Mark act complete</button>
+    </div>
     <h4>Templates</h4>
     <label>Auto-update prompt template</label>
     <textarea class="text_pole" id="strk-tpl-autoupdate" rows="6"></textarea>

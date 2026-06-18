@@ -36,6 +36,22 @@ export class SettingsDrawer {
       this.deps.saveSettingsDebounced();
     });
     $('#strk-debug').prop('checked', s.debug === true).on('change', e => { s.debug = e.target.checked; this.deps.saveSettingsDebounced(); });
+    const cs = () => { s.compaction ??= {}; return s.compaction; };
+    const numField = (id, key, def) => $(id).val(cs()[key] ?? def).on('change', e => {
+      const n = parseInt(e.target.value, 10);
+      if (Number.isFinite(n)) { cs()[key] = n; this.deps.saveSettingsDebounced(); }
+    });
+    $('#strk-compact-auto').val(cs().auto ?? 'nudge').on('change', e => { cs().auto = e.target.value; this.deps.saveSettingsDebounced(); });
+    numField('#strk-compact-threshold', 'thresholdPct', 80);
+    numField('#strk-compact-batch', 'batchSize', 25);
+    numField('#strk-compact-recent', 'recentWindow', 50);
+    numField('#strk-compact-min', 'minSize', 10);
+    numField('#strk-compact-tokencap', 'tokenCap', 400);
+    $('#strk-compact-now').on('click', async () => { const r = await window.STTracker.compactNow(); toastr.info(r?.compacted ? `Compacted ${r.count}.` : 'Nothing to compact.'); });
+    $('#strk-act-complete').on('click', async () => {
+      const title = this.deps.dialogs ? await this.deps.dialogs.prompt('Act title:') : prompt('Act title:');
+      if (title?.trim()) await window.STTracker.actComplete(title.trim());
+    });
     $('#strk-new-tracker').on('click', () => this.deps.schemaEditor.open(null));
     $('#strk-install-presets').on('click', () => this._installPresets());
     $('#strk-uninstall-presets').on('click', () => this._uninstallPresets());

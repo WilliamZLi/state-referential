@@ -1,5 +1,6 @@
 import { formatValue } from '../util/formatValue.js';
 import { activeEntries } from '../util/countdown.js';
+import { countAnchors } from '../pipeline/Anchors.js';
 
 function parsePath(path) {
   // <subject>.<tracker>.<field>[.suffix]
@@ -181,6 +182,19 @@ export function resolveTagMacro(engine, arg) {
 }
 
 /**
+ * Register {{anchor-count}} — number of anchored messages on the current chat.
+ * @param {{registerMacro:Function}} registry  the ST macro registry
+ * @param {() => Array} getChat
+ */
+export function registerAnchorCount(registry, getChat) {
+  if (!registry?.registerMacro) return;
+  registry.registerMacro('anchor-count', {
+    handler: () => String(countAnchors(getChat() ?? [])),
+    description: 'Number of anchored (compaction-exempt) messages on the current chat.',
+  });
+}
+
+/**
  * Register tracker macros with ST's macro system.
  *
  * Tries the new MacroRegistry API first (scripts/macros/macro-system.js) which
@@ -252,6 +266,7 @@ export function register(engine, deps) {
           return resolveWorldMacro(ctx.unnamedArgs[0], worldMeta, chronicle);
         },
       });
+      registerAnchorCount(registry, deps?.getChat ?? (() => []));
       return;
     } catch (e) {
       console.warn('[state-referential] new MacroRegistry registration failed, falling back to legacy:', e?.message);

@@ -500,3 +500,11 @@
   opacity: 0.8;
   margin-bottom: 6px;
 }
+
+/* Layer 3 — anchored message accent (compaction-exempt) */
+.mes.l3-anchored {
+  border-left: 3px solid var(--SmartThemeQuoteColor, #c0a062);
+}
+.mes_button.l3-anchor-btn.active {
+  color: var(--SmartThemeQuoteColor, #c0a062);
+}

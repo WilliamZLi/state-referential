@@ -33,9 +33,12 @@ import { ChronicleInjection } from './src/pipeline/ChronicleInjection.js';
 import { ChronicleOps } from './src/pipeline/ChronicleOps.js';
 import { WorldLock } from './src/pipeline/WorldLock.js';
 import { Compaction } from './src/pipeline/Compaction.js';
+import { estimateChatTokens } from './src/pipeline/TokenBudget.js';
+import { decideAutoCompact } from './src/pipeline/AutoCompact.js';
 import { insertSyntheticAfter, actCompleteMarker, restoreArchive } from './src/pipeline/MainlineOps.js';
 import { toggleAnchor, countAnchors } from './src/pipeline/Anchors.js';
 import { register as registerL3Commands } from './src/integration/L3SlashCommands.js';
+import { mountMessageButtons } from './src/integration/MessageButtons.js';
 import { WorldManager } from './src/ui/WorldManager.js';
 import { WorldView } from './src/ui/WorldView.js';
 import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
@@ -127,7 +130,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   };
 
   // ── Layer 3 — Mainline mechanics ──────────────────────────────────────────────
-  const L3_DEFAULTS = { recentWindow: 50, minSize: 10, tokenCap: 400 };
+  const L3_DEFAULTS = { auto: 'nudge', thresholdPct: 80, batchSize: 25, recentWindow: 50, minSize: 10, tokenCap: 400 };
   const l3Settings = () => ({ ...L3_DEFAULTS, ...(_strkSettings().compaction ?? {}) });
 
   const stShell = {
@@ -172,6 +175,46 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     settings: l3Settings,
     now: () => Date.now(),
   });
+
+  const _tokCache = new Map();
+  let _autoCompactBusy = false;
+  let _lastNudgeAt = 0;
+  const _tokenCountFn = (msg) => {
+    const ctx = getContext();
+    const fn = ctx.getTokenCountAsync;
+    if (typeof fn === 'function') return fn(msg?.mes ?? '');
+    return Math.ceil((msg?.mes ?? '').length / 4); // heuristic fallback
+  };
+
+  const _runAutoCompaction = async () => {
+    if (_autoCompactBusy) return;
+    const s = l3Settings();
+    if (s.auto === 'off') return;
+    _autoCompactBusy = true;
+    try {
+      const ctx = getContext();
+      const chat = ctx.chat ?? [];
+      if (chat.length < (s.recentWindow + s.minSize)) return; // nothing foldable yet
+      const chatTokens = await estimateChatTokens(chat, _tokenCountFn, _tokCache);
+      const contextSize = Number(ctx.maxContext) || 0;
+      const decision = decideAutoCompact({ chatTokens, contextSize, settings: s });
+      if (!decision) return;
+      const pct = contextSize ? Math.round((chatTokens / contextSize) * 100) : '?';
+      if (decision === 'silent') {
+        await compaction.run({ count: s.batchSize });
+      } else { // nudge — debounced, dismissible toast
+        if (Date.now() - _lastNudgeAt < 60000) return;
+        _lastNudgeAt = Date.now();
+        toastr.info(`Context ~${pct}% full — click to compact the oldest ${s.batchSize} messages.`,
+          'State Tracker', { timeOut: 12000, onclick: () => compaction.run({ count: s.batchSize }) });
+      }
+    } finally {
+      _autoCompactBusy = false;
+    }
+  };
+
+  engine.bus.on?.('tracker:pipeline-completed', () => { _runAutoCompaction(); });
+  eventSource.on(event_types.MESSAGE_RECEIVED, () => { _runAutoCompaction(); });
 
   const autoUpdate = new AutoUpdate(engine, {
     generateQuietPrompt,
@@ -679,6 +722,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     macros, MacrosParser, proseStore,
     getWorldMeta: () => worldBinding.currentWorldId ? worldRegistry.get(worldBinding.currentWorldId) : null,
     getChronicle,
+    getChat: () => getContext().chat,
   });
   SlashCommands.register(engine, {
     SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone,
@@ -722,6 +766,14 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
         console.warn('[state-referential] /mainline-go: failed to open mainline chat', mainlineId, e?.message);
       }
     },
+  });
+
+  mountMessageButtons({
+    $: window.jQuery ?? window.$,
+    getChat: () => getContext().chat,
+    eventSource,
+    event_types,
+    saveChat: () => saveChatConditional(),
   });
 
   EventHooks.register(engine, {
@@ -801,5 +853,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-17-recap3');
+  console.log('[state-referential] ready — build 2026-06-17-plan2-msgbtns');
 })();
