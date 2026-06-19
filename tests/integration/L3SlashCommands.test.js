@@ -14,6 +14,9 @@ function mkRig() {
     actComplete: async (title) => { log.push(['act', title]); return { title }; },
     toggleAnchorAtSlash: (reason) => { log.push(['anchor', reason]); return true; },
     gotoMainline: async () => { log.push(['goto']); },
+    branchCreate: async (o) => { log.push(['branchCreate', o]); },
+    branchDiscard: async () => { log.push(['branchDiscard']); },
+    branchLastN: () => 10,
   };
   register(deps);
   return { registered, log };
@@ -86,4 +89,28 @@ test('/compact-restore reports a missing archive', async () => {
     toggleAnchorAtSlash: () => {}, gotoMainline: async () => {},
   });
   assert.equal(await registered['compact-restore']({}, 'nope'), 'Archive not found.');
+});
+
+test('registers /branch-here and /branch-discard', () => {
+  const { registered } = mkRig();
+  assert.equal(typeof registered['branch-here'], 'function');
+  assert.equal(typeof registered['branch-discard'], 'function');
+});
+
+test('/branch-here forwards the title and the configured lastN', async () => {
+  const { registered, log } = mkRig();
+  await registered['branch-here']({}, 'Dungeon A');
+  assert.deepEqual(log[0], ['branchCreate', { title: 'Dungeon A', purpose: 'exploratory', lastN: 10, inheritTags: true }]);
+});
+
+test('/branch-here defaults the title when empty', async () => {
+  const { registered, log } = mkRig();
+  await registered['branch-here']({}, '');
+  assert.equal(log[0][1].title, 'Branch');
+});
+
+test('/branch-discard calls branchDiscard', async () => {
+  const { registered, log } = mkRig();
+  await registered['branch-discard']({}, '');
+  assert.deepEqual(log[0], ['branchDiscard']);
 });

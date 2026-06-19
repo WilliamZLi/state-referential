@@ -1,4 +1,5 @@
-import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat } from '../../../../script.js';
+import { splitForSeed, seedPromptForPurpose, buildBranchMeta, addBranchRecord, setBranchStatus } from './src/pipeline/Branches.js';
 
 const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
@@ -130,7 +131,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   };
 
   // ── Layer 3 — Mainline mechanics ──────────────────────────────────────────────
-  const L3_DEFAULTS = { auto: 'nudge', thresholdPct: 80, batchSize: 25, recentWindow: 50, minSize: 10, tokenCap: 400 };
+  const L3_DEFAULTS = { auto: 'nudge', thresholdPct: 80, batchSize: 25, recentWindow: 50, minSize: 10, tokenCap: 400, branchLastN: 10 };
   const l3Settings = () => ({ ...L3_DEFAULTS, ...(_strkSettings().compaction ?? {}) });
 
   const stShell = {
@@ -736,6 +737,111 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     },
   });
 
+  // ── Layer 3 — Branch creation ─────────────────────────────────────────────────
+  const branchCreate = async ({ title, purpose, lastN, inheritTags }) => {
+    const ctx = getContext();
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) { toastr.warning('Branch: this chat is not bound to a World.'); return; }
+    const world = worldRegistry.get(worldId);
+    if (!world) { toastr.warning('Branch: World not found in registry.'); return; }
+    if (world?.openBranchChatId) { toastr.warning('A branch is already open — fold or discard it first.'); return; }
+
+    const mainId = ctx.chatId;
+    const mainChat = ctx.chat ?? [];
+    const branchFromMessageId = readTrackerMsgId(mainChat[mainChat.length - 1]);
+
+    // 1. snapshot the World state at the branch point + pin it as the undo target
+    const snapshotKey = `branch:${newId()}`;
+    const snap = engine.snapshot(snapshotKey);
+    engine.snapshots.save(snapshotKey, snap);
+    engine.pinSnapshot(snapshotKey, 'branch-start');
+    await engine.backend?.flush?.(); // persist the pinned branch-start snapshot to the server BEFORE doNewChat re-hydrates the World backend (else discard can't restore it)
+
+    // 2. build seed content: recap-of-pre-N + last N verbatim + seed prompt
+    const { toRecap, verbatim } = splitForSeed(mainChat, lastN);
+    let recapText = '';
+    if (toRecap.length) {
+      const body = toRecap.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
+      const prompt = 'TRANSCRIPT OF EVENTS THAT ALREADY HAPPENED:\n\n' + body
+        + '\n\n=== END OF TRANSCRIPT ===\n\nWrite a brief, factual PAST-TENSE recap of what happened across it. '
+        + 'Do NOT continue the story or add anything beyond the transcript. Recap only, third person.';
+      recapText = (await generateChronicleSummary(prompt) ?? '').trim();
+    }
+    const verbatimCopies = verbatim.map(m => ({ ...m, extra: { ...(m.extra ?? {}) } }));
+    const seedPrompt = seedPromptForPurpose(purpose);
+
+    // 3. create the branch chat + switch in
+    await doNewChat();
+    const branchId = getContext().chatId;
+    const bc = getContext().chat;
+    if (recapText) bc.push({ name: 'Story so far', is_user: false, is_system: false, mes: recapText, extra: { from: 'state-referential', l3Kind: 'branch-seed-recap' } });
+    for (const m of verbatimCopies) bc.push(m);
+    bc.push({ name: 'Side adventure', is_user: false, is_system: false, mes: seedPrompt, extra: { from: 'state-referential', l3Kind: 'branch-seed' } });
+    const seedMessageCount = bc.length;
+
+    // 4. bind to the World as a branch (shared backend) + write l3BranchMeta
+    await worldBinder.bindCurrentChat(worldId, 'branch');
+    const meta = getContext().chatMetadata;
+    meta.l3BranchMeta = buildBranchMeta({ mainlineChatId: mainId, branchFromMessageId, snapshotKey, title, purpose, lastN, seedMessageCount, now: Date.now() });
+    if (inheritTags) meta.l3InheritedTags = engine.listActiveTags?.() ?? [];
+
+    // 5. lock + registry + persist
+    // Mutate the in-registry world object then persist via worldRegistry.update
+    // (mirrors the pattern in WorldBinder/WorldRegistry which calls serverApi.patchMeta).
+    addBranchRecord(world, { chatId: branchId, title, status: 'open', branchFromMessageId, createdAt: Date.now() });
+    world.openBranchChatId = branchId;
+    await worldRegistry.update(worldId, { openBranchChatId: branchId, branches: world.branches });
+    await saveChatConditional();
+    await getContext().reloadCurrentChat();
+  };
+
+  const branchDiscard = async () => {
+    const ctx = getContext();
+    const meta = ctx.chatMetadata;
+    const bm = meta?.l3BranchMeta;
+    if (!bm) { toastr.warning('Not in a branch chat.'); return; }
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) { toastr.warning('Branch: no bound World.'); return; }
+    const branchChatId = ctx.chatId;
+
+    // 1. roll the World tracker state back to the branch-start snapshot (undo the side-scene)
+    const snap = engine.loadSnapshot(bm.snapshotKey);
+    if (snap) {
+      engine.restoreSnapshot(snap);
+      // Flush the debounced HTTP PUTs that restoreSnapshot triggered via engine.backend so the
+      // rolled-back World state is persisted on the server BEFORE openCharacterChat fires
+      // CHAT_CHANGED and the mainline re-hydrates from the server (which could otherwise read
+      // pre-rollback state if the writes haven't landed yet).
+      await engine.backend?.flush?.();
+    }
+    // Note: restoreSnapshot calls backend.saveValues/saveSubjects/saveDescriptions which
+    // each trigger a debounced write — no extra saveChatConditional needed
+    // for the tracker state itself.
+
+    // 2. mark this branch's metadata discarded
+    const discardedAt = Date.now();
+    meta.l3BranchMeta.discardedAt = discardedAt;
+    await saveChatConditional();
+
+    // 3. update the World registry (status discarded) + clear the lock, persisted in one patch.
+    //    NOTE: worldRegistry.update replaces the entry; build the patch from a fresh read, do not
+    //    rely on a stale local world ref after updating.
+    const world = worldRegistry.get(worldId);
+    if (world) {
+      setBranchStatus(world, branchChatId, 'discarded', { discardedAt });
+      await worldRegistry.update(worldId, { openBranchChatId: null, branches: world.branches });
+    }
+
+    // 4. return to the mainline
+    try {
+      const c = getContext();
+      if (typeof c.openCharacterChat === 'function') await c.openCharacterChat(bm.mainlineChatId);
+      else console.warn('[state-referential] branchDiscard: no openCharacterChat on context; cannot switch to', bm.mainlineChatId);
+    } catch (e) {
+      console.warn('[state-referential] branchDiscard: failed to open mainline chat', bm.mainlineChatId, e?.message);
+    }
+  };
+
   // Layer 3 slash commands.
   registerL3Commands({
     SlashCommandParser: getContext().SlashCommandParser,
@@ -766,6 +872,9 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
         console.warn('[state-referential] /mainline-go: failed to open mainline chat', mainlineId, e?.message);
       }
     },
+    branchCreate,
+    branchDiscard,
+    branchLastN: () => l3Settings().branchLastN ?? 10,
   });
 
   mountMessageButtons({
@@ -840,6 +949,8 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     chronicleOps,
 
     // Layer 3
+    branchCreate: (opts) => branchCreate(opts),
+    branchDiscard: () => branchDiscard(),
     compactNow: (count) => compaction.run(count ? { count } : {}),
     restoreArchive: (id) => restoreArchive(stShell, id),
     actComplete: (title) => actCompleteMarker({ shell: stShell, chronicleOps, persistChronicle, chronicleInjection }, { title }),
@@ -853,5 +964,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-17-plan2-msgbtns');
+  console.log('[state-referential] ready — build 2026-06-18-branches-3a-discard');
 })();

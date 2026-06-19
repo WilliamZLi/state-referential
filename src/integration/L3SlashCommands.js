@@ -37,4 +37,12 @@ export function register(deps) {
 
   reg('mainline-go', async () => { await deps.gotoMainline(); return ''; },
     '/mainline-go — switch to this World\'s mainline chat');
+
+  reg('branch-here', async (args, value) => {
+    await deps.branchCreate?.({ title: String(value ?? '').trim() || 'Branch', purpose: 'exploratory', lastN: deps.branchLastN?.() ?? 10, inheritTags: true });
+    return '';
+  }, '/branch-here [title] — spawn a side-scene branch from the current message');
+
+  reg('branch-discard', async () => { await deps.branchDiscard?.(); return ''; },
+    '/branch-discard — discard the current branch (rolls the World back)');
 }
