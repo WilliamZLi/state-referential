@@ -100,7 +100,7 @@ test('registers /branch-here and /branch-discard', () => {
 test('/branch-here forwards the title and the configured lastN', async () => {
   const { registered, log } = mkRig();
   await registered['branch-here']({}, 'Dungeon A');
-  assert.deepEqual(log[0], ['branchCreate', { title: 'Dungeon A', purpose: 'exploratory', lastN: 10, inheritTags: true }]);
+  assert.deepEqual(log[0], ['branchCreate', { title: 'Dungeon A', lastN: 10, inheritTags: true }]);
 });
 
 test('/branch-here defaults the title when empty', async () => {

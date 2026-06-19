@@ -1,5 +1,5 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat } from '../../../../script.js';
-import { splitForSeed, seedPromptForPurpose, buildBranchMeta, addBranchRecord, setBranchStatus } from './src/pipeline/Branches.js';
+import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus } from './src/pipeline/Branches.js';
 
 const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
@@ -738,7 +738,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   });
 
   // ── Layer 3 — Branch creation ─────────────────────────────────────────────────
-  const branchCreate = async ({ title, purpose, lastN, inheritTags }) => {
+  const branchCreate = async ({ title, lastN, inheritTags }) => {
     const ctx = getContext();
     const worldId = worldBinding.currentWorldId;
     if (!worldId) { toastr.warning('Branch: this chat is not bound to a World.'); return; }
@@ -757,7 +757,8 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     engine.pinSnapshot(snapshotKey, 'branch-start');
     await engine.backend?.flush?.(); // persist the pinned branch-start snapshot to the server BEFORE doNewChat re-hydrates the World backend (else discard can't restore it)
 
-    // 2. build seed content: recap-of-pre-N + last N verbatim + seed prompt
+    // 2. build seamless seed context: recap-of-pre-N + last N verbatim.
+    //    No framing/seed prompt — the branch just continues the story.
     const { toRecap, verbatim } = splitForSeed(mainChat, lastN);
     let recapText = '';
     if (toRecap.length) {
@@ -768,7 +769,6 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       recapText = (await generateChronicleSummary(prompt) ?? '').trim();
     }
     const verbatimCopies = verbatim.map(m => ({ ...m, extra: { ...(m.extra ?? {}) } }));
-    const seedPrompt = seedPromptForPurpose(purpose);
 
     // 3. create the branch chat + switch in
     await doNewChat();
@@ -776,13 +776,12 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     const bc = getContext().chat;
     if (recapText) bc.push({ name: 'Story so far', is_user: false, is_system: false, mes: recapText, extra: { from: 'state-referential', l3Kind: 'branch-seed-recap' } });
     for (const m of verbatimCopies) bc.push(m);
-    bc.push({ name: 'Side adventure', is_user: false, is_system: false, mes: seedPrompt, extra: { from: 'state-referential', l3Kind: 'branch-seed' } });
-    const seedMessageCount = bc.length;
+    const seedMessageCount = bc.length; // boundary between injected context and new side-scene play (used by 3b fold-back)
 
     // 4. bind to the World as a branch (shared backend) + write l3BranchMeta
     await worldBinder.bindCurrentChat(worldId, 'branch');
     const meta = getContext().chatMetadata;
-    meta.l3BranchMeta = buildBranchMeta({ mainlineChatId: mainId, branchFromMessageId, snapshotKey, title, purpose, lastN, seedMessageCount, now: Date.now() });
+    meta.l3BranchMeta = buildBranchMeta({ mainlineChatId: mainId, branchFromMessageId, snapshotKey, title, lastN, seedMessageCount, now: Date.now() });
     if (inheritTags) meta.l3InheritedTags = engine.listActiveTags?.() ?? [];
 
     // 5. lock + registry + persist
@@ -964,5 +963,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-18-branches-3a-discard');
+  console.log('[state-referential] ready — build 2026-06-19-seamless-branches');
 })();

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { splitForSeed, seedPromptForPurpose, buildBranchMeta, isBranchOpen, addBranchRecord, setBranchStatus } from '../../src/pipeline/Branches.js';
+import { splitForSeed, buildBranchMeta, isBranchOpen, addBranchRecord, setBranchStatus } from '../../src/pipeline/Branches.js';
 
 const chat = (n) => Array.from({ length: n }, (_, i) => ({ mes: `m${i}` }));
 
@@ -16,16 +16,9 @@ test('splitForSeed: chat shorter than N → no recap, all verbatim', () => {
   assert.deepEqual(r.verbatim.map(m => m.mes), ['m0', 'm1']);
 });
 
-test('seedPromptForPurpose returns a non-empty string per known purpose and a generic default otherwise', () => {
-  for (const p of ['exploratory', 'combat', 'social', 'flashback', 'time-skip']) {
-    assert.ok(seedPromptForPurpose(p).length > 0);
-  }
-  assert.ok(seedPromptForPurpose('???').length > 0);
-});
-
-test('buildBranchMeta carries all fields', () => {
-  const m = buildBranchMeta({ mainlineChatId: 'main', branchFromMessageId: 'x', snapshotKey: 'snap', title: 'Dungeon', purpose: 'combat', lastN: 10, seedMessageCount: 12, now: 1700 });
-  assert.deepEqual(m, { mainlineChatId: 'main', branchFromMessageId: 'x', snapshotKey: 'snap', title: 'Dungeon', purpose: 'combat', lastN: 10, seedMessageCount: 12, createdAt: 1700 });
+test('buildBranchMeta carries all fields (no seed/purpose — branches are seamless)', () => {
+  const m = buildBranchMeta({ mainlineChatId: 'main', branchFromMessageId: 'x', snapshotKey: 'snap', title: 'Dungeon', lastN: 10, seedMessageCount: 12, now: 1700 });
+  assert.deepEqual(m, { mainlineChatId: 'main', branchFromMessageId: 'x', snapshotKey: 'snap', title: 'Dungeon', lastN: 10, seedMessageCount: 12, createdAt: 1700 });
 });
 
 test('isBranchOpen reflects world.openBranchChatId', () => {
