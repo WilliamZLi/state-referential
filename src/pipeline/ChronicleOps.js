@@ -1,4 +1,7 @@
 // src/pipeline/ChronicleOps.js
+import { buildTranscript } from '../util/transcript.js';
+import { readTrackerMsgId } from '../util/id.js';
+
 export class ChronicleOps {
   constructor(chronicle, deps) {
     this.chronicle = chronicle;
@@ -38,11 +41,7 @@ export class ChronicleOps {
     const lastAct = entries[entries.length - 1];
     const boundaryId = lastAct?.createdByMessageId;
     if (boundaryId) {
-      const idx = messages.findIndex(m =>
-        m?.state_referential_msgId === boundaryId ||
-        m?.extra?.state_referential_msgId === boundaryId ||
-        m?.extra?.trackerMsgId === boundaryId
-      );
+      const idx = messages.findIndex(m => readTrackerMsgId(m) === boundaryId);
       if (idx >= 0) return messages.slice(idx + 1);
     }
     return messages;
@@ -57,9 +56,7 @@ export class ChronicleOps {
   }
 
   async _generateSummary(messages, tokenCap) {
-    const chatText = messages
-      .map(m => `${m.name ?? 'Narrator'}: ${m.mes ?? ''}`)
-      .join('\n\n');
+    const chatText = buildTranscript(messages);
 
     // Briefer: give the summarizer the story-so-far (big picture + recent acts) so it
     // continues the chronicle instead of restating established context.

@@ -1,5 +1,7 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat } from '../../../../script.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus } from './src/pipeline/Branches.js';
+import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
+import { buildTranscript } from './src/util/transcript.js';
 
 const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
@@ -144,7 +146,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   };
 
   const l3GenerateSummary = async (messages, tokenCap) => {
-    const body = messages.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
+    const body = buildTranscript(messages);
     // Transcript FIRST, instruction LAST. With a long transcript, an instruction
     // placed up top gets drowned out and the model just CONTINUES the story
     // (it ends mid-scene). Putting the recap instruction after the transcript
@@ -286,7 +288,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       for (let i = chat.length - 1; i >= 0; i--) {
         const msg = chat[i];
         if (!msg || msg.is_user) continue;
-        const msgId = msg.state_referential_msgId ?? msg.extra?.state_referential_msgId ?? msg.extra?.trackerMsgId;
+        const msgId = readTrackerMsgId(msg);
         if (!msgId) break;
         const snap = engine.loadSnapshot(msgId);
         if (snap) engine.restoreSnapshot(snap);
@@ -770,7 +772,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     await doNewChat();
     const branchId = getContext().chatId;
     const bc = getContext().chat;
-    if (recapText) bc.push({ name: 'Story so far', is_user: false, is_system: false, mes: recapText, extra: { from: 'state-referential', l3Kind: 'branch-seed-recap' } });
+    if (recapText) bc.push(buildSyntheticMessage({ kind: 'branch-seed-recap', name: 'Story so far', mes: recapText, smallSys: false }));
     for (const m of verbatimCopies) bc.push(m);
     const seedMessageCount = bc.length; // boundary between injected context and new side-scene play (used by 3b fold-back)
 
@@ -959,5 +961,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-branch-recap-dry');
+  console.log('[state-referential] ready — build 2026-06-19-dry-sweep');
 })();
