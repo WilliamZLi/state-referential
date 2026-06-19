@@ -758,16 +758,12 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     await engine.backend?.flush?.(); // persist the pinned branch-start snapshot to the server BEFORE doNewChat re-hydrates the World backend (else discard can't restore it)
 
     // 2. build seamless seed context: recap-of-pre-N + last N verbatim.
-    //    No framing/seed prompt — the branch just continues the story.
+    //    No framing/seed prompt — the branch just continues the story. The recap
+    //    reuses the SAME summarizer as compaction (l3GenerateSummary: transcript-
+    //    then-instruction via the isolated generateRaw path, same tokenCap) so the
+    //    two paths can't drift.
     const { toRecap, verbatim } = splitForSeed(mainChat, lastN);
-    let recapText = '';
-    if (toRecap.length) {
-      const body = toRecap.map(m => `${m.is_user ? 'User' : (m.name ?? 'Narrator')}: ${m.mes}`).join('\n');
-      const prompt = 'TRANSCRIPT OF EVENTS THAT ALREADY HAPPENED:\n\n' + body
-        + '\n\n=== END OF TRANSCRIPT ===\n\nWrite a brief, factual PAST-TENSE recap of what happened across it. '
-        + 'Do NOT continue the story or add anything beyond the transcript. Recap only, third person.';
-      recapText = (await generateChronicleSummary(prompt) ?? '').trim();
-    }
+    const recapText = toRecap.length ? await l3GenerateSummary(toRecap, l3Settings().tokenCap) : '';
     const verbatimCopies = verbatim.map(m => ({ ...m, extra: { ...(m.extra ?? {}) } }));
 
     // 3. create the branch chat + switch in
@@ -963,5 +959,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-seamless-branches');
+  console.log('[state-referential] ready — build 2026-06-19-branch-recap-dry');
 })();
