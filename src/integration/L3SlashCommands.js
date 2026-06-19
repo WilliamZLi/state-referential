@@ -45,4 +45,7 @@ export function register(deps) {
 
   reg('branch-discard', async () => { await deps.branchDiscard?.(); return ''; },
     '/branch-discard — discard the current branch (rolls the World back)');
+
+  reg('fold-back', async () => { await deps.branchFoldBack?.(); return ''; },
+    '/fold-back — fold this branch into the mainline (recap spliced in, branch kept read-only)');
 }

@@ -1,5 +1,5 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat } from '../../../../script.js';
-import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus } from './src/pipeline/Branches.js';
+import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript } from './src/util/transcript.js';
 
@@ -839,6 +839,59 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     }
   };
 
+  const branchFoldBack = async () => {
+    const ctx = getContext();
+    const meta = ctx.chatMetadata;
+    const bm = meta?.l3BranchMeta;
+    if (!bm) { toastr.warning('Not in a branch chat.'); return; }
+    if (bm.foldedAt || bm.discardedAt) { toastr.warning('This branch is already closed.'); return; }
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) { toastr.warning('Branch: no bound World.'); return; }
+    const branchChatId = ctx.chatId;
+
+    // 1. summarize the side-scene PLAY (messages after the seeded context).
+    //    Reuse the shared summarizer (transcript-then-instruction, isolated generateRaw).
+    const play = playRange(ctx.chat ?? [], bm);
+    const recap = play.length
+      ? await l3GenerateSummary(play, l3Settings().tokenCap)
+      : `(${bm.title} — no events)`;
+
+    // 2. mark THIS branch folded + persist BEFORE switching away (chat-scoped meta).
+    const foldedAt = Date.now();
+    meta.l3BranchMeta.foldedAt = foldedAt;
+    await saveChatConditional();
+
+    // 3. switch to the mainline so the splice lands in ITS chat array.
+    //    Fold-back changes no tracker state, so no engine.backend.flush() is needed.
+    try {
+      const c = getContext();
+      if (typeof c.openCharacterChat === 'function') await c.openCharacterChat(bm.mainlineChatId);
+      else console.warn('[state-referential] foldBack: no openCharacterChat; cannot switch to', bm.mainlineChatId);
+    } catch (e) {
+      console.warn('[state-referential] foldBack: failed to open mainline chat', bm.mainlineChatId, e?.message);
+    }
+
+    // 4. splice the fold-back recap into the mainline after the branch point (else tail).
+    const mainChat = getContext().chat ?? [];
+    const anchorId = foldbackAnchorId(mainChat, bm.branchFromMessageId);
+    if (anchorId) {
+      await insertSyntheticAfter(stShell, {
+        afterTrackerMsgId: anchorId,
+        ...buildFoldbackMarker({ title: bm.title, recap, branchChatId, playCount: play.length }),
+      });
+    } else {
+      console.warn('[state-referential] foldBack: no anchor message in mainline; recap not spliced');
+    }
+
+    // 5. mark folded in the registry + clear the lock (re-read; do not trust a stale ref).
+    const world = worldRegistry.get(worldId);
+    if (world) {
+      setBranchStatus(world, branchChatId, 'folded', { foldedAt });
+      await worldRegistry.update(worldId, { openBranchChatId: null, branches: world.branches });
+    }
+    toastr.success(`Folded "${bm.title}" into the mainline.`);
+  };
+
   // Layer 3 slash commands.
   registerL3Commands({
     SlashCommandParser: getContext().SlashCommandParser,
@@ -871,6 +924,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     },
     branchCreate,
     branchDiscard,
+    branchFoldBack,
     branchLastN: () => l3Settings().branchLastN ?? 10,
   });
 
@@ -961,5 +1015,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-dry-sweep');
+  console.log('[state-referential] ready — build 2026-06-19-foldback');
 })();

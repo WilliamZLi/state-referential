@@ -1,3 +1,5 @@
+import { readTrackerMsgId } from '../util/id.js';
+
 // Branches are seamless: a branch chat opens with the recent mainline context
 // copied in (recap-of-pre-N + last N verbatim) and nothing else — no seed/framing
 // message. The AI just continues the story in the new chat.
@@ -23,4 +25,40 @@ export function addBranchRecord(world, rec) {
 export function setBranchStatus(world, chatId, status, patch = {}) {
   const rec = (world.branches ?? []).find(b => b.chatId === chatId);
   if (rec) Object.assign(rec, { status }, patch);
+}
+
+// ── Fold-back (3b) ────────────────────────────────────────────────────────────
+
+// The branch messages AFTER the seeded context (recap + verbatim copies + any
+// new-chat greeting). This is the actual side-scene play that fold-back recaps.
+export function playRange(branchChat, l3BranchMeta) {
+  const list = branchChat ?? [];
+  return list.slice(l3BranchMeta?.seedMessageCount ?? 0);
+}
+
+// Where to splice the fold-back recap in the mainline: after the branch point if
+// it still exists, else after the last message (tail/drift fallback), else null.
+export function foldbackAnchorId(mainChat, branchFromMessageId) {
+  const list = mainChat ?? [];
+  if (branchFromMessageId && list.some(m => readTrackerMsgId(m) === branchFromMessageId)) {
+    return branchFromMessageId;
+  }
+  for (let i = list.length - 1; i >= 0; i--) {
+    const id = readTrackerMsgId(list[i]);
+    if (id) return id;
+  }
+  return null;
+}
+
+// Build the opts for buildSyntheticMessage/insertSyntheticAfter that render the
+// folded side-scene as one manageable mainline block (header + recap body).
+export function buildFoldbackMarker({ title, recap, branchChatId, playCount }) {
+  const header = `↳ Folded from branch: ${title} (${playCount} msg${playCount === 1 ? '' : 's'})`;
+  return {
+    kind: 'fold-back',
+    name: header,
+    mes: `${header}\n\n${recap}`,
+    smallSys: false,
+    extra: { l3BranchChatId: branchChatId, l3BranchTitle: title },
+  };
 }
