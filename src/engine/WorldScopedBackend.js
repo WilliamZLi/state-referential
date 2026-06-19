@@ -3,6 +3,15 @@ import { debounce } from '../util/debounce.js';
 
 const NS = 'state-referential';
 
+// The flushers are fire-and-forget (debounce discards the returned promise), so
+// a rejected write would surface as an unhandled-promise-rejection. The common
+// benign case is a 404 when the world was deleted mid-session (the server now
+// refuses to resurrect it). Convert to a tidy warning so genuine persistence
+// failures stay visible without the scary unhandled-rejection stack.
+function reportFlushError(e) {
+  console.warn('[state-referential] world flush failed (ignored):', e?.message ?? e);
+}
+
 export class WorldScopedBackend {
   constructor(worldId, serverApi, initialData, ctx) {
     this.worldId = worldId;
@@ -16,19 +25,19 @@ export class WorldScopedBackend {
     this._snapshots = initialData.snapshots ?? {};
 
     this._flushMeta = debounce(
-      () => this.serverApi.patchMeta(this.worldId, { subjects: this._subjects, sceneTags: this._sceneTags }),
+      () => this.serverApi.patchMeta(this.worldId, { subjects: this._subjects, sceneTags: this._sceneTags }).catch(reportFlushError),
       200
     );
     this._flushValues = debounce(
-      () => this.serverApi.putResource(this.worldId, 'values', this._values),
+      () => this.serverApi.putResource(this.worldId, 'values', this._values).catch(reportFlushError),
       200
     );
     this._flushDescriptions = debounce(
-      () => this.serverApi.putResource(this.worldId, 'descriptions', this._descriptions),
+      () => this.serverApi.putResource(this.worldId, 'descriptions', this._descriptions).catch(reportFlushError),
       200
     );
     this._flushSnapshots = debounce(
-      () => this.serverApi.putResource(this.worldId, 'snapshots', this._snapshots),
+      () => this.serverApi.putResource(this.worldId, 'snapshots', this._snapshots).catch(reportFlushError),
       200
     );
   }

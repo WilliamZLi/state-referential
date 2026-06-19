@@ -3,6 +3,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import express from 'express';
+import { ensureDir, readJson, readJsonLenient, writeJson, putJson, mergeJson } from './server-fs.js';
 
 export const info = {
   id: 'state-referential-worlds',
@@ -27,18 +28,6 @@ export async function init(router) {
     return resolved;
   }
 
-  async function ensureDir(p) { await fs.mkdir(p, { recursive: true }); }
-
-  async function readJson(p, fallback = null) {
-    try { return JSON.parse(await fs.readFile(p, 'utf8')); }
-    catch { return fallback; }
-  }
-
-  async function writeJson(p, data) {
-    await ensureDir(path.dirname(p));
-    await fs.writeFile(p, JSON.stringify(data, null, 2), 'utf8');
-  }
-
   function send(res, data) { res.json(data); }
   function err(res, status, msg) { res.status(status).json({ error: msg }); }
 
@@ -49,7 +38,8 @@ export async function init(router) {
       await ensureDir(base);
       const entries = await fs.readdir(base, { withFileTypes: true });
       const worlds = await Promise.all(
-        entries.filter(e => e.isDirectory()).map(e => readJson(path.join(base, e.name, 'world.json'), null))
+        // lenient: a single corrupt world.json must not break the whole listing
+        entries.filter(e => e.isDirectory()).map(e => readJsonLenient(path.join(base, e.name, 'world.json'), null))
       );
       send(res, worlds.filter(Boolean));
     } catch (e) { err(res, 500, e.message); }
@@ -84,12 +74,17 @@ export async function init(router) {
   });
 
   // ── PUT /worlds/:id/meta ──────────────────────────────────────────────────────
+  // Atomic, serialized merge. mergeJson throws rather than (a) overwriting a
+  // present-but-corrupt world.json with just the patch [500], or (b) resurrecting
+  // an absent one as a patch-only ghost [404] — both routes to the 2026-06-19
+  // data-loss artifact. Multiple writers of the same world.json (lock heartbeat
+  // + tracker backend) are serialized by path inside mergeJson. The heartbeat
+  // swallows the 404, so patching a deleted world is a harmless no-op.
   router.put('/worlds/:id/meta', express.json(), async (req, res) => {
     try {
       const base = getUserDir(req);
       const p = safePath(base, req.params.id, 'world.json');
-      const existing = await readJson(p, {});
-      await writeJson(p, { ...existing, ...req.body });
+      await mergeJson(p, req.body);
       send(res, { ok: true });
     } catch (e) { err(res, e.status ?? 500, e.message); }
   });
@@ -126,7 +121,7 @@ export async function init(router) {
     try {
       const base = getUserDir(req);
       const p = safePath(base, req.params.id, `${req.params.resource}.json`);
-      await writeJson(p, req.body);
+      await putJson(p, req.body); // atomic + serialized full replace
       send(res, { ok: true });
     } catch (e) { err(res, e.status ?? 500, e.message); }
   });
@@ -138,7 +133,7 @@ export async function init(router) {
       const worldDir = safePath(base, req.params.id);
       const files = ['world.json', 'values.json', 'descriptions.json', 'snapshots.json', 'chronicle.json'];
       const bundle = {};
-      for (const f of files) bundle[f] = await readJson(path.join(worldDir, f), null);
+      for (const f of files) bundle[f] = await readJsonLenient(path.join(worldDir, f), null);
       res.setHeader('Content-Disposition', `attachment; filename="world-${req.params.id}.json"`);
       res.setHeader('Content-Type', 'application/json');
       res.send(JSON.stringify(bundle, null, 2));
