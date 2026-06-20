@@ -92,33 +92,33 @@ test('/compact-restore reports a missing archive', async () => {
   assert.equal(await registered['compact-restore']({}, 'nope'), 'Archive not found.');
 });
 
-test('registers /branch-here and /branch-discard', () => {
+test('registers /scene-here and /scene-discard', () => {
   const { registered } = mkRig();
-  assert.equal(typeof registered['branch-here'], 'function');
-  assert.equal(typeof registered['branch-discard'], 'function');
+  assert.equal(typeof registered['scene-here'], 'function');
+  assert.equal(typeof registered['scene-discard'], 'function');
 });
 
-test('/branch-here forwards the title and the configured lastN', async () => {
+test('/scene-here forwards the title and the configured lastN', async () => {
   const { registered, log } = mkRig();
-  await registered['branch-here']({}, 'Dungeon A');
+  await registered['scene-here']({}, 'Dungeon A');
   assert.deepEqual(log[0], ['branchCreate', { title: 'Dungeon A', lastN: 10, inheritTags: true }]);
 });
 
-test('/branch-here defaults the title when empty', async () => {
+test('/scene-here defaults the title when empty', async () => {
   const { registered, log } = mkRig();
-  await registered['branch-here']({}, '');
-  assert.equal(log[0][1].title, 'Branch');
+  await registered['scene-here']({}, '');
+  assert.equal(log[0][1].title, 'Scene');
 });
 
-test('/branch-discard calls branchDiscard', async () => {
+test('/scene-discard calls branchDiscard', async () => {
   const { registered, log } = mkRig();
-  await registered['branch-discard']({}, '');
+  await registered['scene-discard']({}, '');
   assert.deepEqual(log[0], ['branchDiscard']);
 });
 
-test('/branch-return calls branchReturn', async () => {
+test('/scene-return calls branchReturn', async () => {
   const { registered, log } = mkRig();
-  assert.equal(typeof registered['branch-return'], 'function');
-  await registered['branch-return']({}, '');
+  assert.equal(typeof registered['scene-return'], 'function');
+  await registered['scene-return']({}, '');
   assert.deepEqual(log[0], ['branchReturn']);
 });

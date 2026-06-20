@@ -1022,5 +1022,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-branch-return');
+  console.log('[state-referential] ready — build 2026-06-19-scene-cmds');
 })();

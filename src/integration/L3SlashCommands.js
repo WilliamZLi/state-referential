@@ -38,14 +38,14 @@ export function register(deps) {
   reg('mainline-go', async () => { await deps.gotoMainline(); return ''; },
     '/mainline-go — switch to this World\'s mainline chat');
 
-  reg('branch-here', async (args, value) => {
-    await deps.branchCreate?.({ title: String(value ?? '').trim() || 'Branch', lastN: deps.branchLastN?.() ?? 10, inheritTags: true });
+  reg('scene-here', async (args, value) => {
+    await deps.branchCreate?.({ title: String(value ?? '').trim() || 'Scene', lastN: deps.branchLastN?.() ?? 10, inheritTags: true });
     return '';
-  }, '/branch-here [title] — spawn a side-scene branch from the current message');
+  }, '/scene-here [title] — start a side-scene from the current message');
 
-  reg('branch-discard', async () => { await deps.branchDiscard?.(); return ''; },
-    '/branch-discard — discard the current branch (rolls the World back)');
+  reg('scene-discard', async () => { await deps.branchDiscard?.(); return ''; },
+    '/scene-discard — discard the current side-scene (rolls the World back)');
 
-  reg('branch-return', async () => { await deps.branchReturn?.(); return ''; },
-    '/branch-return — return to the mainline (side-scene recap spliced in as narration, branch kept read-only)');
+  reg('scene-return', async () => { await deps.branchReturn?.(); return ''; },
+    '/scene-return — return to the mainline (side-scene recap spliced in as narration, scene kept read-only)');
 }
