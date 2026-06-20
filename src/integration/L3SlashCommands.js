@@ -38,14 +38,14 @@ export function register(deps) {
   reg('mainline-go', async () => { await deps.gotoMainline(); return ''; },
     '/mainline-go — switch to this World\'s mainline chat');
 
-  reg('scene-here', async (args, value) => {
+  reg('scene-start', async (args, value) => {
     await deps.branchCreate?.({ title: String(value ?? '').trim() || 'Scene', lastN: deps.branchLastN?.() ?? 10, inheritTags: true });
     return '';
-  }, '/scene-here [title] — start a side-scene from the current message');
+  }, '/scene-start [title] — start a side-scene from the current message');
 
   reg('scene-discard', async () => { await deps.branchDiscard?.(); return ''; },
     '/scene-discard — discard the current side-scene (rolls the World back)');
 
-  reg('scene-return', async () => { await deps.branchReturn?.(); return ''; },
-    '/scene-return — return to the mainline (side-scene recap spliced in as narration, scene kept read-only)');
+  reg('scene-end', async () => { await deps.branchReturn?.(); return ''; },
+    '/scene-end — end the side-scene and return to the mainline (recap spliced in as narration, scene kept read-only)');
 }

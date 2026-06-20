@@ -92,21 +92,21 @@ test('/compact-restore reports a missing archive', async () => {
   assert.equal(await registered['compact-restore']({}, 'nope'), 'Archive not found.');
 });
 
-test('registers /scene-here and /scene-discard', () => {
+test('registers /scene-start and /scene-discard', () => {
   const { registered } = mkRig();
-  assert.equal(typeof registered['scene-here'], 'function');
+  assert.equal(typeof registered['scene-start'], 'function');
   assert.equal(typeof registered['scene-discard'], 'function');
 });
 
-test('/scene-here forwards the title and the configured lastN', async () => {
+test('/scene-start forwards the title and the configured lastN', async () => {
   const { registered, log } = mkRig();
-  await registered['scene-here']({}, 'Dungeon A');
+  await registered['scene-start']({}, 'Dungeon A');
   assert.deepEqual(log[0], ['branchCreate', { title: 'Dungeon A', lastN: 10, inheritTags: true }]);
 });
 
-test('/scene-here defaults the title when empty', async () => {
+test('/scene-start defaults the title when empty', async () => {
   const { registered, log } = mkRig();
-  await registered['scene-here']({}, '');
+  await registered['scene-start']({}, '');
   assert.equal(log[0][1].title, 'Scene');
 });
 
@@ -116,9 +116,9 @@ test('/scene-discard calls branchDiscard', async () => {
   assert.deepEqual(log[0], ['branchDiscard']);
 });
 
-test('/scene-return calls branchReturn', async () => {
+test('/scene-end calls branchReturn', async () => {
   const { registered, log } = mkRig();
-  assert.equal(typeof registered['scene-return'], 'function');
-  await registered['scene-return']({}, '');
+  assert.equal(typeof registered['scene-end'], 'function');
+  await registered['scene-end']({}, '');
   assert.deepEqual(log[0], ['branchReturn']);
 });
