@@ -1034,5 +1034,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-branch-label');
+  console.log('[state-referential] ready — build 2026-06-20-lock-session');
 })();

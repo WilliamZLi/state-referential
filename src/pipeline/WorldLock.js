@@ -2,7 +2,26 @@
 // Cooperative soft lock for world files (spec §11).
 // Best-effort: prevents accidental concurrent edits from two tabs; not cryptographically enforced.
 
-const SESSION_ID = Math.random().toString(36).slice(2);
+// Stable per-TAB session id: persists across reloads (sessionStorage survives a
+// page reload but is cleared when the tab closes), so reloading does NOT look
+// like a new session and re-prompt "Another session has this World open. Take
+// over?". A genuinely different tab gets its own id (and the prompt, correctly).
+// Falls back to a per-load random id if sessionStorage is unavailable/blocked.
+export function makeSessionId(storage = (typeof sessionStorage !== 'undefined' ? sessionStorage : null)) {
+  const KEY = 'state-referential:lockSessionId';
+  try {
+    if (storage) {
+      const existing = storage.getItem(KEY);
+      if (existing) return existing;
+      const id = Math.random().toString(36).slice(2);
+      storage.setItem(KEY, id);
+      return id;
+    }
+  } catch { /* sessionStorage blocked (e.g. private mode) — fall through */ }
+  return Math.random().toString(36).slice(2);
+}
+
+const SESSION_ID = makeSessionId();
 const LOCK_REFRESH_MS = 10_000;
 const LOCK_STALE_MS = 25_000;
 
