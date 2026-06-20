@@ -48,4 +48,7 @@ export function register(deps) {
 
   reg('scene-end', async () => { await deps.branchReturn?.(); return ''; },
     '/scene-end — end the side-scene and return to the mainline (recap spliced in as narration, scene kept read-only)');
+
+  reg('scene-prune', async () => { await deps.branchPrune?.(); return ''; },
+    '/scene-prune — drop leftover branch-start snapshots from closed scenes (keeps the one you are in)');
 }

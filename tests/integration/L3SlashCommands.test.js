@@ -17,6 +17,7 @@ function mkRig() {
     branchCreate: async (o) => { log.push(['branchCreate', o]); },
     branchDiscard: async () => { log.push(['branchDiscard']); },
     branchReturn: async () => { log.push(['branchReturn']); },
+    branchPrune: async () => { log.push(['branchPrune']); },
     branchLastN: () => 10,
   };
   register(deps);
@@ -114,6 +115,13 @@ test('/scene-discard calls branchDiscard', async () => {
   const { registered, log } = mkRig();
   await registered['scene-discard']({}, '');
   assert.deepEqual(log[0], ['branchDiscard']);
+});
+
+test('/scene-prune calls branchPrune', async () => {
+  const { registered, log } = mkRig();
+  assert.equal(typeof registered['scene-prune'], 'function');
+  await registered['scene-prune']({}, '');
+  assert.deepEqual(log[0], ['branchPrune']);
 });
 
 test('/scene-end calls branchReturn', async () => {

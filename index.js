@@ -912,6 +912,33 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     toastr.success(`Returned from "${bm.title}".`);
   };
 
+  // Drop the branch-start (undo-point) snapshots left behind by closed scenes.
+  // Each scene pins a `branch:` snapshot for its discard undo; those are only
+  // needed while the scene is open, but nothing currently unpins them, so they
+  // accumulate in the World snapshot store. Keep the snapshot for the scene
+  // you're currently in; drop the rest. Refuse if a scene is open elsewhere
+  // (we can't tell which pin to keep without being inside it).
+  const branchPrune = async () => {
+    const ctx = getContext();
+    const worldId = worldBinding.currentWorldId;
+    if (!worldId) { toastr.warning('Scene prune: this chat is not bound to a World.'); return; }
+    const world = worldRegistry.get(worldId);
+    const openId = world?.openBranchChatId ?? null;
+    const keepKey = ctx.chatMetadata?.l3BranchMeta?.snapshotKey ?? null;
+    if (openId && ctx.chatId !== openId) {
+      toastr.warning('A scene is open — run /scene-prune from inside it (or /scene-end / /scene-discard first).');
+      return;
+    }
+    const dropping = engine.listSnapshots()
+      .filter(s => s.pinned && String(s.msgId).startsWith('branch:') && s.msgId !== keepKey)
+      .map(s => s.msgId);
+    if (!dropping.length) { toastr.info('No closed-scene snapshots to prune.'); return; }
+    for (const id of dropping) engine.unpinSnapshot(id);
+    engine.dropSnapshots(dropping);
+    await engine.backend?.flush?.();
+    toastr.success(`Pruned ${dropping.length} closed-scene snapshot${dropping.length === 1 ? '' : 's'}.`);
+  };
+
   // Layer 3 slash commands.
   registerL3Commands({
     SlashCommandParser: getContext().SlashCommandParser,
@@ -945,6 +972,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     branchCreate,
     branchDiscard,
     branchReturn,
+    branchPrune,
     branchLastN: () => l3Settings().branchLastN ?? 10,
   });
 
@@ -1035,5 +1063,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-20-delete-scope');
+  console.log('[state-referential] ready — build 2026-06-20-scene-prune');
 })();
