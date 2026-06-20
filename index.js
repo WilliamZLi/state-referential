@@ -856,10 +856,9 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
     // 1. summarize the side-scene PLAY (messages after the seeded context).
     //    Reuse the shared summarizer (transcript-then-instruction, isolated generateRaw).
+    //    An empty scene (no new play) gets no recap — nothing is spliced (step 4).
     const play = playRange(ctx.chat ?? [], bm);
-    const recap = play.length
-      ? await l3GenerateSummary(play, l3Settings().tokenCap)
-      : `(${bm.title} — no events)`;
+    const recap = play.length ? await l3GenerateSummary(play, l3Settings().tokenCap) : '';
 
     // 2. mark THIS branch folded + persist BEFORE switching away (chat-scoped meta).
     const foldedAt = Date.now();
@@ -876,17 +875,17 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       console.warn('[state-referential] branchReturn: failed to open mainline chat', bm.mainlineChatId, e?.message);
     }
 
-    // 4. splice the side-scene recap into the mainline after the branch point (else
-    //    tail), as PLAIN narration — no "folded from branch" label. name = the
-    //    mainline narrator so it reads as ordinary story.
+    // 4. if the scene produced any play, splice its recap into the mainline after the
+    //    branch point (else tail), as PLAIN narration — no "folded from branch" label,
+    //    name = the mainline narrator. An empty scene folds in nothing.
     const mainChat = getContext().chat ?? [];
-    const anchorId = foldbackAnchorId(mainChat, bm.branchFromMessageId);
-    if (anchorId) {
+    const anchorId = recap ? foldbackAnchorId(mainChat, bm.branchFromMessageId) : null;
+    if (recap && anchorId) {
       await insertSyntheticAfter(stShell, {
         afterTrackerMsgId: anchorId,
         ...buildFoldbackMarker({ title: bm.title, recap, branchChatId, name: getContext().name2 }),
       });
-    } else {
+    } else if (recap) {
       console.warn('[state-referential] branchReturn: no anchor message in mainline; recap not spliced');
     }
 
@@ -1022,5 +1021,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-scene-start-end');
+  console.log('[state-referential] ready — build 2026-06-19-scene-empty-noop');
 })();
