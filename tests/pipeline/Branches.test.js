@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { splitForSeed, buildBranchMeta, isBranchOpen, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker } from '../../src/pipeline/Branches.js';
+import { splitForSeed, buildBranchMeta, isBranchOpen, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from '../../src/pipeline/Branches.js';
 
 const chat = (n) => Array.from({ length: n }, (_, i) => ({ mes: `m${i}` }));
 
@@ -76,4 +76,15 @@ test('buildFoldbackMarker is a clean recap — no fold-back label in name or mes
 
 test('buildFoldbackMarker defaults name to Narrator', () => {
   assert.equal(buildFoldbackMarker({ title: 'X', recap: 'r', branchChatId: 'c' }).name, 'Narrator');
+});
+
+test('sceneChatName composes "<mainline> - scene - <timestamp>" reusing the auto timestamp', () => {
+  assert.equal(
+    sceneChatName('CersiaWorld', 'Assistant - 2026-06-19@01h13m36s994ms'),
+    'CersiaWorld - scene - 2026-06-19@01h13m36s994ms',
+  );
+});
+
+test('sceneChatName falls back to the whole auto name when it has no " - " separator', () => {
+  assert.equal(sceneChatName('Main', 'weirdname'), 'Main - scene - weirdname');
 });

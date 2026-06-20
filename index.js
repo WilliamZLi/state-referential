@@ -1,5 +1,5 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens } from '../../../../script.js';
-import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker } from './src/pipeline/Branches.js';
+import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript } from './src/util/transcript.js';
 
@@ -773,9 +773,22 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     const recapText = toRecap.length ? await l3GenerateSummary(toRecap, l3Settings().tokenCap) : '';
     const verbatimCopies = verbatim.map(m => ({ ...m, extra: { ...(m.extra ?? {}) } }));
 
-    // 3. create the branch chat + switch in
+    // 3. create the scene chat, rename it to "<mainline> - scene - <ts>" for
+    //    findability (while it's still empty), then seed it. Rename changes the
+    //    chat file → re-read the id; any failure falls back to ST's default name.
     await doNewChat();
-    const branchId = getContext().chatId;
+    let branchId = getContext().chatId;
+    try {
+      const c = getContext();
+      const desired = sceneChatName(mainId, branchId);
+      if (typeof c.renameChat === 'function' && desired !== branchId) {
+        await c.renameChat(branchId, desired);
+        branchId = getContext().chatId; // renamed (+ server-sanitized) → id changed
+      }
+    } catch (e) {
+      console.warn('[state-referential] scene rename failed; keeping default chat name:', e?.message);
+      branchId = getContext().chatId;
+    }
     const bc = getContext().chat;
     if (recapText) bc.push(buildSyntheticMessage({ kind: 'branch-seed-recap', name: 'Story so far', mes: recapText, smallSys: false }));
     for (const m of verbatimCopies) bc.push(m);
@@ -1021,5 +1034,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-scene-empty-noop');
+  console.log('[state-referential] ready — build 2026-06-19-scene-naming');
 })();
