@@ -167,12 +167,12 @@ test('buildPrompt instructs short, succinct names for describable entries', () =
   assert.match(prompt, /belong in the description/i, 'descriptors belong in the separate description');
 });
 
-test('COMMANDS_HELP documents REPLACE and its state-change-only rule', () => {
+test('COMMANDS_HELP documents RENAME and its state-change-only rule', () => {
   const eng = mkEngine();
   eng.addSubject('Lyra', { role: 'protagonist' });
   const au = new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
   const prompt = au.buildPrompt({ lastNarratorReply: '...' });
-  assert.match(prompt, /REPLACE <subject> <tracker>\.<field> "<old>" WITH "<new>"/);
+  assert.match(prompt, /RENAME <subject> <tracker>\.<field> "<old>" WITH "<new>"/);
   assert.match(prompt, /existing item or value changes state/i);
   assert.match(prompt, /NEW item, a DIFFERENT item, or an empty field, use ADD \/ SET/i);
   assert.match(prompt, /short bare name \(same as ADD\)/i);

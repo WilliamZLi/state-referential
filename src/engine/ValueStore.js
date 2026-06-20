@@ -129,7 +129,7 @@ export class ValueStore {
    * preserved when newEntry isn't already in the list; if it is, the existing
    * occurrence is kept and the duplicate dropped). If oldEntry isn't present,
    * newEntry is appended. Timed list fields stamp newEntry as freshly touched
-   * (resets its countdown). Used by REPLACE — fires a single tracker:value-changed.
+   * (resets its countdown). Used by RENAME — fires a single tracker:value-changed.
    */
   replaceListEntry(s, t, f, oldEntry, newEntry, opts = {}) {
     const field = this._field(t, f);
@@ -155,7 +155,7 @@ export class ValueStore {
   /**
    * Manually rename a list entry IN PLACE, carrying its cached description AND its
    * countdown (itemMeta) to the new name and dropping the old. Unlike replaceListEntry
-   * (REPLACE — resets the countdown and triggers a re-probe), rename preserves
+   * (RENAME — resets the countdown and triggers a re-probe), rename preserves
    * everything: "the same thing, just fixing its name." No-op if the old entry is
    * absent or the name is unchanged/blank.
    */

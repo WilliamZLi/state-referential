@@ -93,27 +93,27 @@ test('multi-word subject not supported in SET subject slot (single token)', () =
   assert.strictEqual(r[1].subject, 'Cult');
 });
 
-test('REPLACE with quoted old and new', () => {
-  const r = parseCommands(`REPLACE Cersia inv.items "magic staff" WITH "magic staff (broken)"`);
-  assert.deepStrictEqual(r, [{ op: 'REPLACE', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: 'magic staff', newEntry: 'magic staff (broken)' }]);
+test('RENAME with quoted old and new', () => {
+  const r = parseCommands(`RENAME Cersia inv.items "magic staff" WITH "magic staff (broken)"`);
+  assert.deepStrictEqual(r, [{ op: 'RENAME', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: 'magic staff', newEntry: 'magic staff (broken)' }]);
 });
 
-test('REPLACE accepts lowercase "with"', () => {
-  const r = parseCommands(`REPLACE Cersia outfit.topwear "red dress" with "red dress (torn)"`);
-  assert.deepStrictEqual(r, [{ op: 'REPLACE', subject: 'Cersia', tracker: 'outfit', field: 'topwear', oldEntry: 'red dress', newEntry: 'red dress (torn)' }]);
+test('RENAME accepts lowercase "with"', () => {
+  const r = parseCommands(`RENAME Cersia outfit.topwear "red dress" with "red dress (torn)"`);
+  assert.deepStrictEqual(r, [{ op: 'RENAME', subject: 'Cersia', tracker: 'outfit', field: 'topwear', oldEntry: 'red dress', newEntry: 'red dress (torn)' }]);
 });
 
-test('REPLACE with an unquoted single-word old', () => {
-  const r = parseCommands(`REPLACE Cersia inv.items staff WITH "broken staff"`);
-  assert.deepStrictEqual(r, [{ op: 'REPLACE', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: 'staff', newEntry: 'broken staff' }]);
+test('RENAME with an unquoted single-word old', () => {
+  const r = parseCommands(`RENAME Cersia inv.items staff WITH "broken staff"`);
+  assert.deepStrictEqual(r, [{ op: 'RENAME', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: 'staff', newEntry: 'broken staff' }]);
 });
 
-test('REPLACE unescapes an inner quote in the values', () => {
-  const r = parseCommands(`REPLACE Cersia inv.items "3\\" pole" WITH "3\\" pole (bent)"`);
-  assert.deepStrictEqual(r, [{ op: 'REPLACE', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: '3" pole', newEntry: '3" pole (bent)' }]);
+test('RENAME unescapes an inner quote in the values', () => {
+  const r = parseCommands(`RENAME Cersia inv.items "3\\" pole" WITH "3\\" pole (bent)"`);
+  assert.deepStrictEqual(r, [{ op: 'RENAME', subject: 'Cersia', tracker: 'inv', field: 'items', oldEntry: '3" pole', newEntry: '3" pole (bent)' }]);
 });
 
-test('malformed REPLACE without WITH is ignored', () => {
-  const r = parseCommands(`REPLACE Cersia inv.items "magic staff" "broken"`);
+test('malformed RENAME without WITH is ignored', () => {
+  const r = parseCommands(`RENAME Cersia inv.items "magic staff" "broken"`);
   assert.deepStrictEqual(r, []);
 });
