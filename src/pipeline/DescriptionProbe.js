@@ -27,7 +27,7 @@ Recent narration: {{lastReply}}
 const PROBE_PROFILES = { detailed: DETAILED_PROBE_TEMPLATE };
 
 // Prepended to the chosen profile template when a probe job carries a prior
-// description (from a RENAME). The final line keeps the main template's
+// description (from a REPLACE). The final line keeps the main template's
 // format/length/scoping rules in force so the prior text can't bloat the output.
 const PRIOR_CONTEXT_PREFIX = `This is a state change of an existing {{label}}. It was previously "{{priorValue}}", described as:
 {{priorDescription}}
@@ -122,13 +122,13 @@ export class DescriptionProbe {
       // job should never combine the two; surface it loudly and drop the prior
       // context (not via throw — that would abort the whole drain queue).
       if (priorValue != null || priorDescription != null) {
-        console.warn('[state-referential] DescriptionProbe: prior context was enqueued with an array value; ignoring it. Enqueue one entry per RENAME.');
+        console.warn('[state-referential] DescriptionProbe: prior context was enqueued with an array value; ignoring it. Enqueue one entry per REPLACE.');
       }
       // list — probe each entry separately (no prior context on a multi-entry job)
       for (const entry of value) await this._runOne({ subjectId, trackerId, fieldId, value: entry, profile });
       return;
     }
-    // If the value already has a cached description (e.g. a RENAME to a value that
+    // If the value already has a cached description (e.g. a REPLACE to a value that
     // was described earlier), reuse it rather than regenerating with prior context.
     const existing = this.engine.getDescription(subjectId, trackerId, fieldId, value);
     if (existing != null && existing !== '') return;

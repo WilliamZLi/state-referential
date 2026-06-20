@@ -94,14 +94,14 @@ export function parseCommands(text, opts = {}) {
       continue;
     }
 
-    // RENAME <subject> <tracker>.<field> "<old>" WITH "<new>"
+    // REPLACE <subject> <tracker>.<field> "<old>" WITH "<new>"
     // Same item changing state; <new> inherits <old>'s description as probe context.
-    m = line.match(/^RENAME\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
+    m = line.match(/^REPLACE\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
     if (m) {
       const [oldToken, afterOld] = tokenizeQuoted(m[4]);
       const wm = afterOld.match(/^WITH\s+(.+)$/i);
       if (wm) {
-        out.push({ op: 'RENAME', subject: m[1], tracker: m[2], field: m[3], oldEntry: oldToken, newEntry: stripQuotes(wm[1]) });
+        out.push({ op: 'REPLACE', subject: m[1], tracker: m[2], field: m[3], oldEntry: oldToken, newEntry: stripQuotes(wm[1]) });
       }
       // Missing/!WITH → malformed; drop the line (consistent with other unknown lines).
       continue;

@@ -308,9 +308,9 @@ export class TrackerEngine {
         } else if (c.op === 'REMOVE') {
           if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
           else this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
-        } else if (c.op === 'RENAME') {
+        } else if (c.op === 'REPLACE') {
           if (field.type === 'number' || field.type === 'pair-list' || field.type === 'prose') {
-            errors.push(`RENAME unsupported for ${field.type} field: ${c.tracker}.${c.field}`);
+            errors.push(`REPLACE unsupported for ${field.type} field: ${c.tracker}.${c.field}`);
             continue; // skip applied++ for an unsupported op
           }
           // Capture the prior description BEFORE mutating; keep it (revert-safe).

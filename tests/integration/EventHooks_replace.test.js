@@ -46,7 +46,7 @@ test('entry-replaced respects the probeDesc master toggle', () => {
   assert.strictEqual(enqueued.length, 0);
 });
 
-test('end-to-end: a RENAME via applyCommands yields exactly one prior-context probe', () => {
+test('end-to-end: a REPLACE via applyCommands yields exactly one prior-context probe', () => {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'inv', label: 'Inventory', appliesToRoles: ['protagonist'], fields: [
     { id: 'items', label: 'Items', type: 'list', default: [], describable: true, descriptionScope: 'per-subject' },
@@ -63,8 +63,8 @@ test('end-to-end: a RENAME via applyCommands yields exactly one prior-context pr
   eng.setField(p.id, 'inv', 'items', ['magic staff']);
   eng.setDescription(p.id, 'inv', 'items', 'magic staff', 'a carved oak staff with a glowing gem');
   enqueued.length = 0; // ignore anything from the setup writes above
-  eng.applyCommands('RENAME Cersia inv.items "magic staff" WITH "magic staff (broken)"');
-  assert.strictEqual(enqueued.length, 1, 'exactly one probe enqueued for the RENAME');
+  eng.applyCommands('REPLACE Cersia inv.items "magic staff" WITH "magic staff (broken)"');
+  assert.strictEqual(enqueued.length, 1, 'exactly one probe enqueued for the REPLACE');
   assert.strictEqual(enqueued[0].value, 'magic staff (broken)');
   assert.strictEqual(enqueued[0].priorValue, 'magic staff');
   assert.strictEqual(enqueued[0].priorDescription, 'a carved oak staff with a glowing gem');
