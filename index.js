@@ -820,19 +820,17 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     if (!worldId) { toastr.warning('Branch: no bound World.'); return; }
     const branchChatId = ctx.chatId;
 
-    // 1. roll the World tracker state back to the branch-start snapshot (undo the side-scene)
+    // 1. roll the World tracker state back to the branch-start snapshot (undo the
+    //    side-scene), then drop that undo-point — it's consumed now, and leaving it
+    //    pinned leaks into the snapshot store (and the delete-restore orphan scan).
     const snap = engine.loadSnapshot(bm.snapshotKey);
-    if (snap) {
-      engine.restoreSnapshot(snap);
-      // Flush the debounced HTTP PUTs that restoreSnapshot triggered via engine.backend so the
-      // rolled-back World state is persisted on the server BEFORE openCharacterChat fires
-      // CHAT_CHANGED and the mainline re-hydrates from the server (which could otherwise read
-      // pre-rollback state if the writes haven't landed yet).
-      await engine.backend?.flush?.();
-    }
-    // Note: restoreSnapshot calls backend.saveValues/saveSubjects/saveDescriptions which
-    // each trigger a debounced write — no extra saveChatConditional needed
-    // for the tracker state itself.
+    if (snap) engine.restoreSnapshot(snap);
+    engine.unpinSnapshot(bm.snapshotKey);
+    engine.dropSnapshots([bm.snapshotKey]);
+    // Flush the debounced PUTs that restoreSnapshot + the drop triggered so the
+    // rolled-back World state AND the pin removal land on the server BEFORE
+    // openCharacterChat fires CHAT_CHANGED and the mainline re-hydrates.
+    await engine.backend?.flush?.();
 
     // 2. mark this branch's metadata discarded
     const discardedAt = Date.now();
@@ -879,8 +877,15 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     meta.l3BranchMeta.foldedAt = foldedAt;
     await saveChatConditional();
 
+    // 2b. drop the branch-start undo-point — the scene is kept, so it's no longer
+    //     needed and would otherwise leak into the snapshot store. Flush so the
+    //     pin removal lands BEFORE the switch re-hydrates the World backend.
+    engine.unpinSnapshot(bm.snapshotKey);
+    engine.dropSnapshots([bm.snapshotKey]);
+    await engine.backend?.flush?.();
+
     // 3. switch to the mainline so the splice lands in ITS chat array.
-    //    Returning changes no tracker state, so no engine.backend.flush() is needed.
+    //    Returning changes no tracker state beyond the dropped pin above.
     try {
       const c = getContext();
       if (typeof c.openCharacterChat === 'function') await c.openCharacterChat(bm.mainlineChatId);
@@ -1063,5 +1068,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-20-scene-prune');
+  console.log('[state-referential] ready — build 2026-06-20-scene-autoclean');
 })();
