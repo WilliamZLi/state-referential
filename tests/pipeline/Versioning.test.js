@@ -39,6 +39,7 @@ function mkRig() {
     eventSource,
     event_types: { MESSAGE_RECEIVED: 'MR', MESSAGE_SWIPED: 'MSW', MESSAGE_EDITED: 'MED', MESSAGE_DELETED: 'MDEL', CHAT_CHANGED: 'CC' },
     getChat: () => chat,
+    getChatId: () => 'chatA',
     autoUpdate, descProbe, standalone, injection,
     throttleMs: 0,
   });
@@ -152,6 +153,35 @@ test('CHAT_CHANGED drops stale orphan snapshots', async () => {
   // After CHAT_CHANGED, the ghost snapshot should be gone but m-1's snapshot retained.
   assert.strictEqual(r.eng.loadSnapshot('ghost-msg-id'), undefined, 'orphan should be dropped');
   assert.ok(r.eng.loadSnapshot('m-1'), 'live msg snapshot should remain');
+});
+
+test('MESSAGE_DELETED never restores from a pinned (branch-start) or cross-chat snapshot', async () => {
+  // Shared-store regression (reported IN a scene): the snapshot store is World-
+  // scoped, so deleting a generation scanned ALL orphans and restored from the
+  // EARLIEST — which could be a branch: pin or another chat's snapshot, reverting
+  // the World to an ancient state and wiping changes from earlier surviving gens.
+  const r = mkRig();
+  r.eng.defineTracker({ id: 'extra', label: 'Extra', autoUpdate: true, fields: [
+    { id: 'thing', label: 'Thing', type: 'text', inclusion: { rule: 'always' } },
+  ]});
+  // A pinned branch-start snapshot "from hours ago" with no 'thing' — the trap.
+  r.eng.snapshots.save('branch:old', r.eng.snapshot('branch:old'));
+  r.eng.pinSnapshot('branch:old', 'branch-start');
+  // Gen m-1 establishes thing="bra"
+  r.set(`SET Lyra extra.thing = "bra"`);
+  await r.emit('MR', 0);
+  // Gen m-2 changes it to "hat"
+  r.chat.push({ extra: { trackerMsgId: 'm-2' }, mes: 'second', is_user: false });
+  r.set(`SET Lyra extra.thing = "hat"`);
+  await r.emit('MR', 1);
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'thing'), 'hat');
+  // Delete m-2 → must revert to AFTER m-1 (thing="bra"), NOT the pin (thing unset).
+  r.chat.pop();
+  await r.emit('MDEL', 1);
+  assert.strictEqual(r.eng.getField(r.p.id, 'extra', 'thing'), 'bra',
+    'delete must restore to before the deleted gen, not the pinned branch-start');
+  // The pin must survive (still needed for scene discard).
+  assert.ok(r.eng.loadSnapshot('branch:old'), 'pinned snapshot must NOT be dropped');
 });
 
 test('MESSAGE_DELETED restores state to before the deleted message ran', async () => {

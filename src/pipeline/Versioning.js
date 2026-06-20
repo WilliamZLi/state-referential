@@ -54,6 +54,11 @@ export class Versioning {
         snapshotBefore = existingSnapshot;
       } else {
         snapshotBefore = this.engine.snapshot(msgId);
+        // Tag the snapshot with its chat so a later delete-restore only ever
+        // considers THIS chat's snapshots (the store is World-scoped/shared across
+        // mainline + scene chats — without this, deleting a gen could restore from
+        // another chat's snapshot or a branch: pin and revert the World too far).
+        snapshotBefore.chatId = this.deps.getChatId?.();
         this.engine.snapshots.save(msgId, snapshotBefore);
       }
       let lastUserMessage = '';
@@ -116,8 +121,14 @@ export class Versioning {
     //      cleanup or a subsequent delete will drop it.
     const chat = this.deps.getChat();
     const liveIds = new Set(chat.map(m => readTrackerMsgId(m)).filter(Boolean));
+    const currentChatId = this.deps.getChatId?.();
+    // Delete-restore candidates: snapshots of THIS chat's now-removed messages
+    // only. Exclude pinned snapshots (branch: undo-points) and snapshots tagged
+    // to other chats — restoring from those reverts the World far past the
+    // deleted generation (the reported bug: deleting a gen inside a scene rolled
+    // back to a branch-start from hours ago).
     const orphans = this.engine.listSnapshots()
-      .filter(s => !liveIds.has(s.msgId))
+      .filter(s => !liveIds.has(s.msgId) && !s.pinned && s.chatId === currentChatId)
       .sort((a, b) => a.takenAt - b.takenAt);
 
     if (this.deps.debug) {

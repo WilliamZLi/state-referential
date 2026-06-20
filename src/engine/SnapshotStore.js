@@ -25,7 +25,7 @@ export class SnapshotStore {
   load(msgId) { return this._snaps.get(msgId); }
   list() {
     return [...this._snaps.values()].map(s => ({
-      msgId: s.msgId, takenAt: s.takenAt, pinned: this._pins.has(s.msgId),
+      msgId: s.msgId, takenAt: s.takenAt, pinned: this._pins.has(s.msgId), chatId: s.chatId,
     }));
   }
   pin(msgId, reason = 'user') {

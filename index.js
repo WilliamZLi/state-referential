@@ -268,6 +268,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const versioning = new Versioning(engine, {
     eventSource, event_types,
     getChat: () => getContext().chat,
+    getChatId: () => getContext().chatId,
     getChatMetadata: () => getContext().chatMetadata,
     worldBinding,
     autoUpdate, descProbe, standalone, injection,
@@ -1034,5 +1035,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-20-lock-session');
+  console.log('[state-referential] ready — build 2026-06-20-delete-scope');
 })();
