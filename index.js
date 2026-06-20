@@ -1,4 +1,4 @@
-import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens } from '../../../../script.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript } from './src/util/transcript.js';
@@ -36,7 +36,7 @@ import { ChronicleInjection } from './src/pipeline/ChronicleInjection.js';
 import { ChronicleOps } from './src/pipeline/ChronicleOps.js';
 import { WorldLock } from './src/pipeline/WorldLock.js';
 import { Compaction } from './src/pipeline/Compaction.js';
-import { estimateChatTokens } from './src/pipeline/TokenBudget.js';
+import { estimateChatTokens, resolveContextSize } from './src/pipeline/TokenBudget.js';
 import { decideAutoCompact } from './src/pipeline/AutoCompact.js';
 import { insertSyntheticAfter, actCompleteMarker, restoreArchive } from './src/pipeline/MainlineOps.js';
 import { toggleAnchor, countAnchors } from './src/pipeline/Anchors.js';
@@ -199,7 +199,12 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       const chat = ctx.chat ?? [];
       if (chat.length < (s.recentWindow + s.minSize)) return; // nothing foldable yet
       const chatTokens = await estimateChatTokens(chat, _tokenCountFn, _tokCache);
-      const contextSize = Number(ctx.maxContext) || 0;
+      // API-aware: getMaxContextTokens() returns the ACTIVE API's real context
+      // (e.g. oai_settings.openai_max_context for chat completion). ctx.maxContext
+      // is only the text-completion `max_context` global and badly under-reads on
+      // chat-completion APIs (made a 12k chat look 150%+ full). Fall back to it.
+      const apiMax = (typeof getMaxContextTokens === 'function') ? getMaxContextTokens() : undefined;
+      const contextSize = resolveContextSize(apiMax, ctx.maxContext);
       const decision = decideAutoCompact({ chatTokens, contextSize, settings: s });
       if (!decision) return;
       const pct = contextSize ? Math.round((chatTokens / contextSize) * 100) : '?';
@@ -1015,5 +1020,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-foldback');
+  console.log('[state-referential] ready — build 2026-06-19-ctxsize-fix');
 })();
