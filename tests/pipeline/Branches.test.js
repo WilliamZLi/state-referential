@@ -64,17 +64,16 @@ test('foldbackAnchorId: empty mainline → null', () => {
   assert.equal(foldbackAnchorId(null, null), null);
 });
 
-test('buildFoldbackMarker builds a fold-back synthetic-message descriptor', () => {
-  const m = buildFoldbackMarker({ title: 'Dungeon', recap: 'They fought and won.', branchChatId: 'c1', playCount: 3 });
+test('buildFoldbackMarker is a clean recap — no fold-back label in name or mes', () => {
+  const m = buildFoldbackMarker({ title: 'Dungeon', recap: 'They fought and won.', branchChatId: 'c1', name: 'Cersia' });
   assert.equal(m.kind, 'fold-back');
   assert.equal(m.smallSys, false);
-  assert.equal(m.name, '↳ Folded from branch: Dungeon (3 msgs)');
-  assert.match(m.mes, /Folded from branch: Dungeon/);
-  assert.match(m.mes, /They fought and won\./);
-  assert.deepEqual(m.extra, { l3BranchChatId: 'c1', l3BranchTitle: 'Dungeon' });
+  assert.equal(m.mes, 'They fought and won.');      // recap only — no header line
+  assert.equal(m.name, 'Cersia');                    // narration author, not a meta-label
+  assert.doesNotMatch(m.mes, /Folded from branch/);
+  assert.deepEqual(m.extra, { l3BranchChatId: 'c1', l3BranchTitle: 'Dungeon' }); // branch link kept (invisible)
 });
 
-test('buildFoldbackMarker singularizes a one-message count', () => {
-  const m = buildFoldbackMarker({ title: 'X', recap: 'r', branchChatId: 'c', playCount: 1 });
-  assert.match(m.name, /\(1 msg\)/);
+test('buildFoldbackMarker defaults name to Narrator', () => {
+  assert.equal(buildFoldbackMarker({ title: 'X', recap: 'r', branchChatId: 'c' }).name, 'Narrator');
 });

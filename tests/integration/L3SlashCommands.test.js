@@ -16,7 +16,7 @@ function mkRig() {
     gotoMainline: async () => { log.push(['goto']); },
     branchCreate: async (o) => { log.push(['branchCreate', o]); },
     branchDiscard: async () => { log.push(['branchDiscard']); },
-    branchFoldBack: async () => { log.push(['branchFoldBack']); },
+    branchReturn: async () => { log.push(['branchReturn']); },
     branchLastN: () => 10,
   };
   register(deps);
@@ -116,9 +116,9 @@ test('/branch-discard calls branchDiscard', async () => {
   assert.deepEqual(log[0], ['branchDiscard']);
 });
 
-test('/fold-back calls branchFoldBack', async () => {
+test('/branch-return calls branchReturn', async () => {
   const { registered, log } = mkRig();
-  assert.equal(typeof registered['fold-back'], 'function');
-  await registered['fold-back']({}, '');
-  assert.deepEqual(log[0], ['branchFoldBack']);
+  assert.equal(typeof registered['branch-return'], 'function');
+  await registered['branch-return']({}, '');
+  assert.deepEqual(log[0], ['branchReturn']);
 });

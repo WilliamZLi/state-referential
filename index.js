@@ -844,7 +844,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     }
   };
 
-  const branchFoldBack = async () => {
+  const branchReturn = async () => {
     const ctx = getContext();
     const meta = ctx.chatMetadata;
     const bm = meta?.l3BranchMeta;
@@ -867,25 +867,27 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     await saveChatConditional();
 
     // 3. switch to the mainline so the splice lands in ITS chat array.
-    //    Fold-back changes no tracker state, so no engine.backend.flush() is needed.
+    //    Returning changes no tracker state, so no engine.backend.flush() is needed.
     try {
       const c = getContext();
       if (typeof c.openCharacterChat === 'function') await c.openCharacterChat(bm.mainlineChatId);
-      else console.warn('[state-referential] foldBack: no openCharacterChat; cannot switch to', bm.mainlineChatId);
+      else console.warn('[state-referential] branchReturn: no openCharacterChat; cannot switch to', bm.mainlineChatId);
     } catch (e) {
-      console.warn('[state-referential] foldBack: failed to open mainline chat', bm.mainlineChatId, e?.message);
+      console.warn('[state-referential] branchReturn: failed to open mainline chat', bm.mainlineChatId, e?.message);
     }
 
-    // 4. splice the fold-back recap into the mainline after the branch point (else tail).
+    // 4. splice the side-scene recap into the mainline after the branch point (else
+    //    tail), as PLAIN narration — no "folded from branch" label. name = the
+    //    mainline narrator so it reads as ordinary story.
     const mainChat = getContext().chat ?? [];
     const anchorId = foldbackAnchorId(mainChat, bm.branchFromMessageId);
     if (anchorId) {
       await insertSyntheticAfter(stShell, {
         afterTrackerMsgId: anchorId,
-        ...buildFoldbackMarker({ title: bm.title, recap, branchChatId, playCount: play.length }),
+        ...buildFoldbackMarker({ title: bm.title, recap, branchChatId, name: getContext().name2 }),
       });
     } else {
-      console.warn('[state-referential] foldBack: no anchor message in mainline; recap not spliced');
+      console.warn('[state-referential] branchReturn: no anchor message in mainline; recap not spliced');
     }
 
     // 5. mark folded in the registry + clear the lock (re-read; do not trust a stale ref).
@@ -894,7 +896,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       setBranchStatus(world, branchChatId, 'folded', { foldedAt });
       await worldRegistry.update(worldId, { openBranchChatId: null, branches: world.branches });
     }
-    toastr.success(`Folded "${bm.title}" into the mainline.`);
+    toastr.success(`Returned from "${bm.title}".`);
   };
 
   // Layer 3 slash commands.
@@ -929,7 +931,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     },
     branchCreate,
     branchDiscard,
-    branchFoldBack,
+    branchReturn,
     branchLastN: () => l3Settings().branchLastN ?? 10,
   });
 
@@ -1020,5 +1022,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-ctxsize-fix');
+  console.log('[state-referential] ready — build 2026-06-19-branch-return');
 })();

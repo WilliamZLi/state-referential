@@ -50,14 +50,16 @@ export function foldbackAnchorId(mainChat, branchFromMessageId) {
   return null;
 }
 
-// Build the opts for buildSyntheticMessage/insertSyntheticAfter that render the
-// folded side-scene as one manageable mainline block (header + recap body).
-export function buildFoldbackMarker({ title, recap, branchChatId, playCount }) {
-  const header = `↳ Folded from branch: ${title} (${playCount} msg${playCount === 1 ? '' : 's'})`;
+// Build the opts for buildSyntheticMessage/insertSyntheticAfter that splice the
+// side-scene recap into the mainline as a PLAIN narration message — no visible
+// "folded from branch" label in the name or body (it reads as ordinary story).
+// The branch link is preserved in extra (l3BranchChatId/Title) for 3c, invisible
+// to the user and the generation.
+export function buildFoldbackMarker({ title, recap, branchChatId, name }) {
   return {
     kind: 'fold-back',
-    name: header,
-    mes: `${header}\n\n${recap}`,
+    name: name || 'Narrator',
+    mes: recap,
     smallSys: false,
     extra: { l3BranchChatId: branchChatId, l3BranchTitle: title },
   };
