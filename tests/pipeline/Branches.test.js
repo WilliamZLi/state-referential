@@ -78,13 +78,13 @@ test('buildFoldbackMarker defaults name to Narrator', () => {
   assert.equal(buildFoldbackMarker({ title: 'X', recap: 'r', branchChatId: 'c' }).name, 'Narrator');
 });
 
-test('sceneChatName composes "<mainline> - scene - <timestamp>" reusing the auto timestamp', () => {
+test('sceneChatName composes "<mainline> - branch - <timestamp>" reusing the auto timestamp', () => {
   assert.equal(
     sceneChatName('CersiaWorld', 'Assistant - 2026-06-19@01h13m36s994ms'),
-    'CersiaWorld - scene - 2026-06-19@01h13m36s994ms',
+    'CersiaWorld - branch - 2026-06-19@01h13m36s994ms',
   );
 });
 
 test('sceneChatName falls back to the whole auto name when it has no " - " separator', () => {
-  assert.equal(sceneChatName('Main', 'weirdname'), 'Main - scene - weirdname');
+  assert.equal(sceneChatName('Main', 'weirdname'), 'Main - branch - weirdname');
 });

@@ -773,7 +773,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     const recapText = toRecap.length ? await l3GenerateSummary(toRecap, l3Settings().tokenCap) : '';
     const verbatimCopies = verbatim.map(m => ({ ...m, extra: { ...(m.extra ?? {}) } }));
 
-    // 3. create the scene chat, rename it to "<mainline> - scene - <ts>" for
+    // 3. create the scene chat, rename it to "<mainline> - branch - <ts>" for
     //    findability (while it's still empty), then seed it. Rename changes the
     //    chat file → re-read the id; any failure falls back to ST's default name.
     await doNewChat();
@@ -1034,5 +1034,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-19-scene-naming');
+  console.log('[state-referential] ready — build 2026-06-19-branch-label');
 })();

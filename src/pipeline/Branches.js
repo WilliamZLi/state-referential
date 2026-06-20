@@ -9,14 +9,14 @@ export function splitForSeed(chat, lastN) {
   return { toRecap: list.slice(0, list.length - lastN), verbatim: list.slice(list.length - lastN) };
 }
 
-// Compose a findable name for a scene chat: "<mainline name> - scene - <timestamp>".
+// Compose a findable name for a scene chat: "<mainline name> - branch - <timestamp>".
 // `autoChatName` is doNewChat's default ("<character> - <timestamp>"); reuse its
 // trailing ST timestamp (already filename-safe) instead of minting our own.
 export function sceneChatName(mainlineChatId, autoChatName) {
   const auto = String(autoChatName ?? '');
   const i = auto.lastIndexOf(' - ');
   const ts = i >= 0 ? auto.slice(i + 3) : auto;
-  return `${mainlineChatId} - scene - ${ts}`;
+  return `${mainlineChatId} - branch - ${ts}`;
 }
 
 export function buildBranchMeta({ mainlineChatId, branchFromMessageId, snapshotKey, title, lastN, seedMessageCount, now }) {
