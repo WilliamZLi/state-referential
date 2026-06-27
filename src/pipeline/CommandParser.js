@@ -19,6 +19,34 @@ function stripQuotes(s) {
   return s;
 }
 
+// Parse trailing `key=value key2="value two"` pairs into an object. Bare values
+// and quoted values both supported; returns null if no key=value pair is present.
+function parseKeyVals(rest) {
+  rest = rest.replace(SMART, '"').trim();
+  if (!rest || !/^[\w-]+\s*=/.test(rest)) return null;
+  const out = {};
+  let i = 0;
+  while (i < rest.length) {
+    const km = rest.slice(i).match(/^([\w-]+)\s*=\s*/);
+    if (!km) break;
+    i += km[0].length;
+    let val;
+    if (rest[i] === '"') {
+      let end = -1;
+      for (let j = i + 1; j < rest.length; j++) { if (rest[j] === '"' && rest[j - 1] !== '\\') { end = j; break; } }
+      if (end < 0) { val = unescapeQuoted(rest.slice(i + 1)); i = rest.length; }
+      else { val = unescapeQuoted(rest.slice(i + 1, end)); i = end + 1; }
+    } else {
+      const sp = rest.slice(i).search(/\s/);
+      if (sp < 0) { val = rest.slice(i); i = rest.length; }
+      else { val = rest.slice(i, i + sp); i += sp; }
+    }
+    out[km[1]] = val;
+    while (rest[i] === ' ') i++;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 function tokenizeQuoted(rest) {
   rest = rest.replace(SMART, '"').trim();
   if (rest.startsWith('"')) {
@@ -63,6 +91,23 @@ export function parseCommands(text, opts = {}) {
       continue;
     }
 
+    // SET <subject> <tracker>.<field> "<name>" key=value...   (struct-list)
+    m = line.match(/^SET\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
+    if (m && !/^[^"']*=/.test(m[4])) { // not the scalar `= value` form
+      const [entryToken, afterEntry] = tokenizeQuoted(m[4]);
+      const kv = parseKeyVals(afterEntry);
+      if (kv) { out.push({ op: 'SET', subject: m[1], tracker: m[2], field: m[3], entry: entryToken, fields: kv }); continue; }
+    }
+
+    // DELTA <subject> <tracker>.<field> "<name>" <sub> <±N>   (struct-list)
+    m = line.match(/^DELTA\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
+    if (m) {
+      const [entryToken, afterEntry] = tokenizeQuoted(m[4]);
+      const dm = afterEntry.match(/^([\w-]+)\s+([+-]?\d+(?:\.\d+)?)\s*$/);
+      if (dm) { out.push({ op: 'DELTA', subject: m[1], tracker: m[2], field: m[3], entry: entryToken, subField: dm[1], delta: Number(dm[2]) }); continue; }
+      // else fall through to the scalar DELTA regex below
+    }
+
     // DELTA <subject> <tracker>.<field> <±N>
     m = line.match(/^DELTA\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+([+-]?\d+(?:\.\d+)?)\s*$/i);
     if (m) {
@@ -73,14 +118,17 @@ export function parseCommands(text, opts = {}) {
     // ADD <subject> <tracker>.<field> <entry> [= <descriptor>]
     // The optional `= <descriptor>` tail is for pair-list fields: the entry is
     // the pair's name, the descriptor is the relationship/state text.
+    // When the tail is `key=value …` pairs (no leading `=`), it's a struct-list ADD.
     m = line.match(/^ADD\s+(\S+)\s+([\w-]+)\.([\w-]+)\s+(.+)$/i);
     if (m) {
       const tail = m[4];
-      // Look for an unquoted ` = ` separator outside of any quoted entry.
       const [entryToken, afterEntry] = tokenizeQuoted(tail);
       const restAfterEq = afterEntry.match(/^=\s*(.+)$/);
+      const kv = restAfterEq ? null : parseKeyVals(afterEntry);
       if (restAfterEq) {
         out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: entryToken, descriptor: stripQuotes(restAfterEq[1]) });
+      } else if (kv) {
+        out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: entryToken, fields: kv });
       } else {
         out.push({ op: 'ADD', subject: m[1], tracker: m[2], field: m[3], entry: stripQuotes(tail) });
       }

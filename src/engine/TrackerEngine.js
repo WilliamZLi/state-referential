@@ -230,6 +230,18 @@ export class TrackerEngine {
             for (const name of aMap.keys()) {
               if (!bMap.has(name)) fieldChanges.push({ ...base, op: 'remove', entry: name });
             }
+          } else if (fdef.type === 'struct-list') {
+            const aMap = new Map((aV ?? []).map(r => [r.name, r]));
+            const bMap = new Map((bV ?? []).map(r => [r.name, r]));
+            for (const [name, row] of bMap) {
+              const aRow = aMap.get(name);
+              if (!aRow || JSON.stringify(aRow) !== JSON.stringify(row)) {
+                fieldChanges.push({ ...base, op: 'add', entry: name, structFields: row, fieldDef: fdef });
+              }
+            }
+            for (const name of aMap.keys()) {
+              if (!bMap.has(name)) fieldChanges.push({ ...base, op: 'remove', entry: name });
+            }
           } else if (fdef.type === 'number' && typeof aV === 'number' && typeof bV === 'number') {
             fieldChanges.push({ ...base, op: 'delta', delta: bV - aV });
           } else {
@@ -274,9 +286,23 @@ export class TrackerEngine {
       if (c.op === 'set') lines.push(`SET ${c.subjectName} ${path} = "${c.newValue}"`);
       else if (c.op === 'delta') lines.push(`DELTA ${c.subjectName} ${path} ${c.delta >= 0 ? '+' : ''}${c.delta}`);
       else if (c.op === 'add') {
-        lines.push(c.descriptor != null
-          ? `ADD ${c.subjectName} ${path} "${c.entry}" = "${c.descriptor}"`
-          : `ADD ${c.subjectName} ${path} "${c.entry}"`);
+        if (c.structFields != null) {
+          // struct-list: emit ADD <subj> <path> "<name>" k=v k2="v two"
+          const row = c.structFields;
+          const subs = c.fieldDef?.fields ?? [];
+          const kvParts = subs
+            .filter(s => s.id !== 'name' && row[s.id] !== undefined && row[s.id] !== null && row[s.id] !== '')
+            .map(s => {
+              const v = String(row[s.id]);
+              return /\s/.test(v) ? `${s.id}="${v}"` : `${s.id}=${v}`;
+            });
+          const tail = kvParts.length ? ' ' + kvParts.join(' ') : '';
+          lines.push(`ADD ${c.subjectName} ${path} "${c.entry}"${tail}`);
+        } else {
+          lines.push(c.descriptor != null
+            ? `ADD ${c.subjectName} ${path} "${c.entry}" = "${c.descriptor}"`
+            : `ADD ${c.subjectName} ${path} "${c.entry}"`);
+        }
       }
       else if (c.op === 'remove') lines.push(`REMOVE ${c.subjectName} ${path} "${c.entry}"`);
     }
@@ -300,13 +326,19 @@ export class TrackerEngine {
         const field = this.definitions.getField(c.tracker, c.field);
         if (!field) { errors.push(`unknown field: ${c.tracker}.${c.field}`); continue; }
         const writeOpts = { source: opts.source ?? 'auto-update', msgId: opts.msgId ?? null };
-        if (c.op === 'SET') this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.value), writeOpts);
-        else if (c.op === 'DELTA') this.values.applyDelta(subj.id, c.tracker, c.field, c.delta, writeOpts);
-        else if (c.op === 'ADD') {
-          if (field.type === 'pair-list') this.values.setPair(subj.id, c.tracker, c.field, c.entry, c.descriptor ?? '', writeOpts);
+        if (c.op === 'SET') {
+          if (field.type === 'struct-list' && c.entry != null) this.values.setStruct(subj.id, c.tracker, c.field, c.entry, c.fields ?? {}, writeOpts);
+          else this.values.setField(subj.id, c.tracker, c.field, this._coerceForField(field, c.value), writeOpts);
+        } else if (c.op === 'DELTA') {
+          if (field.type === 'struct-list' && c.entry != null) this.values.deltaStructField(subj.id, c.tracker, c.field, c.entry, c.subField, c.delta, writeOpts);
+          else this.values.applyDelta(subj.id, c.tracker, c.field, c.delta, writeOpts);
+        } else if (c.op === 'ADD') {
+          if (field.type === 'struct-list') this.values.setStruct(subj.id, c.tracker, c.field, c.entry, c.fields ?? {}, writeOpts);
+          else if (field.type === 'pair-list') this.values.setPair(subj.id, c.tracker, c.field, c.entry, c.descriptor ?? '', writeOpts);
           else this.values.addListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
         } else if (c.op === 'REMOVE') {
-          if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
+          if (field.type === 'struct-list') this.values.removeStruct(subj.id, c.tracker, c.field, c.entry, writeOpts);
+          else if (field.type === 'pair-list') this.values.removePair(subj.id, c.tracker, c.field, c.entry, writeOpts);
           else this.values.removeListEntry(subj.id, c.tracker, c.field, c.entry, writeOpts);
         } else if (c.op === 'REPLACE') {
           if (field.type === 'number' || field.type === 'pair-list' || field.type === 'prose') {
@@ -363,7 +395,17 @@ export class TrackerEngine {
         const oldType = oldField.type;
         const newType = newField.type;
 
-        if (oldType === 'pair-list' && newType === 'list') {
+        if (oldType === 'pair-list' && newType === 'struct-list') {
+          coerced = Array.isArray(raw) ? raw.filter(p => p?.name).map(p => ({ name: String(p.name), detail: String(p.descriptor ?? '') })) : [];
+        } else if (oldType === 'list' && newType === 'struct-list') {
+          coerced = Array.isArray(raw) ? raw.filter(Boolean).map(name => ({ name: String(name) })) : [];
+        } else if (oldType === 'struct-list' && newType === 'pair-list') {
+          coerced = Array.isArray(raw) ? raw.filter(r => r?.name).map(r => ({ name: String(r.name), descriptor: String(r.detail ?? '') })) : [];
+        } else if (oldType === 'struct-list' && newType === 'list') {
+          coerced = Array.isArray(raw) ? raw.filter(r => r?.name).map(r => String(r.name)) : [];
+        } else if (oldType === 'struct-list' || newType === 'struct-list') {
+          coerced = newField.default ?? (newType === 'struct-list' ? [] : '');
+        } else if (oldType === 'pair-list' && newType === 'list') {
           // pair-list → list: drop descriptors, keep names
           coerced = Array.isArray(raw) ? raw.map(p => p?.name).filter(Boolean) : [];
         } else if (oldType === 'list' && newType === 'pair-list') {

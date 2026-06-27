@@ -202,3 +202,37 @@ test('number annotation reflects maxFromField and uncapped fields', () => {
   assert.ok(prompt.includes('no fixed cap'), 'uncapped companion is not falsely 0-100');
   assert.ok(!/stamina \(number, 0-100\)/.test(prompt), 'must not claim a static 0-100 for stamina');
 });
+
+function mkLedgerAutoUpdate() {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'ledger', label: 'Ledger', appliesToRoles: ['protagonist'], autoUpdate: true,
+    fields: [
+      {
+        id: 'threads', label: 'Threads', type: 'struct-list',
+        fields: [
+          { id: 'detail', type: 'text' },
+          { id: 'amount', type: 'number', min: 0 },
+          { id: 'status', type: 'enum', options: ['open', 'fulfilled', 'failed'] },
+        ],
+        inclusion: { rule: 'always', where: { status: ['open'] } },
+        aiGuidance: 'track obligations',
+      },
+    ],
+  });
+  const subj = eng.addSubject('Hero', { role: 'protagonist' });
+  eng.setField(subj.id, 'ledger', 'threads', [
+    { name: 'Merchant debt', detail: 'Owes 50 gold', amount: 50, status: 'open' },
+    { name: 'Old quest', detail: 'Deliver the letter', amount: 0, status: 'fulfilled' },
+  ]);
+  return new AutoUpdate(eng, { generateQuietPrompt: async () => '' });
+}
+
+test('buildPrompt surfaces open struct-list rows + aiGuidance, hides resolved', () => {
+  const au = mkLedgerAutoUpdate();
+  const p = au.buildPrompt({ lastNarratorReply: 'x', lastUserMessage: 'y' });
+  assert.match(p, /Merchant debt/);            // open row surfaced
+  assert.doesNotMatch(p, /Old quest/);          // resolved row hidden from writer
+  assert.match(p, /track obligations/i);        // aiGuidance injected
+  assert.match(p, /amount ±N/);                 // struct-list DELTA form in COMMANDS_HELP
+});

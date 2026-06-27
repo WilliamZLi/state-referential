@@ -54,6 +54,26 @@ export class ValueStore {
       }
       return out;
     }
+    if (field.type === 'struct-list') {
+      if (!Array.isArray(value)) throw new Error(`struct-list expected: ${field.id}`);
+      const subs = field.fields ?? [];
+      const seen = new Set();
+      const out = [];
+      for (const e of value) {
+        let name; let src;
+        if (typeof e === 'string') { name = e.trim(); src = {}; }
+        else if (e && typeof e === 'object') { name = String(e.name ?? '').trim(); src = e; }
+        else continue;
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const row = { name };
+        for (const sf of subs) row[sf.id] = this._coerceSub(sf, src[sf.id]);
+        out.push(row);
+      }
+      return out;
+    }
     return String(value);
   }
   _descKey(field) {
@@ -226,6 +246,67 @@ export class ValueStore {
     const cur = this.getField(s, t, f) ?? [];
     this.setField(s, t, f, cur.filter(p => p.name !== clean), opts);
   }
+  // Coerce one struct-list sub-value to its sub-field type; invalid → the default.
+  _coerceSub(sf, raw) {
+    if (raw === undefined || raw === null) return sf.default ?? (sf.type === 'number' ? 0 : '');
+    if (sf.type === 'number') {
+      let n = Number(raw);
+      if (!Number.isFinite(n)) return sf.default ?? 0;
+      if (sf.min != null && n < sf.min) n = sf.min;
+      return n;
+    }
+    if (sf.type === 'enum') {
+      return (sf.options ?? []).includes(raw) ? raw : (sf.default ?? '');
+    }
+    return String(raw);
+  }
+
+  // Upsert a struct-list row by case-insensitive name; merge `patch` sub-values.
+  setStruct(s, t, f, name, patch = {}, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'struct-list') throw new Error('setStruct requires struct-list');
+    const clean = String(name ?? '').trim();
+    if (!clean) return;
+    const subs = field.fields ?? [];
+    const cur = this.getField(s, t, f) ?? [];
+    const idx = cur.findIndex(r => r.name.toLowerCase() === clean.toLowerCase());
+    let row;
+    if (idx === -1) {
+      row = { name: clean };
+      for (const sf of subs) row[sf.id] = this._coerceSub(sf, undefined); // defaults
+    } else {
+      row = { ...cur[idx] };
+    }
+    for (const sf of subs) {
+      if (Object.prototype.hasOwnProperty.call(patch, sf.id)) {
+        if (sf.type === 'enum' && !(sf.options ?? []).includes(patch[sf.id])) continue; // reject invalid enum
+        row[sf.id] = this._coerceSub(sf, patch[sf.id]);
+      }
+    }
+    const next = idx === -1 ? [...cur, row] : cur.map((r, i) => i === idx ? row : r);
+    this.setField(s, t, f, next, opts);
+  }
+
+  removeStruct(s, t, f, name, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'struct-list') throw new Error('removeStruct requires struct-list');
+    const clean = String(name ?? '').trim().toLowerCase();
+    if (!clean) return;
+    const cur = this.getField(s, t, f) ?? [];
+    this.setField(s, t, f, cur.filter(r => r.name.toLowerCase() !== clean), opts);
+  }
+
+  deltaStructField(s, t, f, name, subId, delta, opts = {}) {
+    const field = this._field(t, f);
+    if (field.type !== 'struct-list') throw new Error('deltaStructField requires struct-list');
+    const sf = (field.fields ?? []).find(x => x.id === subId);
+    if (!sf || sf.type !== 'number') throw new Error(`not a numeric sub-field: ${subId}`);
+    const cur = this.getField(s, t, f) ?? [];
+    const row = cur.find(r => r.name.toLowerCase() === String(name ?? '').trim().toLowerCase());
+    if (!row) return;
+    this.setStruct(s, t, f, row.name, { [subId]: (Number(row[subId]) || 0) + delta }, opts);
+  }
+
   getDescription(s, t, f, value) {
     const field = this._field(t, f);
     const key = this._descKey(field);

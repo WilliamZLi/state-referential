@@ -1068,5 +1068,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-20-replace-kept');
+  console.log('[state-referential] ready — build 2026-06-27-struct-list');
 })();

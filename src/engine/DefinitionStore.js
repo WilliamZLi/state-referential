@@ -1,5 +1,5 @@
 const ALL_ROLES = ['protagonist', 'npc', 'location', 'faction', 'object'];
-const FIELD_TYPES = new Set(['text', 'number', 'enum', 'list', 'prose', 'pair-list']);
+const FIELD_TYPES = new Set(['text', 'number', 'enum', 'list', 'prose', 'pair-list', 'struct-list']);
 
 function validateField(f) {
   if (!f.id) throw new Error('field.id required');
@@ -9,6 +9,15 @@ function validateField(f) {
   // tracker uses 100 = baseline with no ceiling. min is still required so the
   // UI input + validator have a floor.
   if (f.type === 'number' && f.min == null) throw new Error('number field requires min');
+  if (f.type === 'struct-list') {
+    if (!Array.isArray(f.fields)) throw new Error('struct-list field requires fields[]');
+    for (const sf of f.fields) {
+      if (!sf.id) throw new Error('struct-list sub-field requires id');
+      if (!['text', 'number', 'enum'].includes(sf.type)) throw new Error(`struct-list sub-field type invalid: ${sf.type}`);
+      if (sf.type === 'enum' && !Array.isArray(sf.options)) throw new Error('struct-list sub-field enum requires options[]');
+      if (sf.type === 'number' && sf.min == null) throw new Error('struct-list sub-field number requires min');
+    }
+  }
 }
 
 const DEFAULT_TRACKER_INJECTION = { enabled: false, trigger: 'always', tags: [], position: 'in-prompt', depth: 4, template: '' };
@@ -27,7 +36,7 @@ function normalizeDef(def) {
     template: rawInj.template ?? DEFAULT_TRACKER_INJECTION.template,
   };
   const knownTrackerKeys = new Set(['id','label','icon','source','appliesToRoles','autoUpdate','probe','injection','fields']);
-  const knownFieldKeys = new Set(['id','label','type','default','describable','descriptionScope','inclusion','injection','options','min','max','step','allowDelta']);
+  const knownFieldKeys = new Set(['id','label','type','default','describable','descriptionScope','inclusion','injection','options','min','max','step','allowDelta','fields','aiGuidance']);
 
   const out = {
     id: def.id,
@@ -43,9 +52,9 @@ function normalizeDef(def) {
         id: f.id,
         label: f.label ?? f.id,
         type: f.type ?? 'text',
-        default: f.default ?? ((f.type === 'list' || f.type === 'pair-list') ? [] : (f.type === 'number' ? 0 : '')),
-        // pair-list carries its own descriptor inline; cached descriptions add nothing.
-        describable: f.describable ?? (f.type !== 'number' && f.type !== 'pair-list'),
+        default: f.default ?? ((f.type === 'list' || f.type === 'pair-list' || f.type === 'struct-list') ? [] : (f.type === 'number' ? 0 : '')),
+        // pair-list and struct-list carry their own descriptor inline; cached descriptions add nothing.
+        describable: f.describable ?? (f.type !== 'number' && f.type !== 'pair-list' && f.type !== 'struct-list'),
         descriptionScope: f.descriptionScope ?? 'per-subject',
         inclusion: f.inclusion ?? { rule: 'always' },
         // Per-field injection: ONLY { enabled } — all other keys stripped
@@ -55,6 +64,15 @@ function normalizeDef(def) {
         ...(f.max != null ? { max: f.max } : {}),
         ...(f.step != null ? { step: f.step } : {}),
         ...(f.allowDelta != null ? { allowDelta: f.allowDelta } : {}),
+        ...(f.type === 'struct-list' ? { fields: (f.fields ?? []).map(sf => ({
+          id: sf.id,
+          label: sf.label ?? sf.id,
+          type: sf.type ?? 'text',
+          default: sf.default ?? (sf.type === 'number' ? 0 : ''),
+          ...(sf.options ? { options: [...sf.options] } : {}),
+          ...(sf.min != null ? { min: sf.min } : {}),
+        })) } : {}),
+        ...(f.aiGuidance != null ? { aiGuidance: String(f.aiGuidance) } : {}),
       };
       // Preserve unknown field-level keys (e.g. userNotes, customMetadata)
       for (const [k, v] of Object.entries(f)) {

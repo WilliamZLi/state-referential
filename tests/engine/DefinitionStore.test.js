@@ -87,6 +87,33 @@ test('normalizeDef preserves unknown field-level keys', () => {
   assert.strictEqual(d.fields[0].customTag, 'vital');
 });
 
+test('struct-list: normalizes sub-fields, defaults to [], preserves aiGuidance', () => {
+  const ds = new DefinitionStore(new InMemoryBackend(), mkBus());
+  ds.define({ id: 'ledger', label: 'Ledger', appliesToRoles: ['protagonist'], fields: [
+    { id: 'threads', label: 'Threads', type: 'struct-list', aiGuidance: 'track obligations',
+      fields: [
+        { id: 'detail', label: 'Detail', type: 'text' },
+        { id: 'amount', label: 'Amount', type: 'number', min: 0 },
+        { id: 'status', label: 'Status', type: 'enum', options: ['open','fulfilled','failed'], default: 'open' },
+      ] },
+  ]});
+  const f = ds.getField('ledger', 'threads');
+  assert.equal(f.type, 'struct-list');
+  assert.deepEqual(f.default, []);
+  assert.equal(f.describable, false);
+  assert.equal(f.aiGuidance, 'track obligations');
+  assert.equal(f.fields.length, 3);
+  assert.equal(f.fields[1].type, 'number');
+  assert.deepEqual(f.fields[2].options, ['open','fulfilled','failed']);
+});
+
+test('struct-list: a sub-field enum without options is rejected', () => {
+  const ds = new DefinitionStore(new InMemoryBackend(), mkBus());
+  assert.throws(() => ds.define({ id: 'x', label: 'X', fields: [
+    { id: 'l', label: 'L', type: 'struct-list', fields: [ { id: 's', type: 'enum' } ] },
+  ]}), /sub-field enum requires options/);
+});
+
 test('normalizeDef: tracker-level injection block; field injection strips to enabled only', () => {
   const store = new DefinitionStore(new InMemoryBackend(), mkBus());
   store.define({

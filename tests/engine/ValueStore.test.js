@@ -6,6 +6,21 @@ import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
 import { DefinitionStore } from '../../src/engine/DefinitionStore.js';
 
 function mkBus() { const e=[]; return { events:e, emit:(n,p)=>e.push([n,p]), on(){}, off(){} }; }
+
+function mkLedger() {
+  const ds = new DefinitionStore(new InMemoryBackend(), mkBus());
+  ds.define({ id: 'ledger', label: 'Ledger', fields: [
+    { id: 'threads', label: 'Threads', type: 'struct-list', default: [], fields: [
+      { id: 'detail', label: 'Detail', type: 'text', default: '' },
+      { id: 'amount', label: 'Amount', type: 'number', min: 0, default: 0 },
+      { id: 'status', label: 'Status', type: 'enum', options: ['open', 'fulfilled', 'failed'], default: 'open' },
+    ]},
+  ]});
+  const vs = new ValueStore(new InMemoryBackend(), mkBus(), ds);
+  const S = 'protagonist';
+  return { vs, S };
+}
+
 function mkDefs() {
   const ds = new DefinitionStore(new InMemoryBackend(), mkBus());
   ds.define({ id: 'outfit', label: 'Outfit', fields: [
@@ -208,5 +223,49 @@ test('maxFromField with an unset companion clamps to the companion default', () 
   const vs = new ValueStore(new InMemoryBackend(), mkBus(), mkDefs());
   vs.setField('p1', 'rpg', 'stamina', 250);   // max_stamina value unset → falls back to its default (100)
   assert.strictEqual(vs.getField('p1', 'rpg', 'stamina'), 100);
+});
+
+test('struct-list: setStruct upserts by case-insensitive name, defaults applied', () => {
+  const { vs, S } = mkLedger();
+  vs.setStruct(S, 'ledger', 'threads', 'Merchant debt', { detail: 'lantern', amount: 50, status: 'open' });
+  vs.setStruct(S, 'ledger', 'threads', 'merchant debt', { amount: 40 }); // re-case → same row, merge
+  const rows = vs.getField(S, 'ledger', 'threads');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'Merchant debt');     // original casing kept
+  assert.equal(rows[0].amount, 40);                // merged
+  assert.equal(rows[0].detail, 'lantern');         // preserved
+  assert.equal(rows[0].status, 'open');
+});
+
+test('struct-list: deltaStructField does engine math, clamps to min', () => {
+  const { vs, S } = mkLedger();
+  vs.setStruct(S, 'ledger', 'threads', 'Debt', { amount: 50, status: 'open' });
+  vs.deltaStructField(S, 'ledger', 'threads', 'debt', 'amount', -10);
+  assert.equal(vs.getField(S, 'ledger', 'threads')[0].amount, 40);
+  vs.deltaStructField(S, 'ledger', 'threads', 'Debt', 'amount', -999);
+  assert.equal(vs.getField(S, 'ledger', 'threads')[0].amount, 0); // clamped to min 0
+});
+
+test('struct-list: setStruct rejects an invalid enum sub-value (keeps prior)', () => {
+  const { vs, S } = mkLedger();
+  vs.setStruct(S, 'ledger', 'threads', 'Q', { status: 'open' });
+  vs.setStruct(S, 'ledger', 'threads', 'Q', { status: 'bogus' });
+  assert.equal(vs.getField(S, 'ledger', 'threads')[0].status, 'open');
+});
+
+test('struct-list: removeStruct deletes by case-insensitive name', () => {
+  const { vs, S } = mkLedger();
+  vs.setStruct(S, 'ledger', 'threads', 'Q', { status: 'open' });
+  vs.removeStruct(S, 'ledger', 'threads', 'q');
+  assert.deepEqual(vs.getField(S, 'ledger', 'threads'), []);
+});
+
+test('struct-list: _validate normalizes strings + applies defaults on direct setField', () => {
+  const { vs, S } = mkLedger();
+  vs.setField(S, 'ledger', 'threads', ['Bare', { name: 'Full', amount: 5 }]);
+  const rows = vs.getField(S, 'ledger', 'threads');
+  assert.equal(rows[0].name, 'Bare');
+  assert.equal(rows[0].status, 'open');   // default applied
+  assert.equal(rows[1].amount, 5);
 });
 

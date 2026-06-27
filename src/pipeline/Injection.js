@@ -1,5 +1,6 @@
 import { formatValue } from '../util/formatValue.js';
 import { activeEntries } from '../util/countdown.js';
+import { matchEntries } from '../util/matchEntries.js';
 
 /**
  * Maximum length of a cached description when rendered into the {{fields}}
@@ -63,6 +64,23 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
         if (!pair?.name) continue;
         const desc = truncateDesc(pair.descriptor ?? '');
         lines.push(desc ? `  - ${pair.name}: ${desc}` : `  - ${pair.name}`);
+      }
+      continue;
+    }
+    if (f.type === 'struct-list') {
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      const subs = f.fields ?? [];
+      const filterKeys = new Set(Object.keys(f.inclusion?.where ?? {})); // don't print the filter field (e.g. status)
+      lines.push(`${f.label}:`);
+      for (const row of raw) {
+        if (!row?.name) continue;
+        const detailSub = subs.find(s => s.id === 'detail');
+        const head = detailSub && row.detail ? `${row.name} — ${row.detail}` : row.name;
+        const extras = subs
+          .filter(s => s.id !== 'detail' && !filterKeys.has(s.id))
+          .filter(s => row[s.id] !== '' && row[s.id] != null && row[s.id] !== s.default)
+          .map(s => `${s.label.toLowerCase()}: ${row[s.id]}`);
+        lines.push(`  - ${head}${extras.length ? ` (${extras.join(', ')})` : ''}`);
       }
       continue;
     }
@@ -214,7 +232,9 @@ export class Injection {
           const raw = this.engine.getField(subj.id, tracker.id, f.id) ?? f.default;
           fieldValues[f.id] = (f.type === 'list' && f.inclusion?.activeWindow != null)
             ? activeEntries(this.engine, subj.id, tracker.id, f, raw)
-            : raw;
+            : (f.type === 'struct-list' && f.inclusion?.where)
+              ? matchEntries(raw, f.inclusion.where)
+              : raw;
         }
 
         // Skip the entire block if no included field has a non-empty value —

@@ -1,4 +1,5 @@
 import { activeEntries } from '../util/countdown.js';
+import { matchEntries } from '../util/matchEntries.js';
 
 const DEFAULT_ACTIVE_WINDOW = 5;
 
@@ -45,6 +46,9 @@ const COMMANDS_HELP = [
   'DELTA <subject> <tracker>.<field> <±N>',
   'ADD <subject> <tracker>.<field> "<entry>"                       (list fields — entry is a SHORT name only)',
   'ADD <subject> <tracker>.<field> "<name>" = "<descriptor>"       (pair-list fields)',
+  'ADD <subject> <tracker>.<field> "<name>" key=value key2="value two"  (struct-list — sub-fields)',
+  'SET <subject> <tracker>.<field> "<name>" key=value                   (update struct-list sub-fields)',
+  'DELTA <subject> <tracker>.<field> "<name>" amount ±N               (struct-list — engine math)',
   'REMOVE <subject> <tracker>.<field> "<entry-or-name>"',
   'REPLACE <subject> <tracker>.<field> "<old>" WITH "<new>"        (state change of an existing entry/value)',
   'NEW_SUBJECT <name> <role>',
@@ -64,8 +68,16 @@ const COMMANDS_HELP = [
 
 function formatValue(field, value) {
   if (value === undefined || value === null) {
-    if (field.type === 'list' || field.type === 'pair-list') return '[]';
+    if (field.type === 'list' || field.type === 'pair-list' || field.type === 'struct-list') return '[]';
     return field.type === 'number' ? '0' : '""';
+  }
+  if (field.type === 'struct-list') {
+    const subs = field.fields ?? [];
+    const rows = (Array.isArray(value) ? value : []).map(r => {
+      const parts = subs.filter(s => r[s.id] !== '' && r[s.id] != null && r[s.id] !== s.default).map(s => `${s.id}=${r[s.id]}`);
+      return `"${r.name}" ${parts.join(' ')}`.trim();
+    });
+    return rows.length ? `[\n      ${rows.join('\n      ')}\n    ]` : '[]';
   }
   if (field.type === 'list') return JSON.stringify(value);
   if (field.type === 'pair-list') {
@@ -89,6 +101,10 @@ function fieldTypeAnnotation(field) {
   }
   if (field.type === 'enum') return `enum: ${field.options.join('|')}`;
   if (field.type === 'pair-list') return 'pair-list (entries are "name = descriptor")';
+  if (field.type === 'struct-list') {
+    const subs = (field.fields ?? []).map(s => s.type === 'enum' ? `${s.id}(${(s.options ?? []).join('|')})` : `${s.id}:${s.type}`).join(', ');
+    return `struct-list (rows keyed by name; sub-fields: ${subs})`;
+  }
   return field.type;
 }
 
@@ -145,8 +161,11 @@ export class AutoUpdate {
           const raw = this.engine.values.getField(subj.id, t.id, f.id) ?? f.default;
           const val = (f.type === 'list' && f.inclusion?.activeWindow != null)
             ? activeEntries(this.engine, subj.id, t.id, f, raw)
-            : raw;
+            : (f.type === 'struct-list' && f.inclusion?.where)
+              ? matchEntries(raw, f.inclusion.where)
+              : raw;
           lines.push(`  ${t.id}.${f.id} (${fieldTypeAnnotation(f)}) = ${formatValue(f, val)}`);
+          if (f.aiGuidance) lines.push(`    ↳ ${f.aiGuidance}`);
           // For describable list fields, surface each entry's description so the AI
           // can act on recurring-effect rules (e.g. "+5 arousal / turn").
           if (f.type === 'list' && f.describable && Array.isArray(val)) {

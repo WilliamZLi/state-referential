@@ -117,3 +117,37 @@ test('malformed REPLACE without WITH is ignored', () => {
   const r = parseCommands(`REPLACE Cersia inv.items "magic staff" "broken"`);
   assert.deepStrictEqual(r, []);
 });
+
+test('ADD with key=value tail parses struct-list sub-fields', () => {
+  const [c] = parseCommands('ADD Cersia ledger.threads "Merchant debt" detail="owed for lantern" amount=50 status=open');
+  assert.equal(c.op, 'ADD'); assert.equal(c.entry, 'Merchant debt');
+  assert.deepEqual(c.fields, { detail: 'owed for lantern', amount: '50', status: 'open' });
+});
+
+test('ADD with "name" = "descriptor" still parses as pair-list (not struct)', () => {
+  const [c] = parseCommands('ADD Cersia rel.bonds "Khola" = "a merchant"');
+  assert.equal(c.descriptor, 'a merchant');
+  assert.equal(c.fields, undefined);
+});
+
+test('SET "name" key=value parses struct-list update', () => {
+  const [c] = parseCommands('SET Cersia ledger.threads "Merchant debt" status=fulfilled');
+  assert.equal(c.op, 'SET'); assert.equal(c.entry, 'Merchant debt');
+  assert.deepEqual(c.fields, { status: 'fulfilled' });
+});
+
+test('SET scalar form (= value) is unchanged', () => {
+  const [c] = parseCommands('SET Cersia stats.mood = "calm"');
+  assert.equal(c.value, 'calm'); assert.equal(c.entry, undefined);
+});
+
+test('DELTA "name" sub ±N parses struct-list sub-field delta', () => {
+  const [c] = parseCommands('DELTA Cersia ledger.threads "Merchant debt" amount -10');
+  assert.equal(c.op, 'DELTA'); assert.equal(c.entry, 'Merchant debt');
+  assert.equal(c.subField, 'amount'); assert.equal(c.delta, -10);
+});
+
+test('DELTA scalar form is unchanged', () => {
+  const [c] = parseCommands('DELTA Cersia stats.arousal +5');
+  assert.equal(c.delta, 5); assert.equal(c.entry, undefined);
+});

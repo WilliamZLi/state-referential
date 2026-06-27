@@ -224,3 +224,113 @@ test('tracker that becomes empty clears its previous extension prompt slot', () 
   const secondCall = calls.find(c => c.k === `tracker:${p.id}:outfit`);
   assert.ok(secondCall && secondCall.t === '', 'cleared field should clear the previous injection slot');
 });
+
+// ── Test 9 & 10: struct-list injection with inclusion.where filter ─────────────
+
+function mkLedgerInjection({ allFulfilled = false } = {}) {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'ledger',
+    label: 'Ledger',
+    injection: { enabled: true, trigger: 'always', position: 'in-prompt', depth: 4, template: '{{fields}}' },
+    fields: [
+      {
+        id: 'threads',
+        label: 'Threads',
+        type: 'struct-list',
+        injection: { enabled: true },
+        inclusion: { where: { status: ['open'] } },
+        fields: [
+          { id: 'name',   label: 'Name',   type: 'text' },
+          { id: 'detail', label: 'Detail', type: 'text' },
+          { id: 'amount', label: 'Amount', type: 'number', min: 0 },
+          { id: 'status', label: 'Status', type: 'enum', options: ['open', 'fulfilled'] },
+        ],
+      },
+    ],
+  });
+  const p = eng.addSubject('Player', { role: 'protagonist' });
+
+  if (allFulfilled) {
+    eng.setField(p.id, 'ledger', 'threads', [
+      { name: 'Old quest', status: 'fulfilled' },
+    ]);
+  } else {
+    eng.setField(p.id, 'ledger', 'threads', [
+      { name: 'Merchant debt', amount: 40, status: 'open' },
+      { name: 'Old quest', status: 'fulfilled' },
+    ]);
+  }
+
+  const calls = [];
+  const inj = new Injection(eng, { setExtensionPrompt: (k, t, pos, d) => calls.push({ k, t, pos, d }) });
+
+  return {
+    runAndGetPrompt(trackerId) {
+      inj.run();
+      const key = `tracker:${p.id}:${trackerId}`;
+      const call = calls.find(c => c.k === key);
+      return call ? call.t : '';
+    },
+  };
+}
+
+test('struct-list injection renders open rows only, one line each', () => {
+  const r = mkLedgerInjection(); // helper: ledger always-on, where status:[open], 2 rows (one open, one fulfilled)
+  const out = r.runAndGetPrompt('ledger');
+  assert.match(out, /Merchant debt/);          // open row present
+  assert.match(out, /amount: 40/);
+  assert.doesNotMatch(out, /Old quest/);        // fulfilled row filtered out
+});
+
+test('struct-list injection skips the block when no row passes the filter', () => {
+  const r = mkLedgerInjection({ allFulfilled: true });
+  assert.equal(r.runAndGetPrompt('ledger'), ''); // nothing injected
+});
+
+// ── Test 10 (T5 gap): filter sub-field name must not appear in rendered output ──
+
+test('struct-list injection does not render the filter sub-field (status) in output', () => {
+  const r = mkLedgerInjection(); // where: { status: ['open'] }
+  const out = r.runAndGetPrompt('ledger');
+  assert.doesNotMatch(out, /status/, 'filter key sub-field must be suppressed from rendered rows');
+});
+
+// ── Test 11 (FIX 2): default-valued sub-fields omitted; non-default rendered ───
+
+test('struct-list injection omits sub-field when value equals default, renders when non-default', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'ledger',
+    label: 'Ledger',
+    injection: { enabled: true, trigger: 'always', position: 'in-prompt', depth: 4, template: '{{fields}}' },
+    fields: [
+      {
+        id: 'threads',
+        label: 'Threads',
+        type: 'struct-list',
+        injection: { enabled: true },
+        fields: [
+          { id: 'detail', label: 'Detail', type: 'text', default: '' },
+          { id: 'amount', label: 'Amount', type: 'number', default: 0, min: 0 },
+        ],
+      },
+    ],
+  });
+  const p = eng.addSubject('Player', { role: 'protagonist' });
+  eng.setField(p.id, 'ledger', 'threads', [
+    { name: 'Zero debt', detail: '', amount: 0 },    // amount at default
+    { name: 'Real debt', detail: '', amount: 40 },   // amount non-default
+  ]);
+  const calls = [];
+  const inj = new Injection(eng, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const call = calls.find(c => c.k === `tracker:${p.id}:ledger`);
+  assert.ok(call, 'expected injection call');
+  const out = call.t;
+  // Row with amount=0 must NOT render "amount:" (it's the default value)
+  const zeroDebtLine = out.split('\n').find(l => l.includes('Zero debt')) ?? '';
+  assert.doesNotMatch(zeroDebtLine, /amount/, 'amount:0 (default) must be omitted from Zero debt row');
+  // Row with amount=40 must render "amount: 40"
+  assert.match(out, /amount: 40/);
+});
