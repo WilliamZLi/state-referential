@@ -358,7 +358,13 @@ export function makeRenderers(engine, deps) {
           title: field.label,
           subFields: subs,
           entry: row,
-          onSave: (name, raw) => engine.setStruct(subj.id, t, f, name, coerceStructInputs(subs, raw), { source: 'manual' }),
+          onSave: (newName, raw) => {
+            const finalName = String(newName ?? '').trim() || row.name;
+            const patch = coerceStructInputs(subs, raw);
+            // Rename = drop the old row, re-add under the new name (mirrors pair-list).
+            if (finalName !== row.name) engine.removeStruct(subj.id, t, f, row.name, { source: 'manual' });
+            engine.setStruct(subj.id, t, f, finalName, patch, { source: 'manual' });
+          },
         });
       };
       for (const row of cur) {

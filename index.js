@@ -613,7 +613,9 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const openStructEntryModal = async ({ title, subFields, entry, onSave }) => {
     const $f = $('<div class="strk-struct-modal"></div>');
     $f.append($('<h4></h4>').text(title));
-    $f.append($('<div class="strk-struct-name"></div>').text(entry?.name ?? ''));
+    // Editable name — renaming is remove-old + set-new (handled by onSave in the renderer).
+    const $name = $('<input type="text" class="text_pole" />').val(entry?.name ?? '');
+    $f.append($('<label class="strk-fdet-row"></label>').append($('<span></span>').text('Name')).append($name));
     const inputs = {};
     for (const sf of (subFields ?? [])) {
       const cur = entry?.[sf.id];
@@ -636,7 +638,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     const $save = $('<button class="menu_button">Save</button>').on('click', () => {
       const raw = {};
       for (const sf of (subFields ?? [])) raw[sf.id] = inputs[sf.id].val();
-      onSave?.(entry?.name, raw);
+      onSave?.($name.val(), raw);
       _closePopup($f);
     });
     $f.append($('<div class="strk-fdet-actions"></div>').append($save));
@@ -1102,5 +1104,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-27-struct-list-ui');
+  console.log('[state-referential] ready — build 2026-06-27-struct-rename');
 })();
