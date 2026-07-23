@@ -629,7 +629,8 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
         $in = $('<input type="number" class="text_pole" />').val(cur ?? sf.default ?? 0);
         if (sf.min != null) $in.attr('min', sf.min);
       } else {
-        $in = $('<input type="text" class="text_pole" />').val(cur ?? '');
+        // text sub-fields (e.g. `detail`) get a roomy multi-line box.
+        $in = $('<textarea class="text_pole" rows="4"></textarea>').val(cur ?? '');
       }
       inputs[sf.id] = $in;
       $lbl.append($in);
@@ -1104,5 +1105,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-27-struct-rename');
+  console.log('[state-referential] ready — build 2026-06-27-struct-detail-box');
 })();
