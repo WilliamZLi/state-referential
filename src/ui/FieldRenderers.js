@@ -1,3 +1,5 @@
+import { coerceStructInputs } from './structEntryForm.js';
+
 /**
  * Compute whether a field's inclusion rule currently passes.
  *
@@ -342,6 +344,35 @@ export function makeRenderers(engine, deps) {
           : prompt(`Name for new ${field.label} entry:`);
         if (!name || !String(name).trim()) return;
         engine.setPair(subj.id, t, f, String(name).trim(), '', { source: 'manual' });
+      });
+      $cluster.append($add);
+      return row(field, subj, $cluster, []);
+    },
+    'struct-list': (field, subj) => {
+      const t = field._trackerId, f = field.id;
+      const cur = engine.getField(subj.id, t, f) ?? [];
+      const subs = field.fields ?? [];
+      const $cluster = $('<div class="strk-chip-cluster"></div>');
+      const openEntry = (row) => {
+        deps.openStructEntryModal?.({
+          title: field.label,
+          subFields: subs,
+          entry: row,
+          onSave: (name, raw) => engine.setStruct(subj.id, t, f, name, coerceStructInputs(subs, raw), { source: 'manual' }),
+        });
+      };
+      for (const row of cur) {
+        if (!row?.name) continue;
+        const $chip = $('<span class="strk-chip"></span>').text(row.name);
+        $chip.attr('title', 'Click to edit; right-click to remove');
+        $chip.on('click', () => openEntry(row));
+        $chip.on('contextmenu', (e) => { e.preventDefault(); engine.removeStruct(subj.id, t, f, row.name, { source: 'manual' }); });
+        $cluster.append($chip);
+      }
+      const $add = $('<button class="strk-field-icon">+</button>').on('click', async () => {
+        const name = deps.dialogs ? await deps.dialogs.prompt(`Name for new ${field.label} entry:`) : prompt(`Name for new ${field.label} entry:`);
+        if (!name || !String(name).trim()) return;
+        engine.setStruct(subj.id, t, f, String(name).trim(), {}, { source: 'manual' });
       });
       $cluster.append($add);
       return row(field, subj, $cluster, []);

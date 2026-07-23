@@ -610,6 +610,39 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', { wide: true });
   };
 
+  const openStructEntryModal = async ({ title, subFields, entry, onSave }) => {
+    const $f = $('<div class="strk-struct-modal"></div>');
+    $f.append($('<h4></h4>').text(title));
+    $f.append($('<div class="strk-struct-name"></div>').text(entry?.name ?? ''));
+    const inputs = {};
+    for (const sf of (subFields ?? [])) {
+      const cur = entry?.[sf.id];
+      const $lbl = $('<label class="strk-fdet-row"></label>').append($('<span></span>').text(sf.label ?? sf.id));
+      let $in;
+      if (sf.type === 'enum') {
+        $in = $('<select class="text_pole"></select>');
+        for (const o of (sf.options ?? [])) $in.append($('<option></option>').val(o).text(o));
+        $in.val(cur ?? sf.default ?? (sf.options ?? [])[0] ?? '');
+      } else if (sf.type === 'number') {
+        $in = $('<input type="number" class="text_pole" />').val(cur ?? sf.default ?? 0);
+        if (sf.min != null) $in.attr('min', sf.min);
+      } else {
+        $in = $('<input type="text" class="text_pole" />').val(cur ?? '');
+      }
+      inputs[sf.id] = $in;
+      $lbl.append($in);
+      $f.append($lbl);
+    }
+    const $save = $('<button class="menu_button">Save</button>').on('click', () => {
+      const raw = {};
+      for (const sf of (subFields ?? [])) raw[sf.id] = inputs[sf.id].val();
+      onSave?.(entry?.name, raw);
+      _closePopup($f);
+    });
+    $f.append($('<div class="strk-fdet-actions"></div>').append($save));
+    await callGenericPopup($f[0], POPUP_TYPE.DISPLAY, '', {});
+  };
+
   const openSubjectAddModal = async (opts = {}) => {
     const html = await loadTemplate('subject-add-modal');
     const $f = $(html);
@@ -671,6 +704,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     popup,
     dialogs,
     openProseModal,
+    openStructEntryModal,
     openSubjectAddModal,
     openSceneRosterModal,
     requestProbe: (subjId, trackerId, fieldId, value) => {
@@ -1068,5 +1102,5 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     _engine: engine,
   };
 
-  console.log('[state-referential] ready — build 2026-06-27-struct-list');
+  console.log('[state-referential] ready — build 2026-06-27-struct-list-ui');
 })();

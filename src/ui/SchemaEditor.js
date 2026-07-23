@@ -1,4 +1,5 @@
 import { loadTemplate, loadPreset } from './shared.js';
+import { subFieldToRow, rowToSubField } from './structSchemaForm.js';
 
 export class SchemaEditor {
   constructor(engine, deps) {
@@ -61,7 +62,7 @@ export class SchemaEditor {
 
       // Type — with confirm on change
       const $sel = $('<select class="text_pole f-type"></select>');
-      for (const t of ['text', 'number', 'enum', 'list', 'pair-list', 'prose']) {
+      for (const t of ['text', 'number', 'enum', 'list', 'pair-list', 'prose', 'struct-list']) {
         $sel.append($('<option></option>').val(t).text(t));
       }
       $sel.val(f.type ?? 'text');
@@ -344,6 +345,38 @@ export class SchemaEditor {
     $('.strk-fdet-incl-active-window', $d).val(orig.inclusion?.activeWindow ?? 5);
     $('.strk-fdet-probe-profile', $d).val(orig.probeProfile ?? 'generic');
 
+    // Struct-list sub-fields + aiGuidance
+    const $subBody = $('.strk-fdet-sub-body', $d);
+    const renderSubRow = (r) => {
+      const $tr = $('<tr></tr>');
+      $tr.append($('<td><input class="text_pole sf-id" style="width:6em" /></td>').find('input').val(r.id).end());
+      $tr.append($('<td><input class="text_pole sf-label" style="width:7em" /></td>').find('input').val(r.label).end());
+      const $ty = $('<select class="text_pole sf-type"></select>');
+      for (const t of ['text', 'number', 'enum']) $ty.append($('<option></option>').val(t).text(t));
+      $ty.val(r.type);
+      $tr.append($('<td></td>').append($ty));
+      // Options (enum) OR min (number), shown by type
+      const $opts = $('<textarea class="text_pole sf-options" rows="2" placeholder="one option per line"></textarea>').val(r.optionsText ?? '');
+      const $min = $('<input type="number" class="text_pole sf-min" placeholder="min" style="width:5em" />').val(r.minText ?? '');
+      const $cfg = $('<td></td>').append($opts).append($min);
+      const applyTypeVis = () => {
+        const t = $ty.val();
+        $opts.toggleClass('strk-hidden', t !== 'enum');
+        $min.toggleClass('strk-hidden', t !== 'number');
+      };
+      applyTypeVis();
+      $ty.on('change', applyTypeVis);
+      $tr.append($cfg);
+      const $del = $('<td><button class="menu_button" type="button" title="Remove sub-field">×</button></td>');
+      $del.find('button').on('click', () => $tr.remove());
+      $tr.append($del);
+      $subBody.append($tr);
+    };
+    $subBody.empty();
+    for (const sf of (orig.fields ?? [])) renderSubRow(subFieldToRow(sf));
+    $('.strk-fdet-sub-add', $d).on('click', () => renderSubRow({ id: '', label: '', type: 'text', optionsText: '', minText: '' }));
+    $('.strk-fdet-ai-guidance', $d).val(orig.aiGuidance ?? '');
+
     // Apply visibility for current type
     this._applyFieldDetailsVisibility($d, fieldType, inclRule);
 
@@ -416,6 +449,25 @@ export class SchemaEditor {
       if (probeProfile && probeProfile !== 'generic') updatedOrig.probeProfile = probeProfile;
       else delete updatedOrig.probeProfile;
 
+      // Struct-list sub-fields + aiGuidance
+      if (curType === 'struct-list') {
+        const subs = [];
+        $('.strk-fdet-sub-body tr', $d).each((_, tr) => {
+          const $r = $(tr);
+          const sf = rowToSubField({
+            id: $('.sf-id', $r).val(), label: $('.sf-label', $r).val(), type: $('.sf-type', $r).val(),
+            optionsText: $('.sf-options', $r).val(), minText: $('.sf-min', $r).val(),
+          });
+          if (sf) subs.push(sf);
+        });
+        updatedOrig.fields = subs;
+        const guide = $('.strk-fdet-ai-guidance', $d).val().trim();
+        if (guide) updatedOrig.aiGuidance = guide; else delete updatedOrig.aiGuidance;
+      } else {
+        delete updatedOrig.fields;
+        delete updatedOrig.aiGuidance;
+      }
+
       $tr.data('original', updatedOrig);
       detailsPopupClose?.();
     });
@@ -456,6 +508,15 @@ export class SchemaEditor {
       $('.strk-fdet-number-only', $d).addClass('strk-hidden');
       $('.strk-fdet-default-text', $d).removeClass('strk-hidden');
       $('.strk-fdet-default-number', $d).addClass('strk-hidden');
+    }
+
+    // Show/hide struct-list-only section
+    if (fieldType === 'struct-list') {
+      $('.strk-fdet-struct-only', $d).removeClass('strk-hidden');
+      $('.strk-fdet-default-text', $d).addClass('strk-hidden');
+      $('.strk-fdet-default-number', $d).addClass('strk-hidden');
+    } else {
+      $('.strk-fdet-struct-only', $d).addClass('strk-hidden');
     }
 
     // Inclusion conditional rows

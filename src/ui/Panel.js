@@ -40,6 +40,7 @@ export class Panel {
       popup: this.deps.popup,
       dialogs: this.deps.dialogs,
       openProseModal: this.deps.openProseModal,
+      openStructEntryModal: this.deps.openStructEntryModal,
       requestProbe: this.deps.requestProbe,
       descProbe: this.deps.descProbe,
       autoUpdate: this.deps.autoUpdate,

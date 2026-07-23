@@ -101,6 +101,8 @@ export class TrackerEngine {
   getListMeta(s, t, f) { return this.values.getListMeta(s, t, f); }
   setPair(s, t, f, name, descriptor, opts) { this.values.setPair(s, t, f, name, descriptor, opts); }
   removePair(s, t, f, name, opts) { this.values.removePair(s, t, f, name, opts); }
+  setStruct(s, t, f, name, patch, opts) { this.values.setStruct(s, t, f, name, patch, opts); }
+  removeStruct(s, t, f, name, opts) { this.values.removeStruct(s, t, f, name, opts); }
 
   // Descriptions
   getDescription(s, t, f, v) { return this.values.getDescription(s, t, f, v); }
