@@ -629,8 +629,21 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
         $in = $('<input type="number" class="text_pole" />').val(cur ?? sf.default ?? 0);
         if (sf.min != null) $in.attr('min', sf.min);
       } else {
-        // text sub-fields (e.g. `detail`) get a roomy multi-line box.
-        $in = $('<textarea class="text_pole" rows="4"></textarea>').val(cur ?? '');
+        // text sub-fields (e.g. `detail`) get a multi-line box that opens tall
+        // enough to show the whole value, then auto-grows as you type (capped,
+        // scrolls past the cap). rows= gives a sensible size before the popup
+        // mounts; the post-mount autosize fits exact content incl. wrapping.
+        const text = String(cur ?? '');
+        const initialRows = Math.min(Math.max(text.split('\n').length + 1, 6), 22);
+        $in = $('<textarea class="text_pole"></textarea>').attr('rows', initialRows).val(text);
+        const autosize = (el) => {
+          el.style.height = 'auto';
+          el.style.height = Math.min(el.scrollHeight, 520) + 'px';
+          el.style.overflowY = el.scrollHeight > 520 ? 'auto' : 'hidden';
+        };
+        const el = $in[0];
+        $in.on('input', () => autosize(el));
+        setTimeout(() => autosize(el), 0); // after callGenericPopup mounts it
       }
       inputs[sf.id] = $in;
       $lbl.append($in);
