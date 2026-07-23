@@ -14,6 +14,12 @@ export const info = {
 export async function init(router) {
   const DATA_ROOT = path.resolve(process.env.DATA_ROOT ?? path.join(process.cwd(), 'data'));
 
+  // Snapshots embed a full state clone each (~8.7KB) and the store caps at 20,
+  // so a snapshots flush reaches ~175KB — well past the 100KB default of a bare
+  // express.json(). That bare parser silently 413s those flushes (see body-limit.test.js).
+  // Every JSON body parser below uses this generous limit instead.
+  const JSON_BODY = express.json({ limit: '25mb' });
+
   function getUserDir(req) {
     const name = req.user?.name ?? req.session?.user?.name ?? 'default';
     return path.join(DATA_ROOT, name, 'state-trackers', 'worlds');
@@ -46,7 +52,7 @@ export async function init(router) {
   });
 
   // ── POST /worlds ──────────────────────────────────────────────────────────────
-  router.post('/worlds', express.json(), async (req, res) => {
+  router.post('/worlds', JSON_BODY, async (req, res) => {
     try {
       const meta = req.body;
       if (!meta?.id || typeof meta.id !== 'string') return err(res, 400, 'id required');
@@ -80,7 +86,7 @@ export async function init(router) {
   // data-loss artifact. Multiple writers of the same world.json (lock heartbeat
   // + tracker backend) are serialized by path inside mergeJson. The heartbeat
   // swallows the 404, so patching a deleted world is a harmless no-op.
-  router.put('/worlds/:id/meta', express.json(), async (req, res) => {
+  router.put('/worlds/:id/meta', JSON_BODY, async (req, res) => {
     try {
       const base = getUserDir(req);
       const p = safePath(base, req.params.id, 'world.json');
@@ -115,7 +121,7 @@ export async function init(router) {
   });
 
   // ── PUT /worlds/:id/:resource ─────────────────────────────────────────────────
-  router.put('/worlds/:id/:resource', express.json(), async (req, res) => {
+  router.put('/worlds/:id/:resource', JSON_BODY, async (req, res) => {
     const allowed = new Set(['values', 'descriptions', 'snapshots', 'chronicle']);
     if (!allowed.has(req.params.resource)) return err(res, 400, 'unknown resource');
     try {
@@ -141,7 +147,7 @@ export async function init(router) {
   });
 
   // ── POST /worlds/import ───────────────────────────────────────────────────────
-  router.post('/worlds/import', express.json({ limit: '10mb' }), async (req, res) => {
+  router.post('/worlds/import', JSON_BODY, async (req, res) => {
     try {
       const bundle = req.body;
       if (!bundle?.['world.json']?.id) return err(res, 400, 'invalid bundle');
