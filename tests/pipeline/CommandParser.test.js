@@ -58,6 +58,22 @@ test('ADD pair-list with an escaped quote in the name still finds the = descript
   assert.deepStrictEqual(r, [{ op: 'ADD', subject: 'Cersia', tracker: 'rel', field: 'bonds', entry: 'the 6" knife', descriptor: 'trusty' }]);
 });
 
+test('struct-list sub-field value: \\n escapes become real newlines (multi-line detail on one command line)', () => {
+  const r = parseCommands(`SET Cersia ledger.threads "Khola's bill" detail="Principal: 20,000g.\\nWeekly fees: ~700g.\\nBuy-out: 50,000g." amount=20000`);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].op, 'SET');
+  assert.equal(r[0].entry, "Khola's bill");
+  assert.equal(r[0].fields.detail, 'Principal: 20,000g.\nWeekly fees: ~700g.\nBuy-out: 50,000g.');
+  assert.equal(r[0].fields.detail.split('\n').length, 3, 'three real lines');
+  assert.equal(r[0].fields.amount, '20000');
+});
+
+test('escaped backslash before n stays literal (\\\\n does NOT become a newline)', () => {
+  const r = parseCommands(`SET Cersia lore.note = "path C:\\\\name still literal"`);
+  assert.equal(r[0].value, 'path C:\\name still literal');
+  assert.ok(!r[0].value.includes('\n'), 'no real newline introduced');
+});
+
 test('NEW_SUBJECT with role', () => {
   const r = parseCommands(`NEW_SUBJECT "Cult Priest" npc`);
   assert.deepStrictEqual(r, [{ op: 'NEW_SUBJECT', name: 'Cult Priest', role: 'npc' }]);

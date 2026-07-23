@@ -3,12 +3,18 @@
 // doubles — leaving single curly quotes alone avoids mangling apostrophes.
 const SMART = /[“”]/g;
 
-// Reverse the AI's JSON-style escaping of a quote char inside a value:
-// \" -> ", \' -> ', \\ -> \. Other backslashes (e.g. \n in prose) are left
-// untouched. Without this, a value like "3\" stiletto heels" stores the literal
-// backslash and renders as 3\" in the prompt.
+// Reverse the AI's JSON-style escaping inside a quoted value:
+//   \" -> "   \' -> '   \\ -> \      (restore a literal char)
+//   \n -> newline   \t -> tab   \r -> CR   (real whitespace)
+// The whitespace escapes let the writer format a multi-line value — e.g. an
+// itemized ledger `detail` — while keeping the whole command on ONE line, since
+// parseCommands splits its input on real newlines first (a real newline in the
+// value would otherwise break the command across lines). `\\n` (escaped
+// backslash + n) correctly stays literal: the two-char match consumes the `\\`
+// first. Without this, a value like "3\" heels" stores the literal backslash.
 function unescapeQuoted(s) {
-  return s.replace(/\\(["'\\])/g, '$1');
+  return s.replace(/\\([ntr"'\\])/g, (_m, ch) =>
+    ch === 'n' ? '\n' : ch === 't' ? '\t' : ch === 'r' ? '\r' : ch);
 }
 
 function stripQuotes(s) {
