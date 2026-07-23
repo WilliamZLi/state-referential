@@ -71,16 +71,23 @@ function buildFieldsBlock(tracker, subjectId, fieldValues, engine) {
       if (!Array.isArray(raw) || raw.length === 0) continue;
       const subs = f.fields ?? [];
       const filterKeys = new Set(Object.keys(f.inclusion?.where ?? {})); // don't print the filter field (e.g. status)
+      const hasDetail = subs.some(s => s.id === 'detail');
       lines.push(`${f.label}:`);
       for (const row of raw) {
         if (!row?.name) continue;
-        const detailSub = subs.find(s => s.id === 'detail');
-        const head = detailSub && row.detail ? `${row.name} — ${row.detail}` : row.name;
         const extras = subs
           .filter(s => s.id !== 'detail' && !filterKeys.has(s.id))
           .filter(s => row[s.id] !== '' && row[s.id] != null && row[s.id] !== s.default)
           .map(s => `${s.label.toLowerCase()}: ${row[s.id]}`);
-        lines.push(`  - ${head}${extras.length ? ` (${extras.join(', ')})` : ''}`);
+        const extrasStr = extras.length ? ` (${extras.join(', ')})` : '';
+        const detail = hasDetail ? String(row.detail ?? '') : '';
+        if (detail.includes('\n')) {
+          // Multi-part detail: a header line, then each point on its own indented line.
+          lines.push(`  - ${row.name}${extrasStr}:`);
+          for (const dl of detail.split('\n')) { if (dl.trim()) lines.push(`      ${dl.trim()}`); }
+        } else {
+          lines.push(`  - ${detail ? `${row.name} — ${detail}` : row.name}${extrasStr}`);
+        }
       }
       continue;
     }

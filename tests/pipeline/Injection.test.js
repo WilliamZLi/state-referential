@@ -334,3 +334,43 @@ test('struct-list injection omits sub-field when value equals default, renders w
   // Row with amount=40 must render "amount: 40"
   assert.match(out, /amount: 40/);
 });
+
+// ── Multi-line detail renders as an indented block; single-line stays inline ──
+
+test('struct-list injection indents a multi-line detail under the thread, keeps single-line inline', () => {
+  const eng = new TrackerEngine(new InMemoryBackend());
+  eng.defineTracker({
+    id: 'ledger',
+    label: 'Ledger',
+    injection: { enabled: true, trigger: 'always', position: 'in-prompt', depth: 4, template: '{{fields}}' },
+    fields: [
+      {
+        id: 'threads',
+        label: 'Threads',
+        type: 'struct-list',
+        injection: { enabled: true },
+        fields: [
+          { id: 'detail', label: 'Detail', type: 'text', default: '' },
+          { id: 'amount', label: 'Amount', type: 'number', default: 0, min: 0 },
+        ],
+      },
+    ],
+  });
+  const p = eng.addSubject('Player', { role: 'protagonist' });
+  eng.setField(p.id, 'ledger', 'threads', [
+    { name: "Khola's bill", detail: 'Frozen principal: 20,000g.\nWeekly fees: ~700g.\nBuy-out: 50,000g.', amount: 20000 },
+    { name: 'Simple vow', detail: 'Return the borrowed blade.' },
+  ]);
+  const calls = [];
+  const inj = new Injection(eng, { setExtensionPrompt: (k, t) => calls.push({ k, t }) });
+  inj.run();
+  const out = (calls.find(c => c.k === `tracker:${p.id}:ledger`) ?? {}).t ?? '';
+  const outLines = out.split('\n');
+
+  // Multi-line detail: header carries name + extras, each detail point on its own indented line.
+  assert.ok(outLines.some(l => l === "  - Khola's bill (amount: 20000):"), 'multi-line detail gets a header line');
+  assert.ok(outLines.some(l => l === '      Frozen principal: 20,000g.'), 'first detail point indented');
+  assert.ok(outLines.some(l => l === '      Buy-out: 50,000g.'), 'last detail point indented');
+  // Single-line detail stays inline with the em dash.
+  assert.ok(outLines.some(l => l === '  - Simple vow — Return the borrowed blade.'), 'single-line detail inline');
+});

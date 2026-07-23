@@ -15,7 +15,7 @@
       "id": "threads", "label": "Threads", "type": "struct-list",
       "inclusion": { "rule": "always", "where": { "status": ["open"] } },
       "injection": { "enabled": true },
-      "aiGuidance": "Track obligations the protagonist takes on or resolves — promises, debts, quests, goals, grudges. ADD a row when one is created; DELTA `amount` for partial changes (e.g. paying down a debt); SET `status` to `fulfilled` (the protagonist came through) or `failed` (didn't / reneged / no longer applies) when it resolves. Reuse the EXACT name shown; don't restate threads already listed.",
+      "aiGuidance": "Track obligations the protagonist takes on or resolves — promises, debts, quests, goals, grudges. ADD a row when one is created; DELTA `amount` for partial changes (e.g. paying down a debt); SET `status` to `fulfilled` (the protagonist came through) or `failed` (didn't / reneged / no longer applies) when it resolves. Reuse the EXACT name shown; don't restate threads already listed. When a `detail` covers several parts (a contract's terms, a debt's principal vs. ongoing fees, a goal's sub-steps), write it as multiple lines separated by newlines — one point per line — instead of a run-on sentence. Keep all the substance; the line breaks are only for readability.",
       "fields": [
         { "id": "detail", "label": "Detail", "type": "text", "default": "" },
         { "id": "amount", "label": "Amount", "type": "number", "min": 0, "default": 0 },
