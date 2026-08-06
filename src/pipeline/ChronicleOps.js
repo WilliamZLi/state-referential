@@ -1,5 +1,5 @@
 // src/pipeline/ChronicleOps.js
-import { buildTranscript } from '../util/transcript.js';
+import { buildTranscript, IN_WORLD_RECAP_RULE } from '../util/transcript.js';
 import { readTrackerMsgId } from '../util/id.js';
 
 export class ChronicleOps {
@@ -82,6 +82,7 @@ export class ChronicleOps {
       'The transcript above is finished. Write ONE paragraph recapping ONLY the NEW events in it — ' +
       'the events already covered by the story-so-far / recent acts above are context only; do not restate them. ' +
       'State what actually happened: factual, past-tense, third person. ' +
+      IN_WORLD_RECAP_RULE + ' ' +
       `Do NOT continue the story, do NOT add anything beyond the transcript, no dialogue. Aim for ~${tokenCap} tokens.`;
     return await this.deps.generateQuietPrompt(prompt);
   }

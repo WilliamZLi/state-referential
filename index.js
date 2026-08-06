@@ -1,7 +1,7 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens } from '../../../../script.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
-import { buildTranscript } from './src/util/transcript.js';
+import { buildTranscript, IN_WORLD_RECAP_RULE } from './src/util/transcript.js';
 
 const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
@@ -159,6 +159,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       + 'happened across ALL of it: key events, actions, decisions, outcomes, and changes to the '
       + 'situation, locations, items, or relationships. Do NOT continue the story, do NOT add anything '
       + 'beyond the transcript, do NOT re-narrate it scene-by-scene. '
+      + IN_WORLD_RECAP_RULE + ' '
       + `Recap only, third person, at most ~${tokenCap} tokens.`;
     // Use the ISOLATED summarizer (generateRaw), not the in-story generateQuietPrompt —
     // otherwise the compaction block comes back as a story continuation rather than a
