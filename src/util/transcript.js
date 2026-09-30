@@ -20,3 +20,14 @@ export const IN_WORLD_RECAP_RULE =
   'or "the conversation", and never mention that these events were recorded or that they ended. ' +
   'At the latest moment, describe the situation itself (e.g. "Cersia stood weighing her choice") — ' +
   'never "when the transcript ended" or any similar meta phrasing.';
+
+// Wrap summarized/condensed content in a <recap> block so the model can tell it
+// apart from the live, current scene (untagged verbatim messages). Used for
+// compaction blocks, the chronicle "story so far" injection, and branch/scene
+// recaps. Each summary surface is wrapped independently — adjacent compaction
+// blocks stay separately decompactable, so they render as consecutive <recap>
+// regions rather than one merged block. Empty input yields '' (no empty tag).
+export function wrapRecap(text) {
+  const t = String(text ?? '').trim();
+  return t ? `<recap>\n${t}\n</recap>` : '';
+}

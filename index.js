@@ -1,7 +1,7 @@
 import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens } from '../../../../script.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
-import { buildTranscript, IN_WORLD_RECAP_RULE } from './src/util/transcript.js';
+import { buildTranscript, IN_WORLD_RECAP_RULE, wrapRecap } from './src/util/transcript.js';
 
 const getContext = () => window.SillyTavern.getContext();
 import { extension_settings } from '../../../extensions.js';
@@ -865,7 +865,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       branchId = getContext().chatId;
     }
     const bc = getContext().chat;
-    if (recapText) bc.push(buildSyntheticMessage({ kind: 'branch-seed-recap', name: 'Story so far', mes: recapText, smallSys: false }));
+    if (recapText) bc.push(buildSyntheticMessage({ kind: 'branch-seed-recap', name: 'Story so far', mes: wrapRecap(recapText), smallSys: false }));
     for (const m of verbatimCopies) bc.push(m);
     const seedMessageCount = bc.length; // boundary between injected context and new side-scene play (used by 3b fold-back)
 
@@ -976,7 +976,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     if (recap && anchorId) {
       await insertSyntheticAfter(stShell, {
         afterTrackerMsgId: anchorId,
-        ...buildFoldbackMarker({ title: bm.title, recap, branchChatId, name: getContext().name2 }),
+        ...buildFoldbackMarker({ title: bm.title, recap: wrapRecap(recap), branchChatId, name: getContext().name2 }),
       });
     } else if (recap) {
       console.warn('[state-referential] branchReturn: no anchor message in mainline; recap not spliced');

@@ -2,6 +2,7 @@ import { computeCompactionRange } from './CompactionRange.js';
 import { saveArchive } from './ArchiveStore.js';
 import { buildSyntheticMessage, spliceAtIndex } from './L3Insert.js';
 import { readTrackerMsgId } from '../util/id.js';
+import { wrapRecap } from '../util/transcript.js';
 
 export class Compaction {
   constructor(deps) { this.deps = deps; }
@@ -32,7 +33,8 @@ export class Compaction {
     const block = buildSyntheticMessage({
       kind: 'compaction',
       name: `Compacted (${range.msgIds.length} msgs)`,
-      mes: summary,
+      mes: wrapRecap(summary), // <recap>…</recap> so the model reads it as past summary, not live scene
+
       smallSys: false, // normal, manageable message (ST keeps hide/edit/delete)
       extra: { l3ArchiveId: archiveId },
     });

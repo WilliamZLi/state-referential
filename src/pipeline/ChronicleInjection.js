@@ -1,5 +1,6 @@
 // src/pipeline/ChronicleInjection.js
 import { resolvePosition } from './Injection.js';
+import { wrapRecap } from '../util/transcript.js';
 
 const KEY = 'world:chronicle';
 const DEFAULT_DEPTH = 0;
@@ -27,6 +28,8 @@ export class ChronicleInjection {
 
     const pos = resolvePosition(cfg.injectPosition ?? 'in-prompt');
     const depth = pos === IN_CHAT ? (cfg.injectDepth ?? 4) : DEFAULT_DEPTH;
-    this.deps.setExtensionPrompt(KEY, lines.join('\n'), pos, depth);
+    // Wrap the story-so-far / recent-acts block in <recap> so it reads as summary
+    // context, matching the compaction blocks. Empty → '' (clears the prompt).
+    this.deps.setExtensionPrompt(KEY, wrapRecap(lines.join('\n')), pos, depth);
   }
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildTranscript } from '../../src/util/transcript.js';
+import { buildTranscript, wrapRecap } from '../../src/util/transcript.js';
 
 test('buildTranscript labels user turns "User" and others by name', () => {
   const t = buildTranscript([
@@ -25,4 +25,16 @@ test('buildTranscript: empty / nullish input → empty string', () => {
 
 test('buildTranscript joins lines with single newlines', () => {
   assert.equal(buildTranscript([{ mes: 'a' }, { mes: 'b' }]), 'Narrator: a\nNarrator: b');
+});
+
+test('wrapRecap wraps non-empty text in a <recap> block', () => {
+  assert.equal(wrapRecap('She weighed her options.'), '<recap>\nShe weighed her options.\n</recap>');
+  assert.equal(wrapRecap('  trims edges  '), '<recap>\ntrims edges\n</recap>');
+});
+
+test('wrapRecap returns empty string for empty/blank/nullish input (no empty tag)', () => {
+  assert.equal(wrapRecap(''), '');
+  assert.equal(wrapRecap('   \n  '), '');
+  assert.equal(wrapRecap(null), '');
+  assert.equal(wrapRecap(undefined), '');
 });

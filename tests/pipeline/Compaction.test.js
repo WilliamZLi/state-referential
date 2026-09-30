@@ -41,7 +41,8 @@ test('compacts the oldest run into a single compaction-block and drops their sna
   assert.equal(res.compacted, true);
   assert.equal(chat.length, 3);
   assert.equal(chat[0].extra.l3Kind, 'compaction');
-  assert.equal(chat[0].mes, 'A terse summary.');
+  // Recap text is wrapped in a <recap> block so the model reads it as past summary, not live scene.
+  assert.equal(chat[0].mes, '<recap>\nA terse summary.\n</recap>');
   assert.equal(chat[0].extra.l3ArchiveId, res.archiveId);
   // Block is a normal, manageable message (NOT small-sys) so ST keeps hide/edit/delete.
   assert.equal(chat[0].extra.isSmallSys, undefined);
