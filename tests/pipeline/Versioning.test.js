@@ -4,7 +4,7 @@ import { TrackerEngine } from '../../src/engine/TrackerEngine.js';
 import { InMemoryBackend } from '../../src/engine/StorageBackend.js';
 import { Versioning } from '../../src/pipeline/Versioning.js';
 
-function mkRig() {
+function mkRig(opts = {}) {
   const eng = new TrackerEngine(new InMemoryBackend());
   eng.defineTracker({ id: 'outfit', label: 'Outfit', autoUpdate: true, fields: [
     { id: 'topwear', label: 'Topwear', type: 'text', inclusion: { rule: 'always' } },
@@ -40,6 +40,7 @@ function mkRig() {
     event_types: { MESSAGE_RECEIVED: 'MR', MESSAGE_SWIPED: 'MSW', MESSAGE_EDITED: 'MED', MESSAGE_DELETED: 'MDEL', CHAT_CHANGED: 'CC' },
     getChat: () => chat,
     getChatId: () => 'chatA',
+    worldBinding: opts.worldBinding, // undefined in legacy tests → gating disabled (proceeds)
     autoUpdate, descProbe, standalone, injection,
     throttleMs: 0,
   });
@@ -53,6 +54,28 @@ function mkRig() {
 
 test('MESSAGE_RECEIVED snapshots, runs auto-update, then probes/injection', async () => {
   const r = mkRig();
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MR', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'red dress');
+  assert.ok(r.eng.loadSnapshot('m-1'));
+});
+
+test('pipeline is DORMANT when a worldBinding is present but the chat is unbound', async () => {
+  const r = mkRig({ worldBinding: { currentWorldId: null } }); // present + unbound
+  r.set(`SET Lyra outfit.topwear = "red dress"`);
+  await r.emit('MR', 0);
+  // No auto-update applied, no snapshot taken, no injection run.
+  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), undefined);
+  assert.strictEqual(r.eng.loadSnapshot('m-1'), undefined);
+  assert.strictEqual(r.injectionRuns(), 0);
+  // Delete/swipe are also no-ops when unbound.
+  await r.emit('MDEL', 0);
+  await r.emit('MSW', 0);
+  assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), undefined);
+});
+
+test('pipeline RUNS when a worldBinding is present and the chat is bound', async () => {
+  const r = mkRig({ worldBinding: { currentWorldId: 'w1' } }); // present + bound
   r.set(`SET Lyra outfit.topwear = "red dress"`);
   await r.emit('MR', 0);
   assert.strictEqual(r.eng.getField(r.p.id, 'outfit', 'topwear'), 'red dress');

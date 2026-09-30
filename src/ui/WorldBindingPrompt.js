@@ -48,6 +48,7 @@ export class WorldBindingPrompt {
           const name = $('#strk-bind-new-name', $f).val().trim() || 'New World';
           await this.deps.worldBinder?.bindCurrentChatToNewWorld?.(name);
         }
+        this.deps.onBindingChanged?.(); // chat is now bound → reveal the UI immediately
         resolve(choice);
       });
       $('#strk-bind-skip', $f).on('click', () => { $f.remove(); resolve(null); });

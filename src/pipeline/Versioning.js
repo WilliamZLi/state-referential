@@ -26,7 +26,18 @@ export class Versioning {
     if (this.deps.debug) console.debug(`[state-referential][stateflow] ${event}`, index ?? '', note);
   }
 
+  // A chat that isn't bound to a world is DORMANT: no snapshots, no auto-update,
+  // no injection — so old/unrelated chats don't run the pipeline or spend tokens.
+  // Only enforced when a worldBinding is wired (production); when it's absent
+  // (unit tests, world-less setups) the pipeline stays active as before.
+  // NOTE: _onChatChanged is deliberately NOT gated — it must run so the backend
+  // is (re)selected and currentWorldId reflects the newly-loaded chat.
+  _dormant() {
+    return !!this.deps.worldBinding && !this.deps.worldBinding.currentWorldId;
+  }
+
   async _onReceived(index) {
+    if (this._dormant()) return;
     if (this._busy) return;
     const chat = this.deps.getChat();
     const msg = chat[index];
@@ -83,6 +94,7 @@ export class Versioning {
   }
 
   async _onSwiped(index) {
+    if (this._dormant()) return;
     const chat = this.deps.getChat();
     const msg = chat[index];
     if (!msg) return;
@@ -104,6 +116,7 @@ export class Versioning {
   }
 
   _onDeleted(index) {
+    if (this._dormant()) return;
     // MESSAGE_DELETED firing-order varies by ST version: some emit BEFORE the
     // chat splice, others AFTER. We handle both.
     //

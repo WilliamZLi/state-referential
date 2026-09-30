@@ -190,6 +190,7 @@ export function register(engine, deps) {
     const binder = deps.worldBinder;
     if (!binder) return 'World model not available.';
     await binder.bindCurrentChat(worldId);
+    deps.onBindingChanged?.(); // reveal the UI now that the chat is bound
     toastr.success(`Bound to World ${worldId}`, 'World Tracker');
     return `Bound current chat to World ${worldId}`;
   }, '/world-bind <worldId> — bind current chat to a World');
@@ -198,6 +199,7 @@ export function register(engine, deps) {
     const binder = deps.worldBinder;
     if (!binder) return 'World model not available.';
     await binder.unbindCurrentChat();
+    deps.onBindingChanged?.(); // chat is now dormant → hide the UI
     toastr.info('Chat unbound from World', 'World Tracker');
     return 'Chat unbound from World. Now using chat-scoped trackers.';
   }, '/world-unbind — unbind current chat from its World');

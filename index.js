@@ -436,10 +436,16 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   _syncDefaultDepthVis();
 
   // Binding prompt — shown on new chats
+  // Reveal/hide the in-chat UI when the current chat's world-binding changes.
+  // Assigned once the panel + toggle button exist (below); a stable closure is
+  // handed to the binding surfaces so definition order doesn't matter.
+  let refreshActiveUI = () => {};
+
   const worldBindingPrompt = new WorldBindingPrompt(worldRegistry, {
     worldBinder,
     getSettings: _strkSettings,
     saveSettingsDebounced,
+    onBindingChanged: () => refreshActiveUI(),
   });
 
   // Show binding prompt when a NEW chat is detected (no messages yet, no worldId bound).
@@ -768,6 +774,22 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   $btn.on('click', () => panel.toggle());
   $('#extensionsMenu').append($btn);
 
+  // A chat "uses the system" only when it's bound to a world. Unbound (old /
+  // unrelated) chats stay dormant: the toggle button is hidden and the panel is
+  // forced closed. The pipeline is gated separately in Versioning (_dormant).
+  const isActive = () => {
+    const m = getContext().chatMetadata ?? {};
+    return !!m.trackerWorldId && m.trackerChatRole !== 'unbound';
+  };
+  const applyActiveState = () => {
+    const active = isActive();
+    $('#strk-menu-button').toggle(active);
+    if (!active) panel.hide();
+  };
+  refreshActiveUI = applyActiveState;       // now the binding surfaces can trigger it
+  applyActiveState();                        // reflect the currently-loaded chat
+  eventSource.on(event_types.CHAT_CHANGED, applyActiveState);
+
   // Integration
   // Register macros using the new MacroRegistry API (ST 1.13+) which supports
   // `::`-separated arguments. Falls back to legacy MacrosParser if unavailable
@@ -786,6 +808,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   });
   SlashCommands.register(engine, {
     SlashCommandParser, SlashCommand, panel, dialogs, autoUpdate, injection, standalone,
+    onBindingChanged: () => refreshActiveUI(),
     getExtensionSettings: () => extension_settings, saveSettingsDebounced,
     worldRegistry, worldBinding, worldBinder, serverApi,
     chronicleOps, getChronicle, chronicleInjection, persistChronicle,
