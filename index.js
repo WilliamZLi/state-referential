@@ -191,6 +191,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   };
 
   const _runAutoCompaction = async () => {
+    if (!worldBinding.currentWorldId) return; // dormant on unbound chats: no context nudge, no auto-compaction
     if (_autoCompactBusy) return;
     const s = l3Settings();
     if (s.auto === 'off') return;
@@ -289,6 +290,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   const REGEN_TYPES = new Set(['regenerate', 'swipe']);
   if (event_types.GENERATION_STARTED) {
     eventSource.on(event_types.GENERATION_STARTED, async (type) => {
+      if (!worldBinding.currentWorldId) return; // dormant on unbound chats
       if (!REGEN_TYPES.has(type)) return;
       // Find the last AI message in chat — that's the one being regenerated/swiped.
       const chat = getContext().chat ?? [];
@@ -308,6 +310,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   // restore (sync handlers fire in order), so injection slots see the
   // already-reverted state.
   eventSource.on(event_types.GENERATE_BEFORE_COMBINE_PROMPTS, () => {
+    if (!worldBinding.currentWorldId) return; // dormant on unbound chats (injection already cleared on chat switch)
     injection.run();
     chronicleInjection.run();
   });
