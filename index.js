@@ -1,10 +1,19 @@
-import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens, substituteParams } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens, substituteParams, isGenerating } from '../../../../script.js';
 import { promptManager } from '../../../openai.js';
 import { resolveNemoSettings } from './src/nemo/settings.js';
 import { computeNemoRuns } from './src/nemo/range.js';
 import { readConsentPrompts } from './src/nemo/consent.js';
 import { makeSummarizer } from './src/nemo/summarize.js';
 import { writeChapterRecap } from './src/nemo/chapter.js';
+import { NemoCompaction } from './src/nemo/compaction.js';
+import { NemoTrigger } from './src/nemo/trigger.js';
+import { restoreChapter as nemoRestoreChapter, unfoldLatest as nemoUnfoldLatest, restoreAll as nemoRestoreAll } from './src/nemo/restore.js';
+import { createSummaryProvider } from './src/nemo/summaryMacro.js';
+import { hasEnabledSummarySlot } from './src/nemo/warnings.js';
+import { isNemoEnabled } from './src/nemo/state.js';
+import { mountNemoPanel } from './src/ui/NemoPanel.js';
+import { mountNemoMarkerButtons } from './src/ui/NemoMarkerButtons.js';
+import { compactResultMessage } from './src/ui/nemoUiLogic.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript, IN_WORLD_RECAP_RULE, wrapRecap } from './src/util/transcript.js';
@@ -344,6 +353,80 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     descProbe,
   });
   await settingsDrawer.mount();
+
+  // ── Nemo compaction wiring ────────────────────────────────────────────────────
+  const waitForIdle = async () => { while (isGenerating()) await new Promise(r => setTimeout(r, 500)); };
+  const nemoCompaction = new NemoCompaction({
+    getChat: stShell.getChat, getMeta: stShell.getMeta, saveChat: stShell.saveChat, reloadChat: stShell.reloadChat,
+    summarize: nemoSummarize, consent: nemoConsent, settings: nemoSettings,
+    genId: newId, now: () => Date.now(), waitForIdle,
+  });
+  const nemoToastResult = (r) => {
+    if (r?.reason === 'no-eligible-range') return;
+    const m = compactResultMessage(r);
+    const fn = toastr[m.level] ?? toastr.info;
+    fn.call(toastr, m.text);
+  };
+  const nemoRunCompact = async () => { const r = await nemoCompaction.compactNow(); nemoToastResult(r); return r; };
+  const nemoGated = (fn, { needEnabled = false } = {}) => async (...a) => {
+    if (nemoCompaction.isBusy()) return { refused: 'busy' };
+    if (needEnabled && !isNemoEnabled(getContext().chatMetadata)) return { refused: 'disabled' };
+    return fn(...a);
+  };
+  let _nemoLastWarn = 0;
+  const nemoTrigger = new NemoTrigger({
+    isEnabled: () => isNemoEnabled(getContext().chatMetadata),
+    settings: nemoSettings,
+    countTokens: t => getContext().getTokenCountAsync(t),
+    compact: nemoRunCompact,
+    nudge: (est) => {
+      toastr.info(`Nemo: prompt ≈ ${est.toLocaleString()} tokens — click to compact.`, '', {
+        timeOut: 15000,
+        onclick: () => { nemoGated(nemoRunCompact, { needEnabled: true })().catch(e => console.error('[nemo] compaction failed', e)); },
+      });
+    },
+    warnStillOver: (est) => {
+      const t = Date.now();
+      if (t - _nemoLastWarn < 60000) return;
+      _nemoLastWarn = t;
+      toastr.warning(`Nemo: prompt ≈ ${est.toLocaleString()} tokens and nothing more can be compacted — the last ${nemoSettings().keepLast} messages are kept verbatim.`);
+    },
+    isBusy: () => nemoCompaction.isBusy(),
+  });
+  eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, d => { nemoTrigger.onPromptReady(d).catch(e => console.error('[nemo] measure failed', e)); });
+  eventSource.on(event_types.MESSAGE_RECEIVED, (id, type) => { setTimeout(() => nemoTrigger.onMessageReceived(id, type).catch(e => console.error('[nemo] compaction failed', e)), 0); });
+  eventSource.on(event_types.CHAT_CHANGED, () => nemoTrigger.reset());
+  eventSource.on(event_types.APP_READY, () => {
+    MacrosParser.registerMacro('summary', createSummaryProvider({
+      getMeta: () => getContext().chatMetadata,
+      getChat: () => getContext().chat,
+      readUiSummary: () => String($('#memory_contents').val() ?? ''),
+    }), 'Latest summary: Nemo compaction chapters when present, else ST Summarize.');
+  });
+  const nemoRestoreDeps = { getChat: stShell.getChat, getMeta: stShell.getMeta, saveChat: stShell.saveChat, reloadChat: stShell.reloadChat };
+  const nemoRestore = {
+    restoreChapter: id => nemoRestoreChapter(nemoRestoreDeps, id),
+    unfoldLatest: () => nemoUnfoldLatest(nemoRestoreDeps),
+    restoreAll: () => nemoRestoreAll(nemoRestoreDeps),
+  };
+  const nemoUiCommon = {
+    $, getChat: stShell.getChat, getMeta: stShell.getMeta,
+    ...nemoRestore,
+    confirm: msg => dialogs.confirm(msg),
+    toast: toastr,
+    isBusy: () => nemoCompaction.isBusy(),
+    saveMeta: () => getContext().saveMetadata(),
+    eventSource, event_types,
+  };
+  const nemoPanel = mountNemoPanel({
+    ...nemoUiCommon,
+    hasSlot: () => hasEnabledSummarySlot(getContext().chatCompletionSettings.prompts, id => promptManager.isPromptDisabledForActiveCharacter(id)),
+    getLastEstimate: () => nemoTrigger.lastEstimate,
+    compactNow: () => nemoCompaction.compactNow(),
+    store: () => (_strkSettings().nemo ??= {}),
+    save: saveSettingsDebounced,
+  });
+  mountNemoMarkerButtons({ ...nemoUiCommon, onChange: () => nemoPanel.refresh() });
 
   // ── Layer 2 — World Model ─────────────────────────────────────────────────────
 
@@ -1095,14 +1178,20 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
   // Public API
   window.STTracker = {
-    // Summarizes the OLDEST compaction run only; never modifies the chat.
-    nemoPreview: async () => {
-      const chat = getContext().chat;
-      const cfg = nemoSettings();
-      const { runs } = computeNemoRuns(chat, { keepLast: cfg.keepLast });
-      if (!runs.length) return { text: null, runs: 0, messages: 0 };
-      const text = await writeChapterRecap({ chat, run: runs[0], consent: nemoConsent(), summarize: nemoSummarize, targetTokens: cfg.chapterTokens });
-      return { text, runs: runs.length, messages: runs[0].indices.length };
+    nemo: {
+      compactNow: nemoGated(nemoRunCompact, { needEnabled: true }),
+      // Summarizes the OLDEST compaction run only; never modifies the chat.
+      preview: async () => {
+        const chat = getContext().chat;
+        const cfg = nemoSettings();
+        const { runs } = computeNemoRuns(chat, { keepLast: cfg.keepLast });
+        if (!runs.length) return { text: null, runs: 0, messages: 0 };
+        const text = await writeChapterRecap({ chat, run: runs[0], consent: nemoConsent(), summarize: nemoSummarize, targetTokens: cfg.chapterTokens });
+        return { text, runs: runs.length, messages: runs[0].indices.length };
+      },
+      restoreChapter: nemoGated(nemoRestore.restoreChapter),
+      unfoldLatest: nemoGated(nemoRestore.unfoldLatest),
+      restoreAll: nemoGated(nemoRestore.restoreAll),
     },
     defineTracker: (d) => engine.defineTracker(d),
     updateTracker: (id, d) => engine.updateTracker(id, d),
