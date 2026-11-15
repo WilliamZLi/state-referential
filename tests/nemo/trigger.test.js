@@ -108,3 +108,52 @@ test('auto mode skips compact when busy at reply time, still clears pending', as
   assert.equal(calls.compact, 0); assert.equal(t.pending, false);
   busy = false; await t.onMessageReceived(2, 'normal'); assert.equal(calls.compact, 0);
 });
+
+test('over-threshold send, then disabled non-dry send, then reply: no compact', async () => {
+  let en = true; const { t, calls } = mkT({ isEnabled: () => en });
+  await t.onPromptReady({ chat, dryRun: false });
+  en = false; await t.onPromptReady({ chat, dryRun: false });
+  en = true; await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 0);
+});
+test('over-threshold send, then busy non-dry send, then reply: no compact', async () => {
+  let busy = false; const { t, calls } = mkT({ isBusy: () => busy });
+  await t.onPromptReady({ chat, dryRun: false });
+  busy = true; await t.onPromptReady({ chat, dryRun: false });
+  busy = false; await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 0);
+});
+test('over-threshold send, then dry run, then reply: still compacts', async () => {
+  const { t, calls } = mkT();
+  await t.onPromptReady({ chat, dryRun: false });
+  await t.onPromptReady({ chat, dryRun: true });
+  await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 1);
+});
+test('isEnabled flipping to false before the reply: no compact', async () => {
+  let en = true; const { t, calls } = mkT({ isEnabled: () => en });
+  await t.onPromptReady({ chat, dryRun: false });
+  en = false; await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 0); assert.equal(t.pending, false);
+});
+test('first_message reply: no compact', async () => {
+  const { t, calls } = mkT();
+  await t.onPromptReady({ chat, dryRun: false });
+  await t.onMessageReceived(1, 'first_message');
+  assert.equal(calls.compact, 0);
+});
+test('reset() after an awaited send: no compact', async () => {
+  const { t, calls } = mkT();
+  await t.onPromptReady({ chat, dryRun: false });
+  t.reset(); await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 0);
+});
+test('un-awaited onPromptReady, reset(), then reply: no compact', async () => {
+  const { t, calls } = mkT({ countTokens: () => new Promise((r) => setTimeout(() => r(50000), 10)) });
+  t.onPromptReady({ chat, dryRun: false });
+  t.reset();
+  await t.onMessageReceived(1, 'normal');
+  assert.equal(calls.compact, 0); assert.equal(t.pending, false);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(t.pending, false);
+});

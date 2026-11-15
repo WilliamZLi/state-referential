@@ -9,25 +9,36 @@ export class NemoTrigger {
     this.lastEstimate = null;
     this.pending = false;
     this.measuring = null;
+    this.generation = 0;
+  }
+
+  // Called on chat change: forget pending state and any in-flight measurement.
+  reset() {
+    this.pending = false;
+    this.measuring = null;
+    this.generation++;
   }
 
   onPromptReady({ chat, dryRun } = {}) {
-    if (dryRun || !this.isEnabled() || this.isBusy()) return Promise.resolve();
+    if (dryRun) return Promise.resolve(); // dry runs can land mid-stream; leave pending alone
+    if (!this.isEnabled() || this.isBusy()) { this.pending = false; return Promise.resolve(); }
     const text = flattenPromptText(chat); // synchronous: ST may reuse the array
-    const p = this._measure(text);
+    const gen = ++this.generation;
+    const p = this._measure(text, gen);
     this.measuring = p;
     return p;
   }
 
-  async _measure(text) {
+  async _measure(text, gen) {
     try {
       const count = await this.countTokens(text);
+      if (gen !== this.generation) return; // reset or newer send superseded this measurement
       const s = this.settings();
       this.lastEstimate = estimateRealTokens(count, s.multiplier);
       this.pending = this.lastEstimate > s.thresholdTokens;
     } catch (e) {
       console.warn('[nemo] token count failed; skipping compaction check', e);
-      this.pending = false;
+      if (gen === this.generation) this.pending = false;
     }
   }
 
@@ -35,7 +46,8 @@ export class NemoTrigger {
     if (this.measuring) await this.measuring;
     if (!this.pending) return;
     this.pending = false;
-    if (type === 'quiet' || type === 'impersonate') return;
+    if (type === 'quiet' || type === 'impersonate' || type === 'first_message') return;
+    if (!this.isEnabled()) return;
     const s = this.settings();
     const est = this.lastEstimate;
     if (s.mode === 'nudge') { this.nudge(est); return; }
