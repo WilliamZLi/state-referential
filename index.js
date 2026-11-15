@@ -1,4 +1,10 @@
-import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens } from '../../../../script.js';
+import { eventSource, event_types, saveSettingsDebounced, saveChatConditional, setExtensionPrompt, doNewChat, getMaxContextTokens, substituteParams } from '../../../../script.js';
+import { promptManager } from '../../../openai.js';
+import { resolveNemoSettings } from './src/nemo/settings.js';
+import { computeNemoRuns } from './src/nemo/range.js';
+import { readConsentPrompts } from './src/nemo/consent.js';
+import { makeSummarizer } from './src/nemo/summarize.js';
+import { writeChapterRecap } from './src/nemo/chapter.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript, IN_WORLD_RECAP_RULE, wrapRecap } from './src/util/transcript.js';
@@ -120,6 +126,18 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
     }
     return ctx.generateQuietPrompt({ quietPrompt: text });
   };
+
+  // ── Nemo compaction glue ──────────────────────────────────────────────────────
+  const nemoSettings = () => resolveNemoSettings(_strkSettings().nemo);
+  const nemoConsent = () => readConsentPrompts({
+    getPromptById: id => promptManager?.getPromptById(id),
+    isDisabled: id => promptManager?.isPromptDisabledForActiveCharacter(id) ?? true,
+    substitute: s => substituteParams(s),
+  });
+  const nemoSummarize = makeSummarizer({
+    generateRaw: o => getContext().generateRaw(o),
+    systemPrompt: CHRONICLE_SYSTEM_PROMPT,
+  });
   const insertSmallSysMessage = (opts) => {
     const chat = getContext().chat;
     chat.push({ name: opts.name, is_user: false, is_system: false, mes: opts.mes, extra: opts.extra });
@@ -1077,6 +1095,15 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
 
   // Public API
   window.STTracker = {
+    // Summarizes the OLDEST compaction run only; never modifies the chat.
+    nemoPreview: async () => {
+      const chat = getContext().chat;
+      const cfg = nemoSettings();
+      const { runs } = computeNemoRuns(chat, { keepLast: cfg.keepLast });
+      if (!runs.length) return { text: null, runs: 0, messages: 0 };
+      const text = await writeChapterRecap({ chat, run: runs[0], consent: nemoConsent(), summarize: nemoSummarize, targetTokens: cfg.chapterTokens });
+      return { text, runs: runs.length, messages: runs[0].indices.length };
+    },
     defineTracker: (d) => engine.defineTracker(d),
     updateTracker: (id, d) => engine.updateTracker(id, d),
     deleteTracker: (id) => engine.deleteTracker(id),
