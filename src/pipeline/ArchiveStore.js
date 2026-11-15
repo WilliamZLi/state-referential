@@ -47,6 +47,17 @@ export function saveNemoArchive(meta, { messages, sequence }, { genId, now }) {
   return archiveId;
 }
 
+/**
+ * Remove one archive. Nemo restore calls it once the archived messages are back
+ * in the chat (they persist in the same save). Returns whether it existed.
+ */
+export function deleteArchive(meta, archiveId) {
+  const archives = meta?.l3Archives;
+  if (!archives || !Object.prototype.hasOwnProperty.call(archives, archiveId)) return false;
+  delete archives[archiveId];
+  return true;
+}
+
 export function listArchives(meta) {
   return Object.keys(bag(meta));
 }

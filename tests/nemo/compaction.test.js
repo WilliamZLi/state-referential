@@ -211,3 +211,17 @@ test('our own seeded markers are never pulled into a new chapter', async () => {
   const added = st.chapters.at(-1);
   assert.ok(!getArchive(d.meta, added.archiveId).messages.some(m => m.extra?.from === 'state-referential'));
 });
+
+// --- Final-review fix wave: restore anchors (I3) ---
+test('each new chapter records the message right after its run as anchorId, giving it a tracker id', async () => {
+  const chat = chat20(); const after = chat[8]; delete after.state_referential_msgId;
+  const d = deps(chat); await new NemoCompaction(d).compactNow();
+  const c = getNemoState(d.meta).chapters[0];
+  assert.ok(after.state_referential_msgId); assert.equal(c.anchorId, after.state_referential_msgId);
+});
+test('with several runs, each anchor is the message that follows that run', async () => {
+  const chat = chat20(); chat[3].extra = { from: 'state-referential', l3Kind: 'x' };
+  const split = chat[3].state_referential_msgId; const firstKept = chat[8].state_referential_msgId;
+  const d = deps(chat); await new NemoCompaction(d).compactNow();
+  assert.deepStrictEqual(getNemoState(d.meta).chapters.map(c => c.anchorId), [split, firstKept]);
+});

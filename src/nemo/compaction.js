@@ -84,6 +84,9 @@ export class NemoCompaction {
       const state = getNemoState(meta);
       const chapters = [];
       let total = 0;
+      // Each chapter's anchor is the message right after its run (before any
+      // splice): restore falls back to it if the marker gets deleted.
+      const anchors = runs.map(run => ensureTrackerMsgId(chat[run.endIndex + 1]));
       for (let r = runs.length - 1; r >= 0; r--) {
         const run = runs[r];
         const members = new Set(run.indices);
@@ -103,7 +106,7 @@ export class NemoCompaction {
         });
         marker.is_system = true;
         chat.splice(run.startIndex, 0, marker);
-        chapters.unshift({ id, archiveId, recap: recaps[r], count, createdAt: d.now(), status: 'live' });
+        chapters.unshift({ id, archiveId, recap: recaps[r], count, createdAt: d.now(), status: 'live', anchorId: anchors[r] });
         total += count;
       }
       const markerMes = c => `Compacted ${c.count} messages (folded into Earlier history)`;
