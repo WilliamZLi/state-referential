@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseNemoNumber, restoreIntent, compactResultMessage, renderChapterList, escapeHtml, restoreConfirmText, createThrottle, NEMO_BUSY_TEXT } from '../../src/ui/nemoUiLogic.js';
+import { parseNemoNumber, restoreIntent, compactResultMessage, renderChapterList, escapeHtml, renderMarkerRecap, restoreConfirmText, createThrottle, NEMO_BUSY_TEXT } from '../../src/ui/nemoUiLogic.js';
 
 test('parseNemoNumber', () => {
   assert.equal(parseNemoNumber('keepLast', 'abc'), null);
@@ -89,4 +89,18 @@ test('createThrottle allows at most once per interval', () => {
 
 test('busy text', () => {
   assert.equal(NEMO_BUSY_TEXT, 'Busy — wait for the reply or compaction to finish.');
+});
+
+test('renderMarkerRecap splits paragraphs, escapes, labels, open, null', () => {
+  const html = renderMarkerRecap({ id: 'c1', status: 'live', recap: 'One.\n\n  Two <b>x</b>.  \n\n\n\nThree & four.' });
+  assert.equal((html.match(/<p>/g) || []).length, 3);
+  assert.ok(!html.includes('<b>'));
+  assert.ok(html.includes('&lt;b&gt;'));
+  assert.ok(html.includes('<details class="strk-nemo-recap" open>'));
+  assert.ok(html.includes('<summary>Recap</summary>'));
+  const f = renderMarkerRecap({ id: 'c1', status: 'folded', recap: 'A' });
+  assert.ok(f.includes('Recap — folded into Earlier history'));
+  assert.equal(renderMarkerRecap(null), '');
+  assert.equal(renderMarkerRecap(undefined), '');
+  assert.equal(renderMarkerRecap({ recap: '  \n\n ' }), '');
 });

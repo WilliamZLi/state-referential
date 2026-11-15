@@ -509,3 +509,7 @@
 .mes_button.l3-anchor-btn.active {
   color: var(--SmartThemeQuoteColor, #c0a062);
 }
+
+.strk-nemo-recap { margin-top: 6px; padding-left: 8px; border-left: 2px solid var(--SmartThemeBorderColor, #444); opacity: .85; }
+.strk-nemo-recap summary { cursor: pointer; }
+.strk-nemo-recap p { margin: .4em 0; }

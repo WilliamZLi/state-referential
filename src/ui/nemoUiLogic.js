@@ -20,6 +20,14 @@ export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/** Read-only recap block shown on a chapter marker (display only; never reaches the prompt). */
+export function renderMarkerRecap(chapter) {
+  const paras = String(chapter?.recap ?? '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  if (!chapter || !paras.length) return '';
+  const label = chapter.status === 'folded' ? 'Recap — folded into Earlier history' : 'Recap';
+  return `<details class="strk-nemo-recap" open><summary>${escapeHtml(label)}</summary>${paras.map(p => `<p>${escapeHtml(p)}</p>`).join('')}</details>`;
+}
+
 /** Parse a numeric setting; null when invalid or below its minimum. */
 export function parseNemoNumber(key, raw) {
   if (!(key in MINS)) return null;
