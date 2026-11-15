@@ -157,3 +157,17 @@ test('un-awaited onPromptReady, reset(), then reply: no compact', async () => {
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(t.pending, false);
 });
+
+test('reset() clears the last estimate, so a new chat shows no stale measurement', async () => {
+  const { t } = mkT();
+  await t.onPromptReady({ chat, dryRun: false });
+  assert.equal(t.lastEstimate, 125000);
+  t.reset();
+  assert.equal(t.lastEstimate, null);
+});
+test('auto compact passes minMessages = keepLast so it never loops on a tiny range', async () => {
+  let got = 'unset';
+  const { t } = mkT({ s: { keepLast: 20 }, compact: async (o) => { got = o; return { compacted: false, reason: 'no-eligible-range' }; } });
+  await t.onPromptReady({ chat, dryRun: false }); await t.onMessageReceived(1, 'normal');
+  assert.deepStrictEqual(got, { minMessages: 20 });
+});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseNemoNumber, restoreIntent, compactResultMessage, renderChapterList, escapeHtml, restoreConfirmText } from '../../src/ui/nemoUiLogic.js';
+import { parseNemoNumber, restoreIntent, compactResultMessage, renderChapterList, escapeHtml, restoreConfirmText, createThrottle, NEMO_BUSY_TEXT } from '../../src/ui/nemoUiLogic.js';
 
 test('parseNemoNumber', () => {
   assert.equal(parseNemoNumber('keepLast', 'abc'), null);
@@ -27,8 +27,8 @@ const st = () => ({
 test('restoreIntent', () => {
   assert.deepEqual(restoreIntent(st(), 'c3'), { kind: 'live', newer: 1 });
   assert.deepEqual(restoreIntent(st(), 'c4'), { kind: 'live', newer: 0 });
-  assert.deepEqual(restoreIntent(st(), 'c1'), { kind: 'folded', unfolds: 2 });
-  assert.deepEqual(restoreIntent(st(), 'c2'), { kind: 'folded', unfolds: 1 });
+  assert.deepEqual(restoreIntent(st(), 'c1'), { kind: 'folded', unfolds: 2, newer: 3 });
+  assert.deepEqual(restoreIntent(st(), 'c2'), { kind: 'folded', unfolds: 1, newer: 2 });
   assert.equal(restoreIntent(st(), 'zz'), null);
   assert.equal(restoreIntent(null, 'c1'), null);
 });
@@ -36,7 +36,8 @@ test('restoreIntent', () => {
 test('restoreConfirmText', () => {
   assert.equal(restoreConfirmText({ kind: 'live', newer: 2 }), 'Restore this chapter and the 2 newer chapter(s)?');
   assert.equal(restoreConfirmText({ kind: 'live', newer: 0 }), 'Restore this chapter?');
-  assert.equal(restoreConfirmText({ kind: 'folded', unfolds: 3 }), 'Unfold 3 time(s) and restore?');
+  assert.equal(restoreConfirmText({ kind: 'folded', unfolds: 3, newer: 2 }), 'Unfold 3 time(s) and restore this chapter and the 2 newer chapter(s)?');
+  assert.equal(restoreConfirmText({ kind: 'folded', unfolds: 1, newer: 0 }), 'Unfold 1 time(s) and restore this chapter?');
 });
 
 test('compactResultMessage', () => {
@@ -68,4 +69,24 @@ test('chapter list: null/empty state shows empty line; ids escaped', () => {
 
 test('escapeHtml', () => {
   assert.equal(escapeHtml('<a href="x">&\'</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;');
+});
+
+test('chapter list: a chapter whose marker is missing is flagged after its label', () => {
+  const s = { earlier: null, folds: [], chapters: [
+    { id: 'c1', count: 8, status: 'live', recap: '' }, { id: 'c2', count: 4, status: 'live', recap: '' }] };
+  const html = renderChapterList(s, id => id === 'c2');
+  assert.ok(html.includes('<span>8 messages (marker missing)</span>'));
+  assert.ok(html.includes('<span>4 messages</span>'));
+  assert.ok(!renderChapterList(s).includes('marker missing'));
+});
+
+test('createThrottle allows at most once per interval', () => {
+  let t = 5; const allow = createThrottle(60000, () => t);
+  assert.equal(allow(), true); assert.equal(allow(), false);
+  t += 59999; assert.equal(allow(), false);
+  t += 1; assert.equal(allow(), true); assert.equal(allow(), false);
+});
+
+test('busy text', () => {
+  assert.equal(NEMO_BUSY_TEXT, 'Busy — wait for the reply or compaction to finish.');
 });

@@ -2,6 +2,20 @@
 
 const MINS = { thresholdTokens: 1000, multiplier: 0, keepLast: 2, keepRecaps: 1, chapterTokens: 100, earlierTokens: 100 };
 
+/** Shown when an op is refused because a reply is generating or a compaction is running. */
+export const NEMO_BUSY_TEXT = 'Busy — wait for the reply or compaction to finish.';
+
+/** Returns allow(): true at most once per `intervalMs` (for toasts). */
+export function createThrottle(intervalMs, now = Date.now) {
+  let last = -Infinity;
+  return () => {
+    const t = now();
+    if (t - last < intervalMs) return false;
+    last = t;
+    return true;
+  };
+}
+
 export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -25,14 +39,18 @@ export function restoreIntent(state, chapterId) {
     const folds = state.folds ?? [];
     const fi = folds.findIndex(f => (f.chapterIds ?? []).includes(chapterId));
     if (fi < 0) return null;
-    return { kind: 'folded', unfolds: folds.length - fi };
+    return { kind: 'folded', unfolds: folds.length - fi, newer: chapters.length - idx - 1 };
   }
   const newer = chapters.slice(idx + 1).filter(c => c.status === 'live').length;
   return { kind: 'live', newer };
 }
 
 export function restoreConfirmText(intent) {
-  if (intent.kind === 'folded') return `Unfold ${intent.unfolds} time(s) and restore?`;
+  if (intent.kind === 'folded') {
+    return intent.newer > 0
+      ? `Unfold ${intent.unfolds} time(s) and restore this chapter and the ${intent.newer} newer chapter(s)?`
+      : `Unfold ${intent.unfolds} time(s) and restore this chapter?`;
+  }
   return intent.newer > 0 ? `Restore this chapter and the ${intent.newer} newer chapter(s)?` : 'Restore this chapter?';
 }
 
@@ -47,7 +65,8 @@ export function compactResultMessage(r) {
   }
 }
 
-export function renderChapterList(state) {
+/** hasMarker(id): whether the chapter's marker is still in the chat; a missing one is flagged. */
+export function renderChapterList(state, hasMarker = () => true) {
   const chapters = state?.chapters ?? [];
   const hasFolds = (state?.folds ?? []).length > 0;
   if (!chapters.length && !state?.earlier && !hasFolds) return '<div class="strk-nemo-empty">No chapters yet.</div>';
@@ -57,7 +76,7 @@ export function renderChapterList(state) {
   }
   for (const c of chapters) {
     const status = c.status === 'folded' ? 'folded' : 'live';
-    rows.push(`<div class="strk-nemo-row strk-nemo-${status}" title="${escapeHtml(c.recap)}"><span>${escapeHtml(c.count)} messages</span> <span class="strk-nemo-status">${status}</span> <button class="menu_button" data-nemo-restore="${escapeHtml(c.id)}">Restore</button></div>`);
+    rows.push(`<div class="strk-nemo-row strk-nemo-${status}" title="${escapeHtml(c.recap)}"><span>${escapeHtml(c.count)} messages${hasMarker(c.id) ? '' : ' (marker missing)'}</span> <span class="strk-nemo-status">${status}</span> <button class="menu_button" data-nemo-restore="${escapeHtml(c.id)}">Restore</button></div>`);
   }
   return rows.join('');
 }

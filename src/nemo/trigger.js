@@ -12,8 +12,10 @@ export class NemoTrigger {
     this.generation = 0;
   }
 
-  // Called on chat change: forget pending state and any in-flight measurement.
+  // Called on chat change: forget pending state, any in-flight measurement,
+  // and the last estimate (it belongs to the previous chat).
   reset() {
+    this.lastEstimate = null;
     this.pending = false;
     this.measuring = null;
     this.generation++;
@@ -53,7 +55,7 @@ export class NemoTrigger {
     if (s.mode === 'nudge') { this.nudge(est); return; }
     if (s.mode !== 'auto') return;
     if (this.isBusy()) return;
-    const r = await this.compact();
+    const r = await this.compact({ minMessages: s.keepLast }); // never loop on a tiny range (spec §3.2)
     if (r && r.compacted === false && r.reason === 'no-eligible-range') this.warnStillOver(est);
   }
 }

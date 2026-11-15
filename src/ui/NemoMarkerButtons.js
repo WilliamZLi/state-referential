@@ -3,7 +3,7 @@ import { runRestoreFlow } from './nemoRestoreFlow.js';
 const BTN = 'l3-nemo-restore-btn';
 const EVENTS = ['CHARACTER_MESSAGE_RENDERED', 'USER_MESSAGE_RENDERED', 'MESSAGE_SWIPED', 'MORE_MESSAGES_LOADED', 'CHAT_CHANGED'];
 
-/** deps: { $, getChat, getMeta, restoreChapter, unfoldLatest, confirm, toast, isBusy, saveMeta, onChange (panel.refresh), eventSource, event_types } */
+/** deps: { $, getChat, getMeta, restoreChapter, unfoldAndRestore, confirm, toast, isBusy, saveMeta, onChange (panel.refresh), eventSource, event_types } */
 export function mountNemoMarkerButtons(deps) {
   const { $, getChat, eventSource, event_types } = deps;
 

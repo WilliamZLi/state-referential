@@ -8,13 +8,13 @@ import { NEMO_SUMMARY_SYSTEM_PROMPT } from './src/nemo/request.js';
 import { writeChapterRecap } from './src/nemo/chapter.js';
 import { NemoCompaction } from './src/nemo/compaction.js';
 import { NemoTrigger } from './src/nemo/trigger.js';
-import { restoreChapter as nemoRestoreChapter, unfoldLatest as nemoUnfoldLatest, restoreAll as nemoRestoreAll } from './src/nemo/restore.js';
+import { restoreChapter as nemoRestoreChapter, unfoldLatest as nemoUnfoldLatest, restoreAll as nemoRestoreAll, unfoldAndRestore as nemoUnfoldAndRestore, dropChapter as nemoDropChapter } from './src/nemo/restore.js';
 import { createSummaryProvider } from './src/nemo/summaryMacro.js';
 import { hasEnabledSummarySlot } from './src/nemo/warnings.js';
 import { isNemoEnabled } from './src/nemo/state.js';
 import { mountNemoPanel } from './src/ui/NemoPanel.js';
 import { mountNemoMarkerButtons } from './src/ui/NemoMarkerButtons.js';
-import { compactResultMessage } from './src/ui/nemoUiLogic.js';
+import { compactResultMessage, createThrottle, NEMO_BUSY_TEXT } from './src/ui/nemoUiLogic.js';
 import { splitForSeed, buildBranchMeta, addBranchRecord, setBranchStatus, playRange, foldbackAnchorId, buildFoldbackMarker, sceneChatName } from './src/pipeline/Branches.js';
 import { buildSyntheticMessage } from './src/pipeline/L3Insert.js';
 import { buildTranscript, IN_WORLD_RECAP_RULE, wrapRecap } from './src/util/transcript.js';
@@ -356,40 +356,61 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   await settingsDrawer.mount();
 
   // ── Nemo compaction wiring ────────────────────────────────────────────────────
-  const waitForIdle = async () => { while (isGenerating()) await new Promise(r => setTimeout(r, 500)); };
+  // Resolves 'idle' (was not generating), 'waited' (a reply finished meanwhile)
+  // or 'timeout' (still generating after 10 minutes).
+  const waitForIdle = async () => {
+    if (!isGenerating()) return 'idle';
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (isGenerating()) {
+      if (Date.now() >= deadline) return 'timeout';
+      await new Promise(r => setTimeout(r, 500));
+    }
+    return 'waited';
+  };
   const nemoCompaction = new NemoCompaction({
     getChat: stShell.getChat, getMeta: stShell.getMeta, saveChat: stShell.saveChat, reloadChat: stShell.reloadChat,
     summarize: nemoSummarize, consent: nemoConsent, settings: nemoSettings,
     genId: newId, now: () => Date.now(), waitForIdle,
+    getChatId: () => getContext().getCurrentChatId(),
+    isEnabled: () => isNemoEnabled(getContext().chatMetadata),
   });
+  // Nothing that splices the chat may start while a reply is streaming: ST
+  // writes the reply into chat[messageId] by index (spec §4.5).
+  const nemoBusy = () => nemoCompaction.isBusy() || isGenerating();
   const nemoToastResult = (r) => {
     if (r?.reason === 'no-eligible-range') return;
     const m = compactResultMessage(r);
     const fn = toastr[m.level] ?? toastr.info;
     fn.call(toastr, m.text);
   };
-  const nemoRunCompact = async () => { const r = await nemoCompaction.compactNow(); nemoToastResult(r); return r; };
+  const nemoRunCompact = async (opts) => { const r = await nemoCompaction.compactNow(opts); nemoToastResult(r); return r; };
   const nemoGated = (fn, { needEnabled = false } = {}) => async (...a) => {
-    if (nemoCompaction.isBusy()) return { refused: 'busy' };
+    if (nemoBusy()) return { refused: 'busy' };
     if (needEnabled && !isNemoEnabled(getContext().chatMetadata)) return { refused: 'disabled' };
     return fn(...a);
   };
-  let _nemoLastWarn = 0;
+  const nemoNudgeAllowed = createThrottle(60000);
+  const nemoWarnAllowed = createThrottle(60000);
   const nemoTrigger = new NemoTrigger({
     isEnabled: () => isNemoEnabled(getContext().chatMetadata),
     settings: nemoSettings,
     countTokens: t => getContext().getTokenCountAsync(t),
+    // Auto mode: the trigger calls this with { minMessages: nemoSettings().keepLast }.
     compact: nemoRunCompact,
     nudge: (est) => {
+      if (!nemoNudgeAllowed()) return;
       toastr.info(`Nemo: prompt ≈ ${est.toLocaleString()} tokens — click to compact.`, '', {
         timeOut: 15000,
-        onclick: () => { nemoGated(nemoRunCompact, { needEnabled: true })().catch(e => console.error('[nemo] compaction failed', e)); },
+        // Manual: no minMessages.
+        onclick: () => {
+          nemoGated(() => nemoRunCompact(), { needEnabled: true })()
+            .then(r => { if (r?.refused === 'busy') toastr.info(NEMO_BUSY_TEXT); })
+            .catch(e => console.error('[nemo] compaction failed', e));
+        },
       });
     },
     warnStillOver: (est) => {
-      const t = Date.now();
-      if (t - _nemoLastWarn < 60000) return;
-      _nemoLastWarn = t;
+      if (!nemoWarnAllowed()) return;
       toastr.warning(`Nemo: prompt ≈ ${est.toLocaleString()} tokens and nothing more can be compacted — the last ${nemoSettings().keepLast} messages are kept verbatim.`);
     },
     isBusy: () => nemoCompaction.isBusy(),
@@ -404,18 +425,20 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
       readUiSummary: () => String($('#memory_contents').val() ?? ''),
     }), 'Latest summary: Nemo compaction chapters when present, else ST Summarize.');
   });
-  const nemoRestoreDeps = { getChat: stShell.getChat, getMeta: stShell.getMeta, saveChat: stShell.saveChat, reloadChat: stShell.reloadChat };
+  const nemoRestoreDeps = { getChat: stShell.getChat, getMeta: stShell.getMeta, saveChat: stShell.saveChat, reloadChat: stShell.reloadChat, waitForIdle };
   const nemoRestore = {
     restoreChapter: id => nemoRestoreChapter(nemoRestoreDeps, id),
+    unfoldAndRestore: id => nemoUnfoldAndRestore(nemoRestoreDeps, id),
     unfoldLatest: () => nemoUnfoldLatest(nemoRestoreDeps),
     restoreAll: () => nemoRestoreAll(nemoRestoreDeps),
+    dropChapter: id => nemoDropChapter(nemoRestoreDeps, id),
   };
   const nemoUiCommon = {
     $, getChat: stShell.getChat, getMeta: stShell.getMeta,
     ...nemoRestore,
     confirm: msg => dialogs.confirm(msg),
     toast: toastr,
-    isBusy: () => nemoCompaction.isBusy(),
+    isBusy: nemoBusy,
     saveMeta: () => getContext().saveMetadata(),
     eventSource, event_types,
   };
@@ -1191,8 +1214,11 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
         return { text, runs: runs.length, messages: runs[0].indices.length };
       },
       restoreChapter: nemoGated(nemoRestore.restoreChapter),
+      unfoldAndRestore: nemoGated(nemoRestore.unfoldAndRestore),
       unfoldLatest: nemoGated(nemoRestore.unfoldLatest),
       restoreAll: nemoGated(nemoRestore.restoreAll),
+      // Escape hatch: forget a chapter whose marker and anchor are gone.
+      dropChapter: nemoGated(nemoRestore.dropChapter),
     },
     defineTracker: (d) => engine.defineTracker(d),
     updateTracker: (id, d) => engine.updateTracker(id, d),

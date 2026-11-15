@@ -1,7 +1,7 @@
 import { peekNemoState, isNemoEnabled, setNemoEnabled } from '../nemo/state.js';
 import { resolveNemoSettings } from '../nemo/settings.js';
 import { chatUsesBuiltinSummary } from '../nemo/warnings.js';
-import { parseNemoNumber, compactResultMessage, renderChapterList } from './nemoUiLogic.js';
+import { parseNemoNumber, compactResultMessage, renderChapterList, NEMO_BUSY_TEXT } from './nemoUiLogic.js';
 import { runRestoreFlow } from './nemoRestoreFlow.js';
 
 export { renderChapterList };
@@ -15,10 +15,10 @@ const NUM_FIELDS = [
   ['#strk-nemo-earliertokens', 'earlierTokens'],
 ];
 
-/** deps: see task brief + { isBusy, saveMeta }. Returns { refresh }. */
+/** deps: see task brief + { isBusy (compaction running OR a reply generating), saveMeta }. Returns { refresh }. */
 export function mountNemoPanel(deps) {
   const { $, getMeta, getChat, store, save, toast, eventSource, event_types } = deps;
-  const busyGate = () => { if (deps.isBusy()) { toast.info('Compaction in progress'); return true; } return false; };
+  const busyGate = () => { if (deps.isBusy()) { toast.info(NEMO_BUSY_TEXT); return true; } return false; };
   const settings = () => resolveNemoSettings(store());
 
   function refresh() {
@@ -34,7 +34,8 @@ export function mountNemoPanel(deps) {
     $('#strk-nemo-estimate').text(est == null
       ? 'No measurement yet'
       : `Last prompt ≈ ${Number(est).toLocaleString()} tokens (threshold ${Number(s.thresholdTokens).toLocaleString()})`);
-    $('#strk-nemo-chapters').html(renderChapterList(peekNemoState(meta)));
+    const markers = new Set((getChat() ?? []).map(m => m?.extra?.nemoChapterId).filter(Boolean));
+    $('#strk-nemo-chapters').html(renderChapterList(peekNemoState(meta), id => markers.has(id)));
   }
 
   $('#strk-nemo-enabled').on('change', e => {
@@ -75,6 +76,7 @@ export function mountNemoPanel(deps) {
   $('#strk-nemo-restore-all').on('click', async () => {
     if (busyGate()) return;
     if (!(await deps.confirm('Unfold all and restore every chapter?'))) return;
+    if (busyGate()) return; // a reply may have started while the dialog was open
     const had = (peekNemoState(getMeta())?.chapters ?? []).length > 0;
     return guarded('Restore everything', async () => {
       const r = await deps.restoreAll();
@@ -91,7 +93,11 @@ export function mountNemoPanel(deps) {
     return guarded('Unfold', () => deps.unfoldLatest());
   });
 
-  if (event_types.CHAT_CHANGED) eventSource.on(event_types.CHAT_CHANGED, refresh);
+  // CHARACTER_MESSAGE_RENDERED: the estimate measured for that reply is in by now.
+  // MESSAGE_DELETED: a deleted marker shows up as "(marker missing)".
+  for (const name of ['CHAT_CHANGED', 'CHARACTER_MESSAGE_RENDERED', 'MESSAGE_DELETED']) {
+    if (event_types[name]) eventSource.on(event_types[name], refresh);
+  }
   refresh();
   return { refresh };
 }
