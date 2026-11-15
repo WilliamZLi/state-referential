@@ -57,30 +57,38 @@ export function mountNemoPanel(deps) {
     });
   }
 
-  $('#strk-nemo-compact-now').on('click', async () => {
+  // Run an async op with error reporting; always refresh afterwards.
+  const guarded = async (label, fn) => {
+    try { await fn(); }
+    catch (e) { console.error(`[nemo] ${label} failed`, e); toast.error(`${label} failed: ${e?.message ?? e}`); }
+    finally { refresh(); }
+  };
+
+  $('#strk-nemo-compact-now').on('click', () => {
     if (busyGate()) return;
-    const m = compactResultMessage(await deps.compactNow());
-    toast[m.level](m.text);
-    refresh();
+    return guarded('Compact', async () => {
+      const m = compactResultMessage(await deps.compactNow());
+      toast[m.level](m.text);
+    });
   });
 
   $('#strk-nemo-restore-all').on('click', async () => {
     if (busyGate()) return;
-    const had = (peekNemoState(getMeta())?.chapters ?? []).length > 0;
     if (!(await deps.confirm('Unfold all and restore every chapter?'))) return;
-    const r = await deps.restoreAll();
-    if ((r?.restored ?? 0) > 0) toast.success(`Restored ${r.restored} chapter(s).`);
-    else if (had) toast.warning("Couldn't restore everything — a chapter marker is missing.");
-    refresh();
+    const had = (peekNemoState(getMeta())?.chapters ?? []).length > 0;
+    return guarded('Restore everything', async () => {
+      const r = await deps.restoreAll();
+      if ((r?.restored ?? 0) > 0) toast.success(`Restored ${r.restored} chapter(s).`);
+      else if (had) toast.warning("Couldn't restore everything — a chapter marker is missing.");
+    });
   });
 
   $('#strk-nemo-chapters').on('click', '[data-nemo-restore]', e => {
     runRestoreFlow(deps, String($(e.currentTarget).attr('data-nemo-restore')), refresh);
   });
-  $('#strk-nemo-chapters').on('click', '[data-nemo-unfold]', async () => {
+  $('#strk-nemo-chapters').on('click', '[data-nemo-unfold]', () => {
     if (busyGate()) return;
-    await deps.unfoldLatest();
-    refresh();
+    return guarded('Unfold', () => deps.unfoldLatest());
   });
 
   if (event_types.CHAT_CHANGED) eventSource.on(event_types.CHAT_CHANGED, refresh);
