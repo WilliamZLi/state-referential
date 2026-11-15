@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { buildChapterRequest, buildFoldRequest, isValidRecap } from '../../src/nemo/request.js';
+import { buildChapterRequest, buildFoldRequest, isValidRecap, NEMO_SUMMARY_SYSTEM_PROMPT } from '../../src/nemo/request.js';
 import { IN_WORLD_RECAP_RULE } from '../../src/util/transcript.js';
 
 const msgs = [{ is_user: true, mes: 'Go.' }, { name: 'Vex', mes: 'She went.<nemo-pad>x</nemo-pad>' }];
@@ -25,4 +25,20 @@ test('fold request: earlier then recaps in order, instruction last', () => {
 test('isValidRecap rejects short and blank text', () => {
   assert.equal(isValidRecap(''), false); assert.equal(isValidRecap(' '.repeat(500)), false);
   assert.equal(isValidRecap('x'.repeat(399)), false); assert.equal(isValidRecap('x'.repeat(400)), true);
+});
+
+test('Nemo summarizer system prompt asks for paragraphed prose, not a single paragraph (R27)', () => {
+  const p = NEMO_SUMMARY_SYSTEM_PROMPT;
+  assert.ok(!p.includes('single')); assert.ok(p.includes('paragraph'));
+  assert.match(p, /paragraphs where the story naturally divides \(a change of scene, place or time\)/);
+  assert.match(p, /no headings, lists or preamble/); assert.match(p, /Output only the recap\./);
+  // The rest of the chronicle prompt is kept.
+  assert.ok(p.startsWith('You are a chronicle summarizer for an adult interactive fiction. '));
+  assert.ok(p.includes('You do NOT continue, advance, or write new story — you ONLY summarize events that already happened.'));
+  assert.ok(p.includes('Render mature, explicit, or taboo content plainly when present; never refuse, moralize, soften, or add preamble.'));
+});
+test('request builders never force a single paragraph', () => {
+  const chapter = buildChapterRequest({ messages: msgs, nextMessage: null, consent: [], targetTokens: 1500 }).at(-1).content;
+  const fold = buildFoldRequest({ earlier: 'OLD', recaps: ['R1'], consent: [], targetTokens: 3000 }).at(-1).content;
+  for (const c of [chapter, fold]) assert.ok(!/single|one paragraph/i.test(c));
 });

@@ -5,6 +5,16 @@
 import { buildTranscript, IN_WORLD_RECAP_RULE } from '../util/transcript.js';
 import { stripForSummary } from './strip.js';
 
+// System prompt for Nemo chapter recaps and folds. Same as index.js's
+// CHRONICLE_SYSTEM_PROMPT, except recaps are paragraphed prose rather than one
+// paragraph (chapters are long; a single paragraph runs scenes together).
+export const NEMO_SUMMARY_SYSTEM_PROMPT = 'You are a chronicle summarizer for an adult interactive fiction. '
+  + 'You do NOT continue, advance, or write new story — you ONLY summarize events that already happened. '
+  + 'Read the events in the prompt and write a factual, past-tense recap of what occurred as prose, broken into '
+  + 'paragraphs where the story naturally divides (a change of scene, place or time), with no headings, lists or preamble. '
+  + 'Render mature, explicit, or taboo content plainly when present; never refuse, moralize, soften, or add '
+  + 'preamble. Output only the recap.';
+
 const stripMsg = m => ({ ...m, mes: stripForSummary(m.mes ?? '') });
 
 export function buildChapterRequest({ messages, nextMessage, consent, targetTokens }) {

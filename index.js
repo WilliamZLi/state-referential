@@ -4,6 +4,7 @@ import { resolveNemoSettings } from './src/nemo/settings.js';
 import { computeNemoRuns } from './src/nemo/range.js';
 import { readConsentPrompts } from './src/nemo/consent.js';
 import { makeSummarizer } from './src/nemo/summarize.js';
+import { NEMO_SUMMARY_SYSTEM_PROMPT } from './src/nemo/request.js';
 import { writeChapterRecap } from './src/nemo/chapter.js';
 import { NemoCompaction } from './src/nemo/compaction.js';
 import { NemoTrigger } from './src/nemo/trigger.js';
@@ -145,7 +146,7 @@ import { WorldBindingPrompt } from './src/ui/WorldBindingPrompt.js';
   });
   const nemoSummarize = makeSummarizer({
     generateRaw: o => getContext().generateRaw(o),
-    systemPrompt: CHRONICLE_SYSTEM_PROMPT,
+    systemPrompt: NEMO_SUMMARY_SYSTEM_PROMPT,
   });
   const insertSmallSysMessage = (opts) => {
     const chat = getContext().chat;
