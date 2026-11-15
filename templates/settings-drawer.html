@@ -51,6 +51,28 @@
       <button class="menu_button" id="strk-compact-now">Compact now</button>
       <button class="menu_button" id="strk-act-complete">Mark act complete</button>
     </div>
+    <h4>Nemo compaction</h4>
+    <label class="checkbox_label" title="Per-chat. Turns Nemo chapter compaction on for this chat."><input type="checkbox" id="strk-nemo-enabled" /> Enable for this chat</label>
+    <div id="strk-nemo-bound-note" class="strk-hidden">Not available on chats bound to a tracker world.</div>
+    <label title="Auto: compact automatically. Nudge: offer via toast. Off: manual only.">Mode
+      <select class="text_pole" id="strk-nemo-mode">
+        <option value="auto">Auto</option>
+        <option value="nudge">Nudge</option>
+        <option value="off">Off</option>
+      </select>
+    </label>
+    <label>Threshold (tokens) <input type="number" class="text_pole" id="strk-nemo-threshold" min="1000" step="1000" /></label>
+    <label>Multiplier <input type="number" class="text_pole" id="strk-nemo-multiplier" min="0.1" step="0.1" /></label>
+    <label>Keep last (messages) <input type="number" class="text_pole" id="strk-nemo-keeplast" min="2" /></label>
+    <label>Keep recaps <input type="number" class="text_pole" id="strk-nemo-keeprecaps" min="1" /></label>
+    <label>Chapter recap tokens <input type="number" class="text_pole" id="strk-nemo-chaptertokens" min="100" /></label>
+    <label>Earlier history tokens <input type="number" class="text_pole" id="strk-nemo-earliertokens" min="100" /></label>
+    <div id="strk-nemo-estimate"></div>
+    <div class="strk-drawer-actions">
+      <button class="menu_button" id="strk-nemo-compact-now">Compact now</button>
+      <button class="menu_button" id="strk-nemo-restore-all">Restore everything</button>
+    </div>
+    <div id="strk-nemo-chapters"></div>
     <h4>Templates</h4>
     <label>Auto-update prompt template</label>
     <textarea class="text_pole" id="strk-tpl-autoupdate" rows="6"></textarea>
