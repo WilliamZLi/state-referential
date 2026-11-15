@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { NemoCompaction } from '../../src/nemo/compaction.js';
-import { getNemoState } from '../../src/nemo/state.js';
+import { getNemoState, liveChapters, buildSlotText } from '../../src/nemo/state.js';
 import { resolveNemoSettings } from '../../src/nemo/settings.js';
-import { getArchive } from '../../src/pipeline/ArchiveStore.js';
+import { buildSyntheticMessage } from '../../src/pipeline/L3Insert.js';
+import { getArchive, saveNemoArchive } from '../../src/pipeline/ArchiveStore.js';
 
 let seq = 0;
 const msg = (who, mes) => ({ name: who, is_user: who === 'u', is_system: false, mes, extra: {}, state_referential_msgId: `id-${++seq}` });
@@ -91,4 +92,80 @@ test('multiple runs apply newest-first and chapters are stored chronologically',
   const st = getNemoState(d.meta);
   assert.ok(st.chapters[0].recap.endsWith('1')); assert.ok(st.chapters[1].recap.endsWith('2'));
   assert.equal(chat[0].extra.nemoChapterId, st.chapters[0].id);
+});
+
+// --- Task 7: rolling Earlier history ---
+function seedChapters(d, n) {
+  const chat = d.getChat(); const st = getNemoState(d.meta); const seeded = []; const markers = [];
+  for (let k = 0; k < n; k++) {
+    const id = `seed-${k}`;
+    const archiveId = saveNemoArchive(d.meta, { messages: [msg('u', `s${k}a`), msg('a', `s${k}b`)], sequence: [{ kind: 'msg', i: 0 }, { kind: 'msg', i: 1 }] }, { genId: d.genId, now: 1 });
+    const marker = buildSyntheticMessage({
+      kind: 'nemo-chapter', name: 'Compacted', mes: 'Compacted 2 messages',
+      extra: { l3ArchiveId: archiveId, nemoChapterId: id }, smallSys: false,
+    });
+    marker.is_system = true; markers.push(marker);
+    const c = { id, archiveId, recap: `SEED${k}-`.padEnd(450, 'x'), count: 2, createdAt: 1, status: 'live' };
+    st.chapters.push(c); seeded.push(c);
+  }
+  chat.unshift(...markers);
+  return seeded;
+}
+const seqSummaries = list => { const calls = []; const fn = async req => { calls.push(req); return list[Math.min(calls.length - 1, list.length - 1)]; }; fn.calls = calls; return fn; };
+
+test('the 5th chapter folds the oldest into Earlier history', async () => {
+  const chat = chat20(); const d = deps(chat, { summarize: seqSummaries(['NEW'.repeat(200), 'FOLD'.repeat(200)]) });
+  const oldest = seedChapters(d, 4)[0];
+  const r = await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  assert.equal(r.folded, true); assert.equal(st.earlier.text, 'FOLD'.repeat(200));
+  assert.deepStrictEqual(st.folds[0].chapterIds, [oldest.id]); assert.equal(st.folds[0].prevEarlier, null);
+  assert.equal(liveChapters(st).length, 4); assert.ok(st.chapters.find(c => c.id === oldest.id).recap);
+  assert.equal(st.chapters.find(c => c.id === oldest.id).status, 'folded');
+  assert.match(chat.find(m => m.extra?.nemoChapterId === oldest.id).mes, /folded into Earlier history/);
+  assert.ok(buildSlotText(st).startsWith('Earlier history:'));
+});
+test('a second fold passes the previous Earlier history and records it', async () => {
+  const chat = chat20(); const sum = seqSummaries(['NEW'.repeat(200), 'FOLD2'.repeat(200)]); const d = deps(chat, { summarize: sum });
+  seedChapters(d, 4); getNemoState(d.meta).earlier = { text: 'E1' };
+  const r = await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  assert.equal(r.folded, true);
+  assert.equal(sum.calls.length, 2);
+  assert.ok(JSON.stringify(sum.calls[1]).includes('E1'));
+  assert.equal(st.folds.at(-1).prevEarlier, 'E1'); assert.equal(st.earlier.text, 'FOLD2'.repeat(200));
+});
+test('an invalid fold summary keeps the chapters and skips the fold', async () => {
+  const chat = chat20(); const d = deps(chat, { summarize: seqSummaries(['NEW'.repeat(200), 'x']) });
+  seedChapters(d, 4); getNemoState(d.meta).earlier = { text: 'E1' };
+  const r = await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  assert.equal(r.compacted, true); assert.equal(r.folded, false);
+  assert.equal(liveChapters(st).length, 5); assert.equal(st.earlier.text, 'E1'); assert.equal(st.folds.length, 0);
+});
+test('several folding chapters cost one fold call', async () => {
+  const chat = chat20(); const sum = seqSummaries(['A'.repeat(500)]); const d = deps(chat, { summarize: sum });
+  seedChapters(d, 4);
+  const at = chat.findIndex(m => m.mes === 'm3');
+  chat[at] = buildSyntheticMessage({ kind: 'other', name: 'X', mes: 'x', extra: {}, smallSys: true });
+  const r = await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  assert.equal(r.chapters, 2); assert.equal(sum.calls.length, 3); assert.equal(r.folded, true);
+  assert.deepStrictEqual(st.folds[0].chapterIds, ['seed-0', 'seed-1']); assert.equal(liveChapters(st).length, 4);
+});
+test('a new chapter folded immediately gets the folded marker text', async () => {
+  const chat = chat20(); const d = deps(chat, { settings: () => ({ ...resolveNemoSettings(), keepRecaps: 0 }) });
+  const r = await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  assert.equal(r.folded, true); assert.equal(st.chapters[0].status, 'folded');
+  assert.equal(chat.find(m => m.extra?.nemoChapterId === st.chapters[0].id).mes, 'Compacted 8 messages (folded into Earlier history)');
+});
+test('summary failure makes no fold call and a changed range applies no fold', async () => {
+  let chat = chat20(); let sum = seqSummaries(['short']); let d = deps(chat, { summarize: sum }); seedChapters(d, 4);
+  assert.equal((await new NemoCompaction(d).compactNow()).reason, 'summary-failed'); assert.equal(sum.calls.length, 1);
+  chat = chat20(); d = deps(chat, { summarize: seqSummaries(['A'.repeat(500)]), waitForIdle: async () => { chat[7] = msg('a', 'edited'); } }); seedChapters(d, 4);
+  assert.equal((await new NemoCompaction(d).compactNow()).reason, 'changed');
+  const st = getNemoState(d.meta); assert.equal(st.earlier, null); assert.equal(st.folds.length, 0); assert.equal(liveChapters(st).length, 4);
+});
+test('our own seeded markers are never pulled into a new chapter', async () => {
+  const chat = chat20(); const d = deps(chat); const seeded = seedChapters(d, 4);
+  await new NemoCompaction(d).compactNow(); const st = getNemoState(d.meta);
+  for (const c of seeded) assert.ok(chat.some(m => m.extra?.nemoChapterId === c.id));
+  const added = st.chapters.at(-1);
+  assert.ok(!getArchive(d.meta, added.archiveId).messages.some(m => m.extra?.from === 'state-referential'));
 });

@@ -1,4 +1,5 @@
-import { getNemoState } from './state.js';
+import { getNemoState, liveChapters } from './state.js';
+import { buildFoldRequest, isValidRecap } from './request.js';
 import { computeNemoRuns, isUserHidden } from './range.js';
 import { writeChapterRecap } from './chapter.js';
 import { buildSyntheticMessage } from '../pipeline/L3Insert.js';
@@ -41,6 +42,20 @@ export class NemoCompaction {
         recaps.push(recap);
       }
 
+      // Fold the oldest live recaps into Earlier history once more than keepRecaps would be live.
+      // The result is only held here; nothing is written until the range is verified.
+      const earlyState = getNemoState(d.getMeta());
+      const existing = liveChapters(earlyState);
+      const foldCount = Math.max(0, existing.length + recaps.length - cfg.keepRecaps);
+      let foldText = null;
+      if (foldCount > 0) {
+        const targetRecaps = [...existing.map(c => c.recap), ...recaps].slice(0, foldCount);
+        const text = await d.summarize(buildFoldRequest({
+          earlier: earlyState.earlier?.text ?? null, recaps: targetRecaps, consent, targetTokens: cfg.earlierTokens,
+        }));
+        if (isValidRecap(text)) foldText = text;
+      }
+
       await d.waitForIdle();
 
       for (const span of snap) {
@@ -76,11 +91,25 @@ export class NemoCompaction {
         chapters.unshift({ id, archiveId, recap: recaps[r], count, createdAt: d.now(), status: 'live' });
         total += count;
       }
+      const markerMes = c => `Compacted ${c.count} messages (folded into Earlier history)`;
       state.chapters.push(...chapters);
+
+      let folded = false;
+      if (foldText !== null) {
+        const targets = [...liveChapters(state)].slice(0, foldCount);
+        for (const t of targets) {
+          t.status = 'folded';
+          const marker = chat.find(m => m?.extra?.nemoChapterId === t.id);
+          if (marker) marker.mes = markerMes(t);
+        }
+        state.folds.push({ id: d.genId(), prevEarlier: state.earlier?.text ?? null, chapterIds: targets.map(t => t.id), createdAt: d.now() });
+        state.earlier = { text: foldText };
+        folded = true;
+      }
 
       await d.saveChat();
       await d.reloadChat();
-      return { compacted: true, chapters: chapters.length, folded: false, messages: total };
+      return { compacted: true, chapters: chapters.length, folded, messages: total };
     } finally {
       this.busy = false;
     }
