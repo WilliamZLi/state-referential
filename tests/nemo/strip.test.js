@@ -30,3 +30,21 @@ test('handles multi-line and attributed blocks', () => {
   const t = 'Start.\n<nemo-mp-retain id="2">\nline a\n\n\n\nline b\n</nemo-mp-retain>\nEnd.';
   assert.equal(stripForSummary(t), 'Start.\n\nEnd.');
 });
+
+test('drops an unclosed pad truncated mid-stream', () => {
+  assert.equal(stripForSummary('Prose.\n<nemo-pad>\n[[tab Cur'), 'Prose.');
+});
+
+test('drops an unclosed mental_state through end of text', () => {
+  assert.equal(stripForSummary('Prose.\n<mental_state>she thinks'), 'Prose.');
+});
+
+test('drops unclosed offscreen, mp-state and mp-retain openers', () => {
+  assert.equal(stripForSummary('A.<nemo-offscreen>far'), 'A.');
+  assert.equal(stripForSummary('A.<nemo-mp-state>s'), 'A.');
+  assert.equal(stripForSummary('A.<nemo-mp-retain id="1">r'), 'A.');
+});
+
+test('a closed block before an unclosed one is still handled', () => {
+  assert.equal(stripForSummary('A.<nemo-pad>x</nemo-pad>B.<nemo-pad>cut'), 'A.B.');
+});
