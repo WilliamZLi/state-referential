@@ -1,4 +1,4 @@
-import { getNemoState, liveChapters } from './state.js';
+import { getNemoState, peekNemoState, liveChapters } from './state.js';
 import { buildFoldRequest, isValidRecap } from './request.js';
 import { computeNemoRuns, isUserHidden } from './range.js';
 import { writeChapterRecap } from './chapter.js';
@@ -9,27 +9,36 @@ import { ensureTrackerMsgId, readTrackerMsgId } from '../util/id.js';
 const fail = reason => ({ compacted: false, chapters: 0, folded: false, messages: 0, reason });
 
 export class NemoCompaction {
-  constructor({ getChat, getMeta, saveChat, reloadChat, summarize, consent, settings, genId, now, waitForIdle }) {
-    this.d = { getChat, getMeta, saveChat, reloadChat, summarize, consent, settings, genId, now, waitForIdle };
+  // waitForIdle resolves to 'idle' (was idle), 'waited' (had to wait) or 'timeout' (gave up).
+  constructor({ getChat, getMeta, saveChat, reloadChat, summarize, consent, settings, genId, now, waitForIdle, getChatId, isEnabled }) {
+    this.d = { getChat, getMeta, saveChat, reloadChat, summarize, consent, settings, genId, now, waitForIdle, getChatId, isEnabled };
     this.busy = false;
   }
 
   isBusy() { return this.busy; }
 
-  async compactNow() {
+  // opts.minMessages: skip (no-eligible-range) when fewer members than this are
+  // eligible in total. Auto mode passes keepLast so it can't loop on tiny ranges.
+  async compactNow({ minMessages = 2 } = {}) {
     const d = this.d;
     this.busy = true;
     try {
+      const chatId = d.getChatId();
+      const meta0 = d.getMeta();
       const chat = d.getChat();
       const cfg = d.settings();
       const { runs } = computeNemoRuns(chat, { keepLast: cfg.keepLast });
-      if (!runs.length) return fail('no-eligible-range');
+      const eligible = runs.reduce((n, run) => n + run.indices.length, 0);
+      if (!runs.length || eligible < minMessages) return fail('no-eligible-range');
 
-      // Snapshot IDs and hidden state over every run's full span.
+      // Snapshot IDs and hidden state over every run's full span, plus each
+      // member's text and swipe so in-place edits and swipes are caught.
       const snap = runs.map(run => {
+        const members = new Set(run.indices);
         const span = [];
         for (let i = run.startIndex; i <= run.endIndex; i++) {
-          span.push({ i, id: ensureTrackerMsgId(chat[i]), hidden: isUserHidden(chat[i]) });
+          const m = chat[i];
+          span.push({ i, id: ensureTrackerMsgId(m), hidden: isUserHidden(m), member: members.has(i), mes: m.mes, swipe_id: m.swipe_id });
         }
         return span;
       });
@@ -44,28 +53,34 @@ export class NemoCompaction {
 
       // Fold the oldest live recaps into Earlier history once more than keepRecaps would be live.
       // The result is only held here; nothing is written until the range is verified.
-      const earlyState = getNemoState(d.getMeta());
-      const existing = liveChapters(earlyState);
+      const earlyState = peekNemoState(meta0);
+      const existing = earlyState ? liveChapters(earlyState) : [];
       const foldCount = Math.max(0, existing.length + recaps.length - cfg.keepRecaps);
       let foldText = null;
       if (foldCount > 0) {
         const targetRecaps = [...existing.map(c => c.recap), ...recaps].slice(0, foldCount);
         const text = await d.summarize(buildFoldRequest({
-          earlier: earlyState.earlier?.text ?? null, recaps: targetRecaps, consent, targetTokens: cfg.earlierTokens,
+          earlier: earlyState?.earlier?.text ?? null, recaps: targetRecaps, consent, targetTokens: cfg.earlierTokens,
         }));
         if (isValidRecap(text)) foldText = text;
       }
 
-      await d.waitForIdle();
+      if ((await d.waitForIdle()) === 'timeout') return fail('changed');
 
+      // Verify before writing anything: same chat, same metadata, still enabled,
+      // every span unchanged, and every run still older than the kept window.
+      if (!d.isEnabled() || d.getChatId() !== chatId || d.getMeta() !== meta0) return fail('changed');
       for (const span of snap) {
         for (const s of span) {
           const m = chat[s.i];
           if (!m || readTrackerMsgId(m) !== s.id || isUserHidden(m) !== s.hidden) return fail('changed');
+          if (s.member && (m.mes !== s.mes || m.swipe_id !== s.swipe_id)) return fail('changed');
         }
       }
+      const { keptStart } = computeNemoRuns(chat, { keepLast: d.settings().keepLast });
+      if (runs.some(run => run.endIndex >= keptStart)) return fail('changed');
 
-      const meta = d.getMeta();
+      const meta = meta0;
       const state = getNemoState(meta);
       const chapters = [];
       let total = 0;
@@ -107,7 +122,11 @@ export class NemoCompaction {
         folded = true;
       }
 
+      // A send during the save pushes a message the reload would drop: wait it
+      // out and save again so the reload keeps it.
       await d.saveChat();
+      const after = await d.waitForIdle();
+      if (after === 'waited' || after === 'timeout') await d.saveChat();
       await d.reloadChat();
       return { compacted: true, chapters: chapters.length, folded, messages: total };
     } finally {

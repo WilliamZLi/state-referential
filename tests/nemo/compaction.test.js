@@ -56,11 +56,93 @@ test('nothing eligible gives no-eligible-range and leaves chat alone; isBusy is 
   assert.deepStrictEqual(r, { compacted: false, chapters: 0, folded: false, messages: 0, reason: 'no-eligible-range' });
   assert.equal(c.isBusy(), false); assert.deepStrictEqual(chat, before); assert.ok(!d.saved);
 });
-test('isBusy is true during summarize and waitForIdle, false after', async () => {
+test('isBusy is true during summarize and both waitForIdle calls, false after', async () => {
   const chat = chat20(); let c; const seen = [];
-  const d = deps(chat, { summarize: async () => { seen.push(c.isBusy()); return 'R'.repeat(500); }, waitForIdle: async () => { seen.push(c.isBusy()); } });
+  const d = deps(chat, { summarize: async () => { seen.push(c.isBusy()); return 'R'.repeat(500); }, waitForIdle: async () => { seen.push(c.isBusy()); return 'idle'; } });
   c = new NemoCompaction(d); await c.compactNow();
-  assert.deepStrictEqual(seen, [true, true]); assert.equal(c.isBusy(), false);
+  assert.deepStrictEqual(seen, [true, true, true]); assert.equal(c.isBusy(), false);
+});
+
+// --- Final-review fix wave: apply-time verification (I1), idle handshake (I2), minMessages (I4), no-op state (M2) ---
+const unchangedNothingWritten = (r, chat, d) => {
+  assert.deepStrictEqual(r, { compacted: false, chapters: 0, folded: false, messages: 0, reason: 'changed' });
+  assert.equal(chat.length, 20); assert.ok(!d.saved && !d.reloaded); assert.deepStrictEqual(d.meta, {});
+};
+test('an in-place edit of a member mes during summarizing → changed, nothing written', async () => {
+  const chat = chat20(); const d = deps(chat, { waitForIdle: async () => { chat[3].mes = 'edited in place'; return 'idle'; } });
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, d);
+  assert.equal(chat[3].mes, 'edited in place');
+});
+test('a swipe on a member during summarizing → changed, nothing written', async () => {
+  const chat = chat20(); chat[5].swipe_id = 0; chat[5].swipes = ['m5', 'alt'];
+  const d = deps(chat, { waitForIdle: async () => { chat[5].swipe_id = 1; return 'idle'; } });
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, d);
+});
+test('a chat switch (getChatId changes) during summarizing → changed, nothing written', async () => {
+  const chat = chat20(); let id = 'chat-1';
+  const d = deps(chat, { getChatId: () => id, waitForIdle: async () => { id = 'chat-1 - Branch #2'; return 'idle'; } });
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, d);
+});
+test('a different metadata object at apply time → changed, nothing written to either', async () => {
+  const chat = chat20(); const other = {};
+  const d = deps(chat); const first = d.meta;
+  d.waitForIdle = async () => { d.meta = other; return 'idle'; };
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, { ...d, meta: first });
+  assert.deepStrictEqual(other, {});
+});
+test('toggling Nemo off during summarizing → changed, nothing written', async () => {
+  const chat = chat20(); let on = true;
+  const d = deps(chat, { isEnabled: () => on, waitForIdle: async () => { on = false; return 'idle'; } });
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, d);
+});
+test('deleting the 3 newest messages during summarizing → changed (run now reaches the kept window)', async () => {
+  const chat = chat20(); const d = deps(chat, { waitForIdle: async () => { chat.splice(-3, 3); return 'idle'; } });
+  const r = await new NemoCompaction(d).compactNow();
+  assert.equal(r.reason, 'changed'); assert.equal(chat.length, 17); assert.ok(!d.saved); assert.deepStrictEqual(d.meta, {});
+});
+test("waitForIdle 'timeout' before apply → changed, nothing written", async () => {
+  const chat = chat20(); const d = deps(chat, { waitForIdle: async () => 'timeout' });
+  unchangedNothingWritten(await new NemoCompaction(d).compactNow(), chat, d);
+});
+test("a reply that starts during the save ('waited' on the second wait) → saved again before reload", async () => {
+  const chat = chat20(); const log = []; let waits = 0;
+  const d = deps(chat, {
+    saveChat: async () => { log.push('save'); },
+    reloadChat: async () => { log.push('reload'); },
+    waitForIdle: async () => { waits++; log.push(`wait:${waits === 1 ? 'idle' : 'waited'}`); return waits === 1 ? 'idle' : 'waited'; },
+  });
+  assert.equal((await new NemoCompaction(d).compactNow()).compacted, true);
+  assert.deepStrictEqual(log, ['wait:idle', 'save', 'wait:waited', 'save', 'reload']);
+});
+test("idle after the save → one save, then reload", async () => {
+  const chat = chat20(); const log = [];
+  const d = deps(chat, { saveChat: async () => { log.push('save'); }, reloadChat: async () => { log.push('reload'); } });
+  await new NemoCompaction(d).compactNow();
+  assert.deepStrictEqual(log, ['save', 'reload']);
+});
+test('minMessages: 8 eligible members with minMessages 12 → no-eligible-range, summarize never called', async () => {
+  const chat = chat20(); const before = structuredClone(chat); const sum = seqSummaries(['R'.repeat(500)]);
+  const d = deps(chat, { summarize: sum });
+  const r = await new NemoCompaction(d).compactNow({ minMessages: 12 });
+  assert.deepStrictEqual(r, { compacted: false, chapters: 0, folded: false, messages: 0, reason: 'no-eligible-range' });
+  assert.equal(sum.calls.length, 0); assert.deepStrictEqual(chat, before); assert.ok(!d.saved); assert.deepStrictEqual(d.meta, {});
+});
+test('minMessages counts members across all runs; meeting it compacts', async () => {
+  const chat = chat20(); chat[3].extra = { from: 'state-referential', l3Kind: 'x' }; // splits into runs of 3 + 4
+  const d = deps(chat);
+  assert.equal((await new NemoCompaction(d).compactNow({ minMessages: 8 })).reason, 'no-eligible-range');
+  const r = await new NemoCompaction(d).compactNow({ minMessages: 7 });
+  assert.equal(r.compacted, true); assert.equal(r.messages, 7);
+});
+test('no eligible range on a fresh chat leaves meta without nemoCompaction', async () => {
+  const d = deps(chat20().slice(0, 4));
+  await new NemoCompaction(d).compactNow();
+  assert.equal(Object.prototype.hasOwnProperty.call(d.meta, 'nemoCompaction'), false);
+});
+test('a summary failure on a fresh chat leaves meta without nemoCompaction', async () => {
+  const d = deps(chat20(), { summarize: async () => 'short' });
+  assert.equal((await new NemoCompaction(d).compactNow()).reason, 'summary-failed');
+  assert.deepStrictEqual(d.meta, {});
 });
 test('multiple runs apply newest-first and chapters are stored chronologically', async () => {
   const chat = chat20(); chat[3].extra = { from: 'state-referential', l3Kind: 'x' }; // our marker splits runs

@@ -20,7 +20,9 @@ export function deps(chat, over = {}) {
     settings: () => resolveNemoSettings(),
     genId: () => `gen-${++n}`,
     now: () => 1234,
-    waitForIdle: async () => {},
+    waitForIdle: async () => 'idle',
+    getChatId: () => 'chat-1',
+    isEnabled: () => true,
     ...over,
   };
   return d;
