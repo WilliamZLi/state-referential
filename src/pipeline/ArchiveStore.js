@@ -30,6 +30,23 @@ export function getArchive(meta, archiveId) {
   return bag(meta)[archiveId];
 }
 
+/**
+ * Store a Nemo chapter archive. `sequence` records the original order of the
+ * covered range: {kind:'msg', i} points into `messages`, {kind:'hidden', id}
+ * names a user-hidden message that stayed in the chat. Returns archiveId.
+ */
+export function saveNemoArchive(meta, { messages, sequence }, { genId, now }) {
+  const archiveId = genId();
+  bag(meta)[archiveId] = {
+    archiveId,
+    kind: 'nemo',
+    messages: structuredClone(messages),
+    sequence,
+    compactedAt: now,
+  };
+  return archiveId;
+}
+
 export function listArchives(meta) {
   return Object.keys(bag(meta));
 }

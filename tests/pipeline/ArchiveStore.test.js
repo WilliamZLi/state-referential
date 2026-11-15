@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { saveArchive, getArchive, listArchives } from '../../src/pipeline/ArchiveStore.js';
+import { saveArchive, saveNemoArchive, getArchive, listArchives } from '../../src/pipeline/ArchiveStore.js';
 
 // Archives live in chat_metadata (the persisted `meta` object), NOT on the chat
 // array — a property tacked onto the array (chat.extra) is dropped when ST
@@ -45,4 +45,18 @@ test('listArchives returns ids', () => {
   saveArchive(meta, chat, { startIndex: 0, endIndex: 0 }, { genId: () => 'x', now: 0 });
   saveArchive(meta, chat, { startIndex: 1, endIndex: 1 }, { genId: () => 'y', now: 0 });
   assert.deepEqual(listArchives(meta).sort(), ['x', 'y']);
+});
+
+test('saveNemoArchive stores cloned messages and sequence with kind nemo', () => {
+  const meta = {};
+  const messages = [{ mes: 'a' }];
+  const sequence = [{ kind: 'msg', i: 0 }, { kind: 'hidden', id: 'h1' }];
+  const id = saveNemoArchive(meta, { messages, sequence }, { genId: () => 'n-1', now: 55 });
+  assert.equal(id, 'n-1');
+  messages[0].mes = 'MUTATED';
+  const a = getArchive(meta, 'n-1');
+  assert.equal(a.kind, 'nemo');
+  assert.equal(a.messages[0].mes, 'a');
+  assert.deepStrictEqual(a.sequence, sequence);
+  assert.equal(a.compactedAt, 55);
 });
